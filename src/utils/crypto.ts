@@ -6,6 +6,7 @@
  */
 import CryptoJS from 'crypto-js'
 import { generateAesKey, LINSPIRER } from '@/config'
+import { logError } from '@/utils/errorText'
 
 /** 中育 AES-ECB 加解密（复刻 window.aesEncrypt/aesDecrypt） */
 const zyKey = CryptoJS.enc.Utf8.parse(generateAesKey())
@@ -27,7 +28,7 @@ export function aesDecrypt(encryptedBase64Str?: string): string {
     })
     return decrypted.toString(CryptoJS.enc.Utf8)
   } catch (e) {
-    console.log(e)
+    logError('aesDecrypt', e)
     return ''
   }
 }

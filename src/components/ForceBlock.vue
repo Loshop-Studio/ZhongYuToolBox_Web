@@ -11,6 +11,7 @@
 </template>
 
 <script setup lang="ts">
+import { watch, onMounted } from 'vue'
 import { WarningFilled, Download } from '@element-plus/icons-vue'
 import { blockState, clearBlock } from '@/stores/block'
 import { useAuthStore } from '@/stores/auth'
@@ -27,6 +28,22 @@ function onLogout() {
   auth.logout()
   router.push('/login')
 }
+
+// 封禁弹窗出现后使当前会话失效（避免继续使用），但保留封禁界面持续展示
+function doAutoLogout() {
+  if (blockState.active && blockState.kind === 'ban') {
+    auth.logout()
+    router.push('/login')
+  }
+}
+
+onMounted(doAutoLogout)
+watch(
+  () => [blockState.active, blockState.kind],
+  ([active, kind]) => {
+    if (active && kind === 'ban') doAutoLogout()
+  }
+)
 </script>
 
 <style scoped>

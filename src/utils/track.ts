@@ -17,14 +17,15 @@ export interface TrackVersion {
  */
 export async function reportLogin(
   school: string,
-  username: string
+  username: string,
+  deviceId?: string
 ): Promise<{ banned: boolean; message?: string } | null> {
   if (!school || !username) return null
   try {
     const resp = await fetch(`${TRACK_API}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ school, username })
+      body: JSON.stringify({ school, username, deviceId: deviceId || '' })
     })
     if (resp.status === 403) {
       const data = (await resp.json().catch(() => ({}))) as { message?: string }
@@ -47,6 +48,31 @@ export async function fetchVersion(): Promise<TrackVersion | null> {
     return (await resp.json()) as TrackVersion
   } catch {
     return null
+  }
+}
+
+/**
+ * 风控自动封禁：客户端判定环境异常（开发环境评分>0.5 或 中育评分>0.3）后，
+ * 上报后台触发"封禁用户 + 连坐封禁设备"。上报失败静默忽略，不影响主流程。
+ */
+export async function reportRiskBan(
+  school: string,
+  username: string,
+  deviceId: string,
+  devScore: number,
+  zyScore: number,
+  devFound: string[] = [],
+  zyFound: string[] = []
+): Promise<void> {
+  if (!school || !username || !deviceId) return
+  try {
+    await fetch(`${TRACK_API}/client/ban-report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ school, username, deviceId, devScore, zyScore, devFound, zyFound })
+    })
+  } catch (e) {
+    console.error('[track] reportRiskBan 失败（未上报风控封禁）:', e)
   }
 }
 

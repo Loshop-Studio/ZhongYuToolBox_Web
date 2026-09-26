@@ -59,8 +59,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, View, Download, Picture, MoreFilled } from '@element-plus/icons-vue'
 import { proxyImgSrc, proxyUrl } from '@/utils/proxy'
-import { saveBlobFile } from '@/utils/saveFile'
+import { saveUrlFile } from '@/utils/saveFile'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { formatError, logError } from '@/utils/errorText'
 import { ElMessage } from 'element-plus'
 
 const { isMobile } = useIsMobile()
@@ -98,12 +99,14 @@ function openRaw() {
 
 async function download() {
   if (!picture.value) return
+  // 与预览图用同一套地址解析（proxyImgSrc 会把 sxz.alicdn 换成可直连的 OSS）。
+  // 直接把 URL 交给 saveUrlFile：5+ 走原生下载管理器，其余平台 fetch 后保存，
+  // 不再先 fetch 成 Blob 再写盘，规避 0 字节问题。
+  const src = proxyImgSrc(picture.value)
   try {
-    const resp = await fetch(proxyUrl(picture.value))
-    if (!resp.ok) throw new Error('下载失败: ' + resp.status)
-    const blob = await resp.blob()
-    await saveBlobFile(blob, name.value || 'image')
+    await saveUrlFile(src, name.value || 'image')
   } catch (e: any) {
+    logError('PictureDetailView.download', { url: src, error: formatError(e), raw: e })
     ElMessage.error('下载失败：' + (e?.message || e))
   }
 }

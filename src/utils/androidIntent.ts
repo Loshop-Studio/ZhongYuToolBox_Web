@@ -160,23 +160,6 @@ export async function pickContentUris(mime: string, multiple: boolean): Promise<
   return uris
 }
 
-/** 调出系统「另存为」对话框，返回用户选定的目标 content:// URI */
-export async function createDocumentUri(mime: string, filename: string): Promise<string> {
-  const plus = (window as any).plus
-  if (!plus?.android) throw new Error('当前环境不支持系统保存')
-  const Intent = plus.android.importClass('android.content.Intent')
-  const intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
-  intent.addCategory(Intent.CATEGORY_OPENABLE)
-  intent.setType(mime || 'application/octet-stream')
-  plus.android.invoke(intent, 'putExtra', Intent.EXTRA_TITLE, filename)
-
-  const { resultCode, data } = await startActivityForResult(intent, 9002)
-  if (resultCode !== resultOk() || !data) throw new Error('已取消保存')
-  const u = plus.android.invoke(data, 'getData')
-  if (!u) throw new Error('未获取到保存路径')
-  return plus.android.invoke(u, 'toString')
-}
-
 /** 读取 content:// URI 的字节为 ArrayBuffer（用于把系统选中的文件转成可上传的 File） */
 export async function uriToArrayBuffer(uriString: string): Promise<ArrayBuffer> {
   const plus = (window as any).plus
@@ -195,32 +178,92 @@ export async function uriToArrayBuffer(uriString: string): Promise<ArrayBuffer> 
       len = plus.android.invoke(inputStream, 'read', buf)
     }
     const bytes = plus.android.invoke(bos, 'toByteArray')
-    const size = bytes.length
-    const arr = new Uint8Array(size)
-    for (let i = 0; i < size; i++) arr[i] = bytes[i] & 0xff
-    return arr.buffer
+    // 关键修复：不在 JS 里逐字节经 bridge 拷回（大文件会卡死/崩溃 -> 白屏）。
+    // 改为 Java 侧直接 base64 编码，回传字符串后「直接解码成 Uint8Array」，
+    // 不经过 atob 的等大同尺寸二进制字符串，内存峰值从 ~3.3 倍降到 ~2.3 倍。
+    // flag=2 即 android.util.Base64.NO_WRAP，避免换行导致解码失败。
+    const b64 = plus.android.invoke('android.util.Base64', 'encodeToString', bytes, 2)
+    return base64ToArrayBuffer(b64).buffer as ArrayBuffer
   } finally {
     plus.android.invoke(inputStream, 'close')
   }
 }
 
-/** 把 ArrayBuffer 写入 content:// URI（用于系统「另存为」后落盘） */
-export async function writeArrayBufferToUri(uriString: string, ab: ArrayBuffer): Promise<void> {
+/**
+ * 把 content:// URI 以「原生 Java IO」拷贝到 5+ 本地文件（_doc 绝对路径）。
+ * 关键：整段拷贝发生在 Java 侧，不把字节经 bridge 变成 JS 字符串，也不在 JS 里跑
+ * 解码循环——因此大 PDF 不会卡死主线程（复刻前 uriToArrayBuffer 的 base64+JS 解码是卡死根因）。
+ * 拷贝完成后由调用方用 plus.io 原生 FileReader 读成 File，同样不走反射 base64。
+ */
+export async function copyUriToLocalFile(uriString: string, localAbsPath: string): Promise<void> {
   const plus = (window as any).plus
   const Uri = plus.android.importClass('android.net.Uri')
   const uri = Uri.parse(uriString)
   const cr = getCr()
-  const out = plus.android.invoke(cr, 'openOutputStream', uri)
+  const inputStream = plus.android.invoke(cr, 'openInputStream', uri)
+  let fos: any = null
   try {
-    const src = new Uint8Array(ab)
+    const FileOutputStream = plus.android.importClass('java.io.FileOutputStream')
+    fos = new FileOutputStream(localAbsPath)
     const Byte = plus.android.importClass('java.lang.Byte')
-    const buf = plus.android.invoke('java.lang.reflect.Array', 'newInstance', Byte.TYPE, src.length)
-    for (let i = 0; i < src.length; i++) buf[i] = src[i]
-    plus.android.invoke(out, 'write', buf, 0, src.length)
-    plus.android.invoke(out, 'flush')
+    const buf = plus.android.invoke('java.lang.reflect.Array', 'newInstance', Byte.TYPE, 65536)
+    let len = plus.android.invoke(inputStream, 'read', buf)
+    while (len !== -1) {
+      plus.android.invoke(fos, 'write', buf, 0, len)
+      len = plus.android.invoke(inputStream, 'read', buf)
+    }
   } finally {
-    plus.android.invoke(out, 'close')
+    try {
+      plus.android.invoke(inputStream, 'close')
+    } catch {
+      /* noop */
+    }
+    if (fos) {
+      try {
+        plus.android.invoke(fos, 'close')
+      } catch {
+        /* noop */
+      }
+    }
   }
+}
+
+/** 取 5+ _doc 的绝对路径（作为拷贝目标目录，位于应用私有存储内） */
+export function getPrivateDocAbsPath(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const plus = (window as any).plus
+    plus.io.resolveLocalFileSystemURL(
+      '_doc/',
+      (entry: any) => resolve(entry.fullPath as string),
+      (e: any) => reject(e || new Error('获取 _doc 路径失败'))
+    )
+  })
+}
+
+/** 把 base64 字符串直接解码为 Uint8Array（不生成中间二进制字符串，省内存） */
+function base64ToArrayBuffer(b64: string): Uint8Array {
+  const len = b64.length
+  const out = new Uint8Array((len * 3) >> 2)
+  const A = 65, Z = 90, a = 97, z = 122, n0 = 48, plus2 = 43, slash = 47, pad = 61
+  const code = (c: number): number => {
+    if (c >= A && c <= Z) return c - A
+    if (c >= a && c <= z) return c - a + 26
+    if (c >= n0 && c <= n0 + 9) return c - n0 + 52
+    if (c === plus2) return 62
+    if (c === slash) return 63
+    return 64 // padding / invalid
+  }
+  let o = 0
+  for (let i = 0; i < len; i += 4) {
+    const c0 = code(b64.charCodeAt(i))
+    const c1 = code(b64.charCodeAt(i + 1))
+    const c2 = code(b64.charCodeAt(i + 2))
+    const c3 = code(b64.charCodeAt(i + 3))
+    out[o++] = (c0 << 2) | (c1 >> 4)
+    if (c2 !== 64) out[o++] = ((c1 & 15) << 4) | (c2 >> 2)
+    if (c3 !== 64) out[o++] = ((c2 & 3) << 6) | c3
+  }
+  return out.subarray(0, o)
 }
 
 /** 从 content:// URI 取系统显示名（作为文件名） */

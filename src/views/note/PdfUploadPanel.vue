@@ -14,22 +14,18 @@
         </el-form-item>
 
         <el-form-item label="选择PDF文件">
-          <div v-if="isPlus" class="pdf-drop" @click="onPickPdf">
+          <div class="pdf-drop" @click="triggerPick">
             <el-icon class="upload-icon"><UploadFilled /></el-icon>
             <div class="el-upload__text">点击选择 PDF 文件</div>
+            <input
+              v-if="!isPlus"
+              ref="fileInput"
+              type="file"
+              accept=".pdf"
+              class="pdf-file-input"
+              @change="onFileInputChange"
+            />
           </div>
-          <el-upload
-            v-else
-            class="pdf-upload"
-            drag
-            accept=".pdf"
-            :auto-upload="false"
-            :show-file-list="false"
-            :on-change="handleFileChange"
-          >
-            <el-icon class="upload-icon"><UploadFilled /></el-icon>
-            <div class="el-upload__text">拖拽 PDF 到此处，或<em>点击选择</em></div>
-          </el-upload>
           <div v-if="currentFile" class="file-info">
             <el-tag type="success">{{ currentFile.name }}</el-tag>
             <span class="size">{{ formatFileSize(currentFile.size) }}</span>
@@ -88,7 +84,6 @@
 import { ref, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Upload, UploadFilled, Download } from '@element-plus/icons-vue'
-import type { UploadFile } from 'element-plus'
 import { uploadPdfAsNote } from '@/api/pdfNote'
 import { zipBlobs, type PdfPageImage } from '@/utils/pdf'
 import { saveBlobFile } from '@/utils/saveFile'
@@ -123,10 +118,23 @@ function applyFile(file: File) {
   clearPreview()
 }
 
-function handleFileChange(file: UploadFile) {
-  const raw = file.raw
-  if (!raw) return
-  applyFile(raw)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+/** 点击选择区：移动端走系统文件选择，桌面/网页走原生文件输入框 */
+function triggerPick() {
+  if (isPlus) {
+    onPickPdf()
+  } else {
+    fileInput.value?.click()
+  }
+}
+
+/** 原生 <input type="file"> 选中回调（桌面/网页端） */
+function onFileInputChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  if (f) applyFile(f)
+  input.value = '' // 允许重复选择同一个文件
 }
 
 /** 5+ 下点击选择区：调系统文件选择框选取 PDF */
@@ -233,14 +241,10 @@ onBeforeUnmount(() => {
   gap: 8px;
   font-weight: 600;
 }
-.pdf-upload {
-  width: 100%;
+/* 5+ / 桌面 下的可点击选择区（普通 HTML，内部隐藏原生 file input） */
+.pdf-file-input {
+  display: none;
 }
-.pdf-upload :deep(.el-upload),
-.pdf-upload :deep(.el-upload-dragger) {
-  width: 100%;
-}
-/* 5+ 下替代 el-upload 的可点击选择区，外观与拖拽区一致 */
 .pdf-drop {
   width: 100%;
   padding: 36px 0;

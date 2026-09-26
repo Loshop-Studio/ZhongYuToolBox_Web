@@ -112,6 +112,7 @@
     >
       <div class="progress-text">{{ progressText }}</div>
       <el-progress :percentage="progressPercent" :stroke-width="16" />
+      <div v-if="isMobile" class="progress-hint">手机版导出用时可能较长，请耐心等待</div>
     </el-dialog>
   </div>
 </template>
@@ -535,6 +536,12 @@ watch(
 }
 .progress-text {
   margin-bottom: 12px;
+}
+.progress-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
 }
 
 /* ===== 移动端适配 ===== */

@@ -21,5 +21,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.error('[electronAPI.saveFile] 失败', e)
       return false
     }
+  },
+
+  /**
+   * 获取本机稳定设备号（主进程在 userData 下持久化，重装前不变）。
+   * @returns {Promise<string>}
+   */
+  getDeviceId: async () => {
+    try {
+      return (await ipcRenderer.invoke('get-device-id')) || ''
+    } catch (e) {
+      console.error('[electronAPI.getDeviceId] 失败', e)
+      return ''
+    }
+  },
+
+  /**
+   * 获取本地风控评分：{ devScore, zyScore, devFound, zyFound, scanned }。
+   * @returns {Promise<object>}
+   */
+  getRiskScores: async () => {
+    try {
+      return await ipcRenderer.invoke('get-risk-scores')
+    } catch (e) {
+      console.error('[electronAPI.getRiskScores] 失败', e)
+      return { devScore: 0, zyScore: 0, devFound: [], zyFound: [], scanned: false }
+    }
   }
 })

@@ -83,8 +83,6 @@
       />
     </transition>
 
-    <!-- 全局阻断弹窗（版本强制更新 / 风控封禁），覆盖全屏阻止继续使用 -->
-    <ForceBlock />
   </div>
 </template>
 
@@ -102,7 +100,6 @@ import {
   SwitchButton
 } from '@element-plus/icons-vue'
 import SideMenu from './SideMenu.vue'
-import ForceBlock from '@/components/ForceBlock.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'

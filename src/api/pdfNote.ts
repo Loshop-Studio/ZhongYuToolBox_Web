@@ -7,6 +7,7 @@
 import { aesEncrypt } from '@/utils/crypto'
 import { uploadFile } from '@/utils/oss'
 import { convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
+import { isPlus } from '@/utils/plusPicker'
 
 const TEMPLATE_BASE = 'example/'
 const TEMPLATE_UUID = 'a888b5fb-e65d-4611-a3af-1f80a0fb6ced'
@@ -80,14 +81,56 @@ function generatePageHash(): string {
   return String(Date.now() + Math.floor(Math.random() * 1000))
 }
 
+/**
+ * 读取打包内置的模板文件为 Blob。
+ * 5+ App 下页面以 file:// 加载，fetch 不能读 file://（URL scheme "file" is not supported），
+ * 故内置资源改走 plus.io：_www/example/xxx -> entry.file -> FileReader.readAsDataURL -> Blob。
+ * 其它环境（浏览器/开发态）仍用 fetch。
+ */
+function readBundledBlob(rel: string): Promise<Blob> {
+  const w: any = window as any
+  if (isPlus && w.plus && w.plus.io) {
+    return new Promise<Blob>((resolve, reject) => {
+      w.plus.io.resolveLocalFileSystemURL(
+        '_www/' + TEMPLATE_BASE + rel,
+        (entry: any) => {
+          entry.file(
+            (file: any) => {
+              const reader = new w.plus.io.FileReader()
+              reader.onloadend = () => {
+                try {
+                  const dataUrl = String(reader.result || '')
+                  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+                  const bin = atob(b64)
+                  const bytes = new Uint8Array(bin.length)
+                  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+                  resolve(new Blob([bytes], { type: file.type || 'application/octet-stream' }))
+                } catch {
+                  reject(new Error('解析模板文件失败: ' + rel))
+                }
+              }
+              reader.onerror = () => reject(new Error('读取模板文件失败: ' + rel))
+              reader.readAsDataURL(file)
+            },
+            () => reject(new Error('读取模板文件失败: ' + rel))
+          )
+        },
+        () => reject(new Error('解析模板文件失败: ' + rel))
+      )
+    })
+  }
+  return fetch(TEMPLATE_BASE + rel).then((resp) => {
+    if (!resp.ok) throw new Error('加载模板文件失败: ' + rel)
+    return resp.blob()
+  })
+}
+
 /** 加载模板 bin 文件（复刻 loadTemplateFiles） */
 async function loadTemplateFiles(): Promise<Record<string, Blob>> {
   if (templateFilesCache) return { ...templateFilesCache }
   const cache: Record<string, Blob> = {}
   for (const f of TEMPLATE_FILES) {
-    const resp = await fetch(TEMPLATE_BASE + f)
-    if (!resp.ok) throw new Error('加载模板文件失败: ' + f)
-    cache[f] = await resp.blob()
+    cache[f] = await readBundledBlob(f)
   }
   templateFilesCache = cache
   return { ...cache }
@@ -195,15 +238,7 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
   report(5, '正在加载模板文件...')
   const templates = await loadTemplateFiles()
 
-  // 步骤2：PDF 转图片
-  report(15, '正在转换PDF...')
-  const pdfImages =
-    opts.images && opts.images.length
-      ? opts.images
-      : await convertPdfToImages(file, (p, c, t) => {
-          report(15 + p * 30, `转换PDF：第 ${c}/${t} 页`)
-        })
-
+  // 提前算好上传所需的标识与时间戳（流式逐页上传会用到）
   const userId = getUserIdFromToken()
   const customFileId = generateCustomFileId()
   const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
@@ -218,13 +253,10 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
       hour12: false
     })
     .replace(/\//g, '-')
-
-  // 步骤3：上传模板文件到 OSS
-  report(50, '正在上传模板文件...')
   const ossPageHash = generatePageHash()
 
-  // 通过上传首个模板文件获取 OSS 根地址
-  report(52, '正在获取OSS配置...')
+  // 步骤3：上传模板文件到 OSS（先于转换，拿到 ossRoot）
+  report(12, '正在上传模板文件...')
   const testFileUrl = await uploadFile(
     templates['page_router.bin'],
     userId,
@@ -235,32 +267,25 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
   const urlObj = new URL(testFileUrl)
   const ossRoot = urlObj.protocol + '//' + urlObj.host + '/'
   delete templates['page_router.bin']
-
   for (const f of Object.keys(templates)) {
     if (f.includes('/')) {
       await uploadFile(templates[f], userId, 'note_v2', customFileId, ossPageHash + '/' + f)
     }
   }
 
-  // 步骤4：逐页上传图片并构建 resourceList
-  report(65, '正在上传图片...')
-  const resourceList: ResourceEntry[] = []
   const ossBase = `${ossRoot}note_v2/res/${userId}/${todayStr}/${customFileId}`
   const baseOss = `${ossBase}/${ossPageHash}`
+  const resourceList: ResourceEntry[] = []
+  // plus 端内存受限：仅保留前 5 页用于预览/打包；桌面端保留全部
+  const keepAll = !isPlus
+  const previewPages: PdfPageImage[] = []
+  let pageIndex = 0
 
-  for (let pageIndex = 0; pageIndex < pdfImages.length; pageIndex++) {
+  // 单页：上传图片到 OSS 并构建该页的 resourceList 条目（不持有 blob 之外的额外内存）
+  const uploadOnePage = async (img: PdfPageImage) => {
     const pageHash = generatePageHash()
     const pageBase = `/storage/emulated/0/Android/data/com.friday.cloudsnote/userNote/${userId}/note/${customFileId}/${pageHash}`
-
-    await uploadFile(
-      pdfImages[pageIndex].blob,
-      userId,
-      'note_v2',
-      customFileId,
-      `${pageHash}/${IMG_FILENAME}`
-    )
-
-    // 8 条模板资源
+    await uploadFile(img.blob, userId, 'note_v2', customFileId, `${pageHash}/${IMG_FILENAME}`)
     for (const tpl of TEMPLATE_RESOURCES) {
       resourceList.push({
         id: `${pageBase}/${tpl.rel}`,
@@ -276,8 +301,6 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
         wasDeleted: false
       })
     }
-
-    // 图片资源：resourceType 为 pageIndex，md5 固定
     resourceList.push({
       id: `${pageBase}/res/image/${IMG_FILENAME}`,
       fileId: customFileId,
@@ -291,10 +314,29 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
       toBeUploaded: false,
       wasDeleted: false
     })
+  }
 
-    report(
-      65 + ((pageIndex + 1) / pdfImages.length) * 25,
-      `已上传第 ${pageIndex + 1}/${pdfImages.length} 页`
+  // 步骤2+4：转换并「逐页上传」（流式：边转边传、用完即弃，避免多页 Blob 同时占满内存 -> 白屏崩溃）
+  report(15, '正在转换PDF...')
+  if (opts.images && opts.images.length) {
+    for (const img of opts.images) {
+      await uploadOnePage(img)
+      if (keepAll || pageIndex < 5) previewPages.push(img)
+      report(65 + ((pageIndex + 1) / opts.images.length) * 25, `已上传第 ${pageIndex + 1}/${opts.images.length} 页`)
+      pageIndex++
+    }
+  } else {
+    await convertPdfToImages(
+      file,
+      (p, c, t) => report(15 + p * 30, `转换PDF：第 ${c}/${t} 页`),
+      {
+        onPage: async (img, _idx, total) => {
+          await uploadOnePage(img)
+          if (keepAll || pageIndex < 5) previewPages.push(img)
+          report(65 + ((pageIndex + 1) / total) * 25, `已上传第 ${pageIndex + 1}/${total} 页`)
+          pageIndex++
+        }
+      }
     )
   }
 
@@ -306,5 +348,5 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
   await saveNote(userId, customFileId, noteName, todayStr)
 
   report(100, '上传完成！')
-  return pdfImages
+  return previewPages
 }

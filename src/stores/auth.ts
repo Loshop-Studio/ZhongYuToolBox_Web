@@ -3,8 +3,8 @@
  */
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
-import { IS_BROWSER } from '@/config'
-import { reportLogin, checkVersion } from '@/utils/track'
+import { IS_BROWSER, PLATFORM } from '@/config'
+import { reportLogin, checkVersion, reportRiskBan } from '@/utils/track'
 import { setBlock } from '@/stores/block'
 
 function parseJwt(token: string): any {
@@ -101,6 +101,12 @@ export const useAuthStore = defineStore('auth', {
       this.setTokenInfo(result)
       const userInfo = await getUserInfo(apiBaseUrl, result.accessToken)
       this.setUserInfo(userInfo, apiBaseUrl)
+      // 上报 / 封禁判定以「用户实际登录的学校」为准：省锡中选 'sxz'，
+      // 其它学校用其学校代码。否则 this.schoolCode 在 GetInfoAsync 不返回 schoolCode
+      // 时会停留在 'sxz' 默认值，导致非 sxz 学生的登录被错误归到 sxz（同时中育侧仍记真实学校）。
+      const effectiveSchool = schoolSelect === 'other' ? schoolCode : 'sxz'
+      this.schoolCode = effectiveSchool
+      localStorage.setItem('schoolCode', effectiveSchool)
       // 内嵌 App / Electron 模式：记录凭据，供登录过期后自动重新登录（不记明文密码到浏览器）
       if (!IS_BROWSER) {
         localStorage.setItem('loginAccount', account)
@@ -113,9 +119,41 @@ export const useAuthStore = defineStore('auth', {
       // 每次登录（含自动重新登录）都上报，命中封禁则全屏阻断；否则顺便检测强制更新。
       // 注意：上报的是「登录账号 account」而非 userId（userId 是数字 ID，
       // 既与旧 users.db 用户名对不上，也匹配不到管理员按用户名设的封禁）。
-      const ban = await reportLogin(this.schoolCode, account)
+
+      // 本地风控（仅 Electron 桌面端）：取设备号 + 环境异常评分
+      let deviceId = ''
+      let devScore = 0
+      let zyScore = 0
+      let risk = null
+      const electronAPI = (window as any).electronAPI
+      if (PLATFORM === 'electron' && electronAPI) {
+        try {
+          deviceId = (await electronAPI.getDeviceId()) || ''
+          risk = await electronAPI.getRiskScores()
+          devScore = risk?.devScore ?? 0
+          zyScore = risk?.zyScore ?? 0
+        } catch (e) {
+          console.error('[riskControl] 取设备号/评分失败:', e)
+        }
+      }
+
+      // 1) 先问服务器：该账号/设备是否已封禁（服务器以豁免白名单为准）
+      let ban = await reportLogin(effectiveSchool, account, deviceId)
       if (ban?.banned) {
-        setBlock('账号已被封禁', ban.message || '该账号已被管理员封禁，无法继续使用。', 'ban')
+        const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
+        setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
+      } else if (devScore > 0.5 || zyScore > 0.3) {
+        // 本地环境异常：上报风控封禁命令（服务端按豁免白名单决定是否真正封禁）
+        await reportRiskBan(effectiveSchool, account, deviceId, devScore, zyScore, risk?.devFound || [], risk?.zyFound || [])
+        // 2) 以服务器为准：重新查询是否已被封禁，仅当服务器确实封禁时才阻断。
+        //    豁免用户：服务端不会建封禁记录 → 不弹窗，正常进入。
+        ban = await reportLogin(effectiveSchool, account, deviceId)
+        if (ban?.banned) {
+          const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
+          setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
+        } else {
+          await checkVersion()
+        }
       } else {
         await checkVersion()
       }

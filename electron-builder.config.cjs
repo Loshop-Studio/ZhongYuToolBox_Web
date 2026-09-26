@@ -16,6 +16,8 @@ module.exports = {
     buildResources: 'electron/resources'
   },
   files: ['dist/**/*', 'electron/**/*', 'package.json'],
+  // 将 Everything 命令行 es.exe 打包进 resources/es/，运行时由风控模块调用
+  extraResources: [{ from: 'electron/resources/es', to: 'es' }],
   // 运行时只依赖打包进 dist 的浏览器代码，无需 node_modules；
   // 关闭原生模块重建（避免 jspdf 的可选依赖 canvas 在缺编译环境下失败）。
   npmRebuild: false,

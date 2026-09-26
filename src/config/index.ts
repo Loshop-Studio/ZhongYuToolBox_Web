@@ -43,7 +43,7 @@ export const SHARE_SERVER: string =
 export const TRACK_API: string = 'https://tbapi.loshop.com.cn/api'
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
-export const APP_VERSION: string = '0.0.3'
+export const APP_VERSION: string = '0.0.6'
 
 /** 远端代理（默认走服务器） */
 export const PROXY_REMOTE = 'https://zytbdownloadagent.loshop.com.cn/download/'
@@ -114,13 +114,12 @@ export const SUBJECTS: Array<[number, string]> = [
 ]
 
 /**
- * 嵌套 iframe 模块基地址（在线专栏 navPage.html / 选课 ezyRawContent.html）
+ * 嵌套 iframe 模块基地址（在线专栏 navPage.html / 选课 index.html）
  * 复刻旧 index.js 中 zxzl_set_url / ck_set_url：
  *   - 专栏：<base>/navPage.html?apiHost=<API_BASE_URL>&apiToken=<token>#/list?messageType=pager
- *   - 选课：ezyRawContent.html?apiHost=<API_BASE_URL>&apiToken=<token>#/index/courseChoosing/StudentsCoursesList
- * apiToken 来自登录后的 token；CK 旧版用同源相对路径 ezyRawContent.html，
- * 以便 MutationObserver 能注入样式（见 useIframeInject）。新工程把 ezyRawContent.html
- * 放入 public/ 以复用该同源行为。
+ *   - 选课：index.html?apiHost=<API_BASE_URL>&apiToken=<token>#/index/courseChoosing/StudentsCoursesList
+ * 专栏与选课都以 iframeBase（内嵌 App 模式下为 discover 返回的 webServer）为根地址；
+ * 跨域时 useIframeInject 的样式注入会自动失效（不报错），与专栏行为一致。
  *
  * 该函数每次调用动态读取 localStorage.iframeBase：
  *   - 浏览器模式：未设置时默认 https://zyapi.loshop.com.cn。

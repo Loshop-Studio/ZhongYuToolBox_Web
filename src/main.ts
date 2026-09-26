@@ -10,6 +10,8 @@ import App from './App.vue'
 import router from './router'
 import { IS_BROWSER } from './config'
 import { setupPlusBackButton } from './utils/plusBack'
+import { logError } from './utils/errorText'
+import { ElMessage } from 'element-plus'
 
 // 内嵌 App（electron / plus）直接请求资源与接口，不需要、也不应发送 Referer 头
 // （避免中育服务端按 Referer 校验导致图片/资源被拦截）。浏览器模式保持默认行为。
@@ -21,6 +23,21 @@ if (!IS_BROWSER) {
 }
 
 const app = createApp(App)
+
+// 全局错误兜底：避免任何未捕获错误/渲染异常把整个应用掀成白屏。
+// 渲染期错误就地捕获并提示；未处理的 Promise 拒绝记录后提示，便于排查而不是静默白屏。
+app.config.errorHandler = (err, _instance, info) => {
+  logError('vue-error', err)
+  ElMessage.error('页面出错：' + (err instanceof Error ? err.message : String(err)) + '（' + info + '）')
+}
+window.addEventListener('unhandledrejection', (e) => {
+  const r = (e as PromiseRejectionEvent).reason
+  logError('unhandledrejection', r)
+  ElMessage.error('未处理的异常：' + (r instanceof Error ? r.message : String(r)))
+})
+window.addEventListener('error', (e) => {
+  logError('window-error', e)
+})
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
