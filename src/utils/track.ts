@@ -32,7 +32,9 @@ export async function reportLogin(
     }
     if (!resp.ok) return null
     return { banned: false }
-  } catch {
+  } catch (e) {
+    // 上报失败不应阻断主流程，但记录日志方便排查（为何没上报）
+    console.error('[track] reportLogin 失败（未上报登录/封禁检查）:', e)
     return null
   }
 }

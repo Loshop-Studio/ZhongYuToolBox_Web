@@ -111,7 +111,9 @@ export const useAuthStore = defineStore('auth', {
       this.startRefresh()
       // —— 接入统计 / 风控 / 更新分发 ——
       // 每次登录（含自动重新登录）都上报，命中封禁则全屏阻断；否则顺便检测强制更新。
-      const ban = await reportLogin(this.schoolCode, this.userId)
+      // 注意：上报的是「登录账号 account」而非 userId（userId 是数字 ID，
+      // 既与旧 users.db 用户名对不上，也匹配不到管理员按用户名设的封禁）。
+      const ban = await reportLogin(this.schoolCode, account)
       if (ban?.banned) {
         setBlock('账号已被封禁', ban.message || '该账号已被管理员封禁，无法继续使用。', 'ban')
       } else {
