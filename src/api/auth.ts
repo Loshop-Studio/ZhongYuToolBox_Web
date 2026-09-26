@@ -19,7 +19,15 @@ export interface UserInfo {
 }
 
 /** 学校发现（其它学校自适应登录） */
-export async function discoverSchool(code: string): Promise<{ name: string; server: string }> {
+export interface DiscoverResult {
+  name: string
+  server: string
+  lcid?: string
+  /** 内嵌 App 使用的网页基地址（navPage.html 等走此域） */
+  webServer?: string
+}
+
+export async function discoverSchool(code: string): Promise<DiscoverResult> {
   const resp = await fetch(`https://hagateway.zykj.org/api/discovery/${code}`)
   if (!resp.ok) throw new Error('学校代码无效')
   return await resp.json()

@@ -82,9 +82,6 @@
         @click="scrollToTop"
       />
     </transition>
-
-    <!-- 全局问卷弹窗 -->
-    <SurveyModal />
   </div>
 </template>
 
@@ -102,7 +99,6 @@ import {
   SwitchButton
 } from '@element-plus/icons-vue'
 import SideMenu from './SideMenu.vue'
-import SurveyModal from './SurveyModal.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'

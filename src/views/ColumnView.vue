@@ -224,7 +224,7 @@ import {
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
-import { IFRAME_BASE } from '@/config'
+import { getIframeBase } from '@/config'
 import {
   getMyCatalogPages,
   getMyMessageList,
@@ -380,7 +380,7 @@ const apiHost = computed(() => auth.apiBaseUrl || 'https://zyapi.loshop.com.cn')
 const token = computed(() => auth.token || '')
 const newTabUrl = computed(
   () =>
-    `${IFRAME_BASE}/navPage.html?apiHost=${encodeURIComponent(
+    `${getIframeBase()}/navPage.html?apiHost=${encodeURIComponent(
       apiHost.value
     )}&apiToken=${token.value}#/list?messageType=pager`
 )

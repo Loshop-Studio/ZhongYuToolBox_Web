@@ -124,7 +124,9 @@ import { ArrowLeft, ArrowRight, Document, Download, PictureFilled, MoreFilled } 
 import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
 import { getNoteResources, getNoteResourcesForZip, type NoteResource } from '@/api/note'
-import { proxyUrl, proxyImgSrc } from '@/utils/proxy'
+import { proxyUrl, proxyImgSrc, resourceFetchUrl } from '@/utils/proxy'
+import { saveBlobFile } from '@/utils/saveFile'
+import { formatError, logError } from '@/utils/errorText'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 const { isMobile } = useIsMobile()
@@ -137,6 +139,8 @@ const IMG_EXT_RE = /\.(jpg|jpeg|png|webp|gif|bmp)$/i
 interface ResEntry {
   url: string
   imgSrc: string
+  /** 原始 OSS 地址（用于 fetch 读数据，再经 resourceFetchUrl 决定直连/代理） */
+  raw: string
   ext: string
 }
 interface PageData {
@@ -187,6 +191,7 @@ function toEntry(item: NoteResource): ResEntry {
   return {
     url: proxyUrl(full),
     imgSrc: proxyImgSrc(full),
+    raw: full,
     ext: item.ossImageUrl.split('.').pop() || ''
   }
 }
@@ -226,7 +231,7 @@ async function loadResources() {
 
 /** 图片转 DataURL（复刻 loadImageAsDataURL） */
 async function loadImageAsDataURL(url: string): Promise<string> {
-  const res = await fetch(url)
+  const res = await fetch(resourceFetchUrl(url))
   const blob = await res.blob()
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -249,7 +254,7 @@ async function exportPdf() {
       const pageData = pageMap.value[pages.value[i]]
       if (!pageData?.thumbnail) continue
 
-      const img = await loadImageAsDataURL(pageData.thumbnail.url)
+      const img = await loadImageAsDataURL(pageData.thumbnail.raw)
       const imgObj = new Image()
       imgObj.src = img
       await new Promise((r) => {
@@ -275,10 +280,12 @@ async function exportPdf() {
 
       progressPercent.value = Math.round(((i + 1) / pages.value.length) * 100)
     }
-    pdf.save(fileName.value + '.pdf')
+    const pdfBlob = pdf.output('blob')
+    await saveBlobFile(pdfBlob, (fileName.value || 'note') + '.pdf')
     ElMessage.success('PDF 导出完成')
   } catch (e: any) {
-    ElMessage.error(e.message || '导出 PDF 失败')
+    logError('exportPdf', e)
+    ElMessage.error('导出 PDF 失败：' + formatError(e))
   } finally {
     progressVisible.value = false
     exporting.value = false
@@ -298,9 +305,8 @@ async function downloadZip() {
 
     for (let i = 0; i < list.length; i++) {
       const item = list[i]
-      const url = proxyUrl(
-        item.ossImageUrl.startsWith('http') ? item.ossImageUrl : OSS_BASE + item.ossImageUrl
-      )
+      const full = item.ossImageUrl.startsWith('http') ? item.ossImageUrl : OSS_BASE + item.ossImageUrl
+      const url = resourceFetchUrl(full)
       progressPercent.value = Math.round(((i + 1) / list.length) * 100)
       if (/\.(jpg|jpeg|png|webp)$/.test(url)) {
         const image = await fetch(url).then((r) => r.blob())
@@ -312,12 +318,7 @@ async function downloadZip() {
 
     progressText.value = '正在打包...'
     const content = await zip.generateAsync({ type: 'blob' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(content)
-    a.download = fileName.value + '.zip'
-    a.target = '_blank'
-    a.click()
-    URL.revokeObjectURL(a.href)
+    await saveBlobFile(content, fileName.value + '.zip')
     ElMessage.success('下载已启动')
   } catch (e: any) {
     ElMessage.error(e.message || '下载失败')

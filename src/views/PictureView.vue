@@ -4,7 +4,17 @@
       <!-- 正常图库 -->
       <el-tab-pane label="图库" name="normal">
         <div class="section-bar">
+          <el-button
+            v-if="isPlus"
+            type="primary"
+            :icon="Upload"
+            :loading="uploading"
+            @click="onPickImage"
+          >
+            {{ uploading ? '上传中...' : '上传图片' }}
+          </el-button>
           <el-upload
+            v-else
             :show-file-list="false"
             accept="image/*"
             :before-upload="beforeUpload"
@@ -77,6 +87,8 @@ import { Upload, Picture, Loading } from '@element-plus/icons-vue'
 import { getPictures, addPicture, formatFileSize, type PictureItem } from '@/api/picture'
 import { uploadFile, fetchUserId, generateNonce } from '@/utils/oss'
 import { proxyImgSrc } from '@/utils/proxy'
+import { isPlus, pickImages } from '@/utils/plusPicker'
+import { formatError, logError } from '@/utils/errorText'
 
 const router = useRouter()
 const PAGE_SIZE = 12
@@ -181,6 +193,20 @@ function teardownObservers() {
   getScrollEl()?.removeEventListener('scroll', onScroll)
 }
 
+/** 5+ 下点击「上传图片」：调系统相册选择，再逐个走 beforeUpload 上传 */
+async function onPickImage() {
+  try {
+    const files = await pickImages({ multiple: true, maximum: 9 })
+    if (!files.length) return
+    for (const f of files) {
+      await beforeUpload(f)
+    }
+  } catch (e: any) {
+    logError('onPickImage', e)
+    ElMessage.error('选择图片失败：' + formatError(e))
+  }
+}
+
 async function beforeUpload(file: File) {
   uploading.value = true
   try {
@@ -188,7 +214,7 @@ async function beforeUpload(file: File) {
     try {
       userId = await fetchUserId()
     } catch (e: any) {
-      ElMessage.warning('无法获取用户ID：' + (e.message || e))
+      ElMessage.warning('无法获取用户ID：' + formatError(e))
       return false
     }
 
@@ -201,7 +227,8 @@ async function beforeUpload(file: File) {
     ElMessage.success('上传成功')
     await loadFirst('normal')
   } catch (e: any) {
-    ElMessage.error('上传失败：' + (e.message || e))
+    logError('beforeUpload', e)
+    ElMessage.error('上传失败：' + formatError(e))
   } finally {
     uploading.value = false
   }

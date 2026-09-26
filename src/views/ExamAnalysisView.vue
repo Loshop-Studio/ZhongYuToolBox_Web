@@ -93,7 +93,8 @@ async function load() {
   try {
     const exam = await getExamTask(taskId.value)
     examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
-    if (!name.value && exam?.examName) name.value = exam.examName
+    // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
+    name.value = String(route.query.name || '') || exam?.examName || name.value
 
     const ov = await getExamOverview(examId.value)
     const map: Record<string, string> = {}

@@ -3,6 +3,7 @@
  */
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
+import { IS_BROWSER } from '@/config'
 
 function parseJwt(token: string): any {
   try {
@@ -68,26 +69,43 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('apiBaseOrigin', apiBaseUrl)
     },
     async login(account: string, password: string, schoolSelect: string, schoolCode: string) {
-      let apiBaseUrl = this.apiBaseUrl || 'https://zyapi.loshop.com.cn'
-      if (schoolSelect === 'other') {
-        if (!schoolCode) throw new Error('请输入学校代码')
-        const info = await discoverSchool(schoolCode)
-        // 复刻旧 index.js 的 apihost 特判：部分学校 discovery 返回的是旧 http 域名，
-        // 需替换为对应的 loshop.com.cn https 域名，否则下方 https 校验会误判不支持
-        if (info.server === 'http://sxzsyxx.api.zykj.org') info.server = 'https://zyapi-sxzsyxx.loshop.com.cn'
-        if (info.server === 'http://bjbsz.api2.zykj.org') info.server = 'https://zyapi-bjbsz.loshop.com.cn'
-        if (!info.server.startsWith('https://')) throw new Error('学校服务器环境不支持自适应登录')
+      let apiBaseUrl = 'https://zyapi.loshop.com.cn'
+      if (IS_BROWSER) {
+        // —— 浏览器模式：保持原逻辑 ——
+        // 注意：sxz 不信任 localStorage 里可能遗留的旧 http 域名
+        // （如 http://sxz.api.zykj.org），统一走现代 https 网关；
+        // 仅“其它学校”才走 discovery 自适应。
+        if (schoolSelect === 'other') {
+          if (!schoolCode) throw new Error('请输入学校代码')
+          const info = await discoverSchool(schoolCode)
+          // 复刻旧 index.js 的 apihost 特判：部分学校 discovery 返回的是旧 http 域名，
+          // 需替换为对应的 loshop.com.cn https 域名，否则下方 https 校验会误判不支持
+          if (info.server === 'http://sxzsyxx.api.zykj.org') info.server = 'https://zyapi-sxzsyxx.loshop.com.cn'
+          if (info.server === 'http://bjbsz.api2.zykj.org') info.server = 'https://zyapi-bjbsz.loshop.com.cn'
+          if (!info.server.startsWith('https://')) throw new Error('学校服务器环境不支持自适应登录')
+          apiBaseUrl = info.server
+        }
+      } else {
+        // —— 内嵌 App 模式：统一走自适应登录（含省锡中），不做 https 校验与特判 ——
+        // sxz 默认也走 discover；其它学校使用输入的学校代码。
+        const code = schoolSelect === 'other' ? schoolCode : 'sxz'
+        if (!code) throw new Error('请输入学校代码')
+        const info = await discoverSchool(code)
         apiBaseUrl = info.server
+        // iframe 基地址使用 discover 返回的 webServer（navPage.html 走此域）
+        if (info.webServer) localStorage.setItem('iframeBase', info.webServer)
       }
       const result = await loginApi(account, password, apiBaseUrl)
       this.setTokenInfo(result)
       const userInfo = await getUserInfo(apiBaseUrl, result.accessToken)
       this.setUserInfo(userInfo, apiBaseUrl)
-      // 记录凭据，供 401 后自动重新登录（需求：登录时记录用户名密码学校）
-      localStorage.setItem('loginAccount', account)
-      localStorage.setItem('loginPassword', password)
-      localStorage.setItem('loginSchoolSelect', schoolSelect)
-      localStorage.setItem('loginSchoolCode', schoolCode)
+      // 内嵌 App / Electron 模式：记录凭据，供登录过期后自动重新登录（不记明文密码到浏览器）
+      if (!IS_BROWSER) {
+        localStorage.setItem('loginAccount', account)
+        localStorage.setItem('loginPassword', password)
+        localStorage.setItem('loginSchoolSelect', schoolSelect)
+        localStorage.setItem('loginSchoolCode', schoolCode)
+      }
       this.startRefresh()
       return userInfo
     },

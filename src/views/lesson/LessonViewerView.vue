@@ -55,6 +55,7 @@ import { ElMessage } from 'element-plus'
 import DPlayer from 'dplayer'
 import VueOfficePptx from '@vue-office/pptx'
 import { proxyUrl } from '@/utils/proxy'
+import { saveBlobFile } from '@/utils/saveFile'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,16 +84,9 @@ async function download() {
     const resp = await fetch(proxyUrl(url))
     if (!resp.ok) throw new Error('下载失败: ' + resp.status)
     const blob = await resp.blob()
-    const objUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objUrl
     // 用 URL 中的文件名，兜底用传入的 name
     const fromUrl = decodeURIComponent(url.split('?')[0].split('/').pop() || '')
-    a.download = fromUrl || name || 'download.pdf'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(objUrl)
+    await saveBlobFile(blob, fromUrl || name || 'download.pdf')
   } catch (e: any) {
     ElMessage.error('下载失败：' + (e?.message || e))
   } finally {

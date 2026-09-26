@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // electron / plus 产物都会被打包到本地、由 file://（或 5+ 本地 webview）直接加载，
+  // 需要相对路径 base；否则绝对 /assets/... 在 file:// 下解析不到，导致整页白屏。
+  // 其余模式（browser）仍用默认绝对 base 由服务器托管。
+  base: mode === 'electron' || mode === 'plus' ? './' : '/',
   plugins: [vue()],
   resolve: {
     alias: {
@@ -22,4 +26,4 @@ export default defineConfig({
   worker: {
     format: 'es'
   }
-})
+}))

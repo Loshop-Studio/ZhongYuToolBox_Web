@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { TopRight } from '@element-plus/icons-vue'
-import { IFRAME_BASE } from '@/config'
+import { getIframeBase } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useIframeInject } from '@/composables/useIframeInject'
 
@@ -45,7 +45,7 @@ const url = computed(() => {
   const t = token.value
   if (props.kind === 'column') {
     // navPage.html（绝对地址，跨域）
-    return `${IFRAME_BASE}/navPage.html?apiHost=${encodeURIComponent(
+    return `${getIframeBase()}/navPage.html?apiHost=${encodeURIComponent(
       apiHost.value
     )}&apiToken=${t}#/list?messageType=pager`
   }

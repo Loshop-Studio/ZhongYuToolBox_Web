@@ -3,7 +3,7 @@
  * 自动附加 Authorization: Bearer <token>，统一 JSON 解析与错误处理。
  * 401 时自动恢复：先 refreshToken，失败再用记录的凭据自动重新登录，然后重试一次。
  */
-import { API_BASE_URL } from '@/config'
+import { API_BASE_URL, IS_BROWSER } from '@/config'
 
 export interface RequestOptions extends RequestInit {
   /** 是否跳过 token 注入（如登录接口） */
@@ -14,6 +14,23 @@ export interface RequestOptions extends RequestInit {
   raw?: boolean
   /** 跳过 401 自动恢复（用于恢复流程内部的请求，防止递归/死循环） */
   skipRecover?: boolean
+}
+
+/**
+ * 默认请求基地址：优先用登录/自适应流程实际建立的主机（auth.apiBaseUrl），
+ * 回退到配置里的 API_BASE_URL。
+ * 这样所有只传相对路径的业务接口都会自动打到当前登录学校的 apihost，
+ * 而不是被 localStorage 里可能遗留的旧域名（如 http://sxz.api.zykj.org）污染。
+ */
+async function getDefaultBaseUrl(): Promise<string> {
+  try {
+    const { useAuthStore } = await import('@/stores/auth')
+    const host = useAuthStore().apiBaseUrl
+    if (host) return host
+  } catch {
+    /* ignore */
+  }
+  return API_BASE_URL
 }
 
 /** 正在进行的恢复流程（并发 401 只处理一次） */
@@ -67,12 +84,18 @@ export async function request<T = any>(
 
   const fullUrl = url.startsWith('http')
     ? url
-    : `${baseUrl || API_BASE_URL}${url}`
+    : `${baseUrl || (await getDefaultBaseUrl())}${url}`
 
-  const resp = await fetch(fullUrl, {
+  const fetchOptions: RequestInit = {
     ...rest,
     headers: finalHeaders
-  })
+  }
+  // 内嵌 App 直接请求，不发送 Referer 头
+  if (!IS_BROWSER) {
+    fetchOptions.referrerPolicy = 'no-referrer'
+  }
+
+  const resp = await fetch(fullUrl, fetchOptions)
 
   // 401：尝试恢复登录态并重试一次
   if (resp.status === 401 && !skipAuth && !skipRecover) {

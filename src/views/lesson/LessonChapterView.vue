@@ -53,6 +53,7 @@ import { readContent, getLearningCourses } from '@/api/lesson'
 import { renderLessonContent, hasRawAttachments, type AttachmentHandlers } from '@/composables/useContentRenderer'
 import { useShareStore, type ShareTarget } from '@/stores/share'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { saveBlobFile } from '@/utils/saveFile'
 
 const router = useRouter()
 const route = useRoute()
@@ -115,18 +116,13 @@ function manualRender() {
   }
 }
 
-function downloadSource() {
+async function downloadSource() {
   if (!rawContentJson.value) {
     ElMessage.warning('请先打开章节内容')
     return
   }
   const blob = new Blob([rawContentJson.value], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = (courseTitle.value || 'lesson') + '_' + catalogId.value + '.rcf'
-  a.click()
-  URL.revokeObjectURL(url)
+  await saveBlobFile(blob, (courseTitle.value || 'lesson') + '_' + catalogId.value + '.rcf')
 }
 
 function openShare() {

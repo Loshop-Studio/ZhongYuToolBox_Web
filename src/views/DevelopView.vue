@@ -12,7 +12,12 @@
           </el-select>
         </el-form-item>
         <el-form-item label="选择文件（可多选）">
+          <div v-if="isPlus" class="file-drop" @click="onPickOss">
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <div class="el-upload__text">点击选择文件（已选 {{ selectedFiles.length }} 个）</div>
+          </div>
           <el-upload
+            v-else
             v-model:file-list="fileList"
             :auto-upload="false"
             multiple
@@ -27,10 +32,10 @@
           type="primary"
           :icon="Upload"
           :loading="uploading"
-          :disabled="fileList.length === 0"
+          :disabled="ossFileCount === 0"
           @click="doUpload"
         >
-          开始上传（{{ fileList.length }} 个文件）
+          开始上传（{{ ossFileCount }} 个文件）
         </el-button>
       </el-form>
 
@@ -48,7 +53,12 @@
 
     <el-card class="block" header="题库上传">
       <p class="muted">将题库文件（如 Excel/压缩包）上传至 <code>study_v2</code> 资源分类。</p>
+      <div v-if="isPlus" class="file-drop" @click="onPickBank">
+        <el-icon class="upload-icon"><UploadFilled /></el-icon>
+        <div class="el-upload__text">{{ bankFile ? bankFile.name : '点击选择题库文件' }}</div>
+      </div>
       <el-upload
+        v-else
         :auto-upload="false"
         :show-file-list="true"
         drag
@@ -73,25 +83,52 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload, UploadFilled } from '@element-plus/icons-vue'
 import type { UploadUserFile, UploadFile } from 'element-plus'
 import { uploadFile, fetchUserId } from '@/utils/oss'
 import { OSS_PREFIXES } from '@/config'
 import { useAuthStore } from '@/stores/auth'
+import { isPlus, pickFiles } from '@/utils/plusPicker'
+import { formatError, logError } from '@/utils/errorText'
 
 const auth = useAuthStore()
 const prefixes = OSS_PREFIXES
 
 const fc = ref('note_v2')
 const fileList = ref<UploadUserFile[]>([])
+const selectedFiles = ref<File[]>([])
+const ossFileCount = computed(() =>
+  isPlus ? selectedFiles.value.length : fileList.value.length
+)
 const uploading = ref(false)
 const results = ref<{ name: string; ok: boolean; url?: string; error?: string }[]>([])
 
 const bankFile = ref<File | null>(null)
 const bankUploading = ref(false)
 const bankUrl = ref('')
+
+/** 5+ 下用系统文件选择框多选；非 5+ 用 el-upload */
+async function onPickOss() {
+  try {
+    const files = await pickFiles('*/*', true)
+    if (files.length) selectedFiles.value = files
+  } catch (e: any) {
+    logError('onPickOss', e)
+    ElMessage.error('选择文件失败：' + formatError(e))
+  }
+}
+
+async function onPickBank() {
+  try {
+    const files = await pickFiles('*/*', false)
+    bankFile.value = files[0] || null
+  } catch (e: any) {
+    logError('onPickBank', e)
+    ElMessage.error('选择文件失败：' + formatError(e))
+  }
+}
 
 function onBankChange(uploadFile: UploadFile) {
   bankFile.value = (uploadFile.raw as File) || null
@@ -102,14 +139,15 @@ async function doUpload() {
     ElMessage.warning('请先登录')
     return
   }
-  if (fileList.value.length === 0) return
+  const files = isPlus
+    ? selectedFiles.value
+    : fileList.value.map((f) => f.raw as File).filter(Boolean)
+  if (files.length === 0) return
   uploading.value = true
   results.value = []
   try {
     const userId = await fetchUserId()
-    for (const f of fileList.value) {
-      const file = f.raw as File
-      if (!file) continue
+    for (const file of files) {
       try {
         const url = await uploadFile(file, userId, fc.value, '', file.name)
         results.value.push({ name: file.name, ok: true, url })
@@ -158,6 +196,24 @@ async function doBankUpload() {
 }
 .uploader {
   width: 100%;
+}
+/* 5+ 下替代 el-upload 的可点击选择区，外观与拖拽区一致 */
+.file-drop {
+  width: 100%;
+  padding: 36px 0;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.file-drop:hover {
+  border-color: var(--el-color-primary);
+}
+.upload-icon {
+  font-size: 44px;
+  color: var(--el-text-color-placeholder);
+  margin-bottom: 8px;
 }
 .results {
   margin-top: 16px;

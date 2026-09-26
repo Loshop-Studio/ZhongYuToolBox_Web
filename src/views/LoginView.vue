@@ -65,6 +65,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { IS_BROWSER } from '@/config'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -83,7 +84,8 @@ async function onLogin() {
   loading.value = true
   try {
     const info = await auth.login(account.value, password.value, schoolSelect.value, schoolCode.value)
-    if (account.value[0] !== '2') {
+    // 仅浏览器模式检测非学生账号（内嵌 App / Electron 不限制教师账号）
+    if (IS_BROWSER && account.value[0] !== '2') {
       ElMessage.warning('你的账号为非学生账号，功能受限(没适配)，仅可查看随身答和下载应用')
     }
     ElMessage.success(`你好，${info.realName || auth.userName}`)

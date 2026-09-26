@@ -72,9 +72,10 @@ export async function getMistakeDetail(itemId: string | number): Promise<Mistake
 
 /** 获取题目 HTML（qstPath 拼接后 fetch 纯文本） */
 export async function fetchQstHtml(qstPath: string): Promise<string> {
+  const host = localStorage.getItem('apiBaseUrl') || API_BASE_URL
   const url = qstPath.startsWith('http')
     ? qstPath + (qstPath.includes('?') ? '&' : '?') + 'showAnalysis=true'
-    : API_BASE_URL + qstPath + '?showAnalysis=true'
+    : host + qstPath + '?showAnalysis=true'
   const resp = await fetch(url, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   })

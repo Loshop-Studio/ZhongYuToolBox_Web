@@ -4,6 +4,30 @@
  * 所有模块从此处读取，便于后续统一修改。
  */
 
+/**
+ * 运行平台开关。
+ * - IS_BROWSER=true（默认，普通浏览器 Web 构建）：保持全部原有逻辑
+ *   （资源代理、zyapi 默认地址、跨域处理等）。
+ * - IS_BROWSER=false（内嵌 App 构建）：由 PLATFORM 区分运行环境：
+ *     'electron'：Electron 内嵌，忽略跨域，资源与 API 直接请求，不走代理。
+ *     'plus'：HBuilder H5+ App 内嵌，使用 5+ API，资源与 API 直接请求，不走代理。
+ * 通过 Vite 构建命令注入（vite build --mode electron / --mode plus，
+ * 对应 .env.electron / .env.plus），未注入时按浏览器模式处理。
+ */
+export const IS_BROWSER: boolean =
+  (import.meta.env.VITE_IS_BROWSER as string | undefined) !== 'false'
+
+export type Platform = 'browser' | 'electron' | 'plus'
+
+export const PLATFORM: Platform = IS_BROWSER
+  ? 'browser'
+  : (import.meta.env.VITE_PLATFORM as string | undefined) === 'plus'
+    ? 'plus'
+    : 'electron'
+
+/** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */
+export const USE_PROXY: boolean = IS_BROWSER
+
 const ls = window.localStorage
 
 export const API_BASE_URL: string =
@@ -86,13 +110,22 @@ export const SUBJECTS: Array<[number, string]> = [
 /**
  * 嵌套 iframe 模块基地址（在线专栏 navPage.html / 选课 ezyRawContent.html）
  * 复刻旧 index.js 中 zxzl_set_url / ck_set_url：
- *   - 专栏：https://zyapi.loshop.com.cn/navPage.html?apiHost=<API_BASE_URL>&apiToken=<token>#/list?messageType=pager
- *   - 选课：ezyRawContent.html?apiHost=https://zyapi.loshop.com.cn&apiToken=<token>#/index/courseChoosing/StudentsCoursesList
+ *   - 专栏：<base>/navPage.html?apiHost=<API_BASE_URL>&apiToken=<token>#/list?messageType=pager
+ *   - 选课：ezyRawContent.html?apiHost=<API_BASE_URL>&apiToken=<token>#/index/courseChoosing/StudentsCoursesList
  * apiToken 来自登录后的 token；CK 旧版用同源相对路径 ezyRawContent.html，
  * 以便 MutationObserver 能注入样式（见 useIframeInject）。新工程把 ezyRawContent.html
  * 放入 public/ 以复用该同源行为。
+ *
+ * 该函数每次调用动态读取 localStorage.iframeBase：
+ *   - 浏览器模式：未设置时默认 https://zyapi.loshop.com.cn。
+ *   - 内嵌 App 模式：登录后由 discover 返回的 webServer 写入 localStorage.iframeBase；
+ *     未登录时不提供默认（路由守卫已拦截，不会实际用到）。
  */
-export const IFRAME_BASE = ls.getItem('iframeBase') || 'https://zyapi.loshop.com.cn'
+export function getIframeBase(): string {
+  const stored = ls.getItem('iframeBase')
+  if (stored) return stored
+  return IS_BROWSER ? 'https://zyapi.loshop.com.cn' : ''
+}
 
 /** OSS 上传类型前缀（复刻 index.html #selectFc 选项） */
 export const OSS_PREFIXES: string[] = [

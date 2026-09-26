@@ -14,7 +14,12 @@
         </el-form-item>
 
         <el-form-item label="选择PDF文件">
+          <div v-if="isPlus" class="pdf-drop" @click="onPickPdf">
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <div class="el-upload__text">点击选择 PDF 文件</div>
+          </div>
           <el-upload
+            v-else
             class="pdf-upload"
             drag
             accept=".pdf"
@@ -86,6 +91,9 @@ import { Document, Upload, UploadFilled, Download } from '@element-plus/icons-vu
 import type { UploadFile } from 'element-plus'
 import { uploadPdfAsNote } from '@/api/pdfNote'
 import { zipBlobs, type PdfPageImage } from '@/utils/pdf'
+import { saveBlobFile } from '@/utils/saveFile'
+import { isPlus, pickFiles } from '@/utils/plusPicker'
+import { formatError, logError } from '@/utils/errorText'
 
 const noteName = ref('')
 const currentFile = ref<File | null>(null)
@@ -103,18 +111,40 @@ function formatFileSize(bytes: number): string {
   return (bytes / 1048576).toFixed(2) + ' MB'
 }
 
-function handleFileChange(file: UploadFile) {
-  const raw = file.raw
-  if (!raw) return
-  if (!raw.name.toLowerCase().endsWith('.pdf')) {
+function applyFile(file: File) {
+  if (!file.name.toLowerCase().endsWith('.pdf')) {
     ElMessage.warning('请选择 PDF 文件')
     return
   }
-  currentFile.value = raw
+  currentFile.value = file
   if (!noteName.value) {
-    noteName.value = raw.name.replace(/\.pdf$/i, '')
+    noteName.value = file.name.replace(/\.pdf$/i, '')
   }
   clearPreview()
+}
+
+function handleFileChange(file: UploadFile) {
+  const raw = file.raw
+  if (!raw) return
+  applyFile(raw)
+}
+
+/** 5+ 下点击选择区：调系统文件选择框选取 PDF */
+async function onPickPdf() {
+  try {
+    // 用 */* 调出系统文件管理器更稳妥（部分设备 application/pdf 选不出文件）
+    const files = await pickFiles('*/*', false)
+    const f = files[0]
+    if (!f) return
+    if (!/\.pdf$/i.test(f.name)) {
+      ElMessage.warning('请选择 PDF 文件')
+      return
+    }
+    applyFile(f)
+  } catch (e: any) {
+    logError('onPickPdf', e)
+    ElMessage.error('选择 PDF 失败：' + formatError(e))
+  }
 }
 
 function clearPreview() {
@@ -179,11 +209,13 @@ async function downloadZip() {
     blob: img.blob
   }))
   const blob = await zipBlobs(files)
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = (noteName.value.trim() || 'pdf_note') + '.zip'
-  a.click()
-  URL.revokeObjectURL(a.href)
+  try {
+    await saveBlobFile(blob, (noteName.value.trim() || 'pdf_note') + '.zip')
+    ElMessage.success('已保存到下载目录')
+  } catch (e: any) {
+    logError('downloadZip', e)
+    ElMessage.error('保存文件失败：' + formatError(e))
+  }
 }
 
 onBeforeUnmount(() => {
@@ -207,6 +239,19 @@ onBeforeUnmount(() => {
 .pdf-upload :deep(.el-upload),
 .pdf-upload :deep(.el-upload-dragger) {
   width: 100%;
+}
+/* 5+ 下替代 el-upload 的可点击选择区，外观与拖拽区一致 */
+.pdf-drop {
+  width: 100%;
+  padding: 36px 0;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+.pdf-drop:hover {
+  border-color: var(--el-color-primary);
 }
 .upload-icon {
   font-size: 44px;

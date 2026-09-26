@@ -73,6 +73,7 @@ import {
   parseExamQuestions,
   type ParsedQuestion
 } from '@/api/exam'
+import { saveBlobFile } from '@/utils/saveFile'
 
 const route = useRoute()
 const router = useRouter()
@@ -90,7 +91,8 @@ async function load() {
   try {
     const exam = await getExamTask(taskId.value)
     examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
-    if (!name.value && exam?.examName) name.value = exam.examName
+    // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
+    name.value = String(route.query.name || '') || exam?.examName || name.value
     questions.value = await parseExamQuestions(exam, getQstAnswerView)
   } catch (err: any) {
     ElMessage.error('加载题目失败：' + (err.message || err))
@@ -118,14 +120,7 @@ async function exportAnswers() {
   exporting.value = true
   try {
     const blob = await exportObjectiveAnswers(examId.value)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${name.value || 'exam'}_客观题答案.xlsx`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    await saveBlobFile(blob, `${name.value || 'exam'}_客观题答案.xlsx`)
     ElMessage.success('已导出')
   } catch (e: any) {
     ElMessage.error('导出失败：' + (e.message || e))

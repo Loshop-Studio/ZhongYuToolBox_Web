@@ -11,6 +11,7 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+release/
 
 # TypeScript build info
 *.tsbuildinfo
@@ -19,6 +20,8 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+!.env.electron
+!.env.plus
 
 # Editor / OS
 .vscode/*

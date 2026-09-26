@@ -3,7 +3,6 @@
  * 接口基地址：API_BASE_URL
  */
 import { request, unwrapResult } from '@/utils/request'
-import { API_BASE_URL } from '@/config'
 
 const PAGE_SIZE = 20
 
@@ -44,7 +43,7 @@ export async function getExamTask(examId: number): Promise<any> {
 
 /** 单题 HTML（含解析）（复刻 fetchQstAnswerView） */
 export async function getQstAnswerView(qstId: number): Promise<string> {
-  const resp = await request<Response>(`${API_BASE_URL}/Question/View/${qstId}?showAnalysis=true`, {
+  const resp = await request<Response>(`/Question/View/${qstId}?showAnalysis=true`, {
     raw: true
   })
   // raw 模式下 request 返回原始 Response，需自行读取文本

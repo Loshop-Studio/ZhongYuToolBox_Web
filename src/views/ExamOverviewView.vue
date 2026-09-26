@@ -109,7 +109,8 @@ async function load() {
   try {
     const exam = await getExamTask(taskId.value)
     examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
-    if (!name.value && exam?.examName) name.value = exam.examName
+    // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
+    name.value = String(route.query.name || '') || exam?.examName || name.value
     overview.value = await getExamOverview(examId.value)
   } catch (e: any) {
     ElMessage.error('加载概览失败：' + (e.message || e))

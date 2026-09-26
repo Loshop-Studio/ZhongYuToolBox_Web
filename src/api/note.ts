@@ -4,18 +4,26 @@
  * 说明：
  * - 登录后 API 基地址会变为学校特定服务器，故此处动态从 localStorage 读取，
  *   而非使用 config 中加载时固化的常量。
- * - 省锡中（zyapi.loshop.com.cn）使用 /special/ 代理路径，其它学校使用原始
- *   /CloudNotes/api/Notes|Resources/ 路径。
+ * - 云笔记服务路径有两种：省锡中（zyapi.loshop.com.cn）走 /special/ 代理路径，
+ *   其它学校走直连 /CloudNotes/api/Notes|Resources/ 路径。
+ * - 内嵌 App（electron / plus）统一走直连路径，不依赖 /special/ 代理；其路径
+ *   自适应登录所用的服务器 base（登录同样直连该 base），与浏览器模式区分。
  */
 import { aesEncrypt, aesDecrypt } from '@/utils/crypto'
+import { IS_BROWSER } from '@/config'
 
 /** 当前 API 基地址（登录后可能被替换为学校服务器） */
 function apiBase(): string {
   return localStorage.getItem('apiBaseUrl') || 'https://zyapi.loshop.com.cn'
 }
 
-/** 是否使用省锡中 special 代理路径（复刻 useSpecialPath） */
+/**
+ * 是否使用省锡中 special 代理路径（复刻 useSpecialPath）。
+ * - 浏览器模式：仅当登录服务器为 zyapi.loshop.com.cn 时使用 /special/。
+ * - 内嵌 App（electron / plus）：不使用 /special/，统一直连 CloudNotes 路径。
+ */
 function useSpecialPath(): boolean {
+  if (!IS_BROWSER) return false
   const base = localStorage.getItem('apiBaseOrigin') || apiBase()
   return !!base && base.includes('zyapi.loshop.com.cn')
 }
@@ -113,9 +121,9 @@ export async function getNoteResources(fileId: string): Promise<NoteResource[]> 
   return (JSON.parse(aesDecrypt(data.data)).resourceList || []) as NoteResource[]
 }
 
-/** 通过 special 路径获取全部资源用于打包下载（复刻 noteDownload2 取数部分） */
+/** 获取全部资源用于打包下载（复刻 noteDownload2 取数部分，路径自适应 special / 直连） */
 export async function getNoteResourcesForZip(fileId: string): Promise<NoteResource[]> {
-  const url = `${apiBase()}/special/GetByFileId?${aesEncrypt('fileId=' + fileId)}`
+  const url = resourcesPath('GetByFileId', aesEncrypt('fileId=' + fileId))
   const res = await fetch(url, { method: 'GET', headers: authHeaders() })
   check401(res.status)
   const data = await res.json()

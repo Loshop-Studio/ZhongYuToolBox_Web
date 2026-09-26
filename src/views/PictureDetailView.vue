@@ -59,7 +59,9 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, View, Download, Picture, MoreFilled } from '@element-plus/icons-vue'
 import { proxyImgSrc, proxyUrl } from '@/utils/proxy'
+import { saveBlobFile } from '@/utils/saveFile'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { ElMessage } from 'element-plus'
 
 const { isMobile } = useIsMobile()
 const route = useRoute()
@@ -94,15 +96,16 @@ function openRaw() {
   if (picture.value) window.open(proxyUrl(picture.value), '_blank')
 }
 
-function download() {
+async function download() {
   if (!picture.value) return
-  const a = document.createElement('a')
-  a.href = proxyUrl(picture.value)
-  a.download = name.value || 'image'
-  a.target = '_blank'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  try {
+    const resp = await fetch(proxyUrl(picture.value))
+    if (!resp.ok) throw new Error('下载失败: ' + resp.status)
+    const blob = await resp.blob()
+    await saveBlobFile(blob, name.value || 'image')
+  } catch (e: any) {
+    ElMessage.error('下载失败：' + (e?.message || e))
+  }
 }
 
 function onAction(cmd: string) {

@@ -53,13 +53,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Delete } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { getProxyBaseUrl, detectLocalProxy } from '@/utils/proxy'
-import { API_BASE_URL, SHARE_SERVER, IFRAME_BASE, PROXY_LOCAL, PROXY_REMOTE } from '@/config'
+import { API_BASE_URL, SHARE_SERVER, getIframeBase, PROXY_LOCAL, PROXY_REMOTE } from '@/config'
 
 const auth = useAuthStore()
 
 const apiBaseUrl = ref(API_BASE_URL)
 const shareServer = ref(SHARE_SERVER)
-const iframeBase = ref(IFRAME_BASE)
+const iframeBase = ref(getIframeBase())
 
 const proxyBase = ref(getProxyBaseUrl())
 const proxyIsLocal = ref(proxyBase.value === PROXY_LOCAL)
@@ -73,7 +73,7 @@ const tokenExpireText = ref('')
 function syncFromStorage() {
   apiBaseUrl.value = localStorage.getItem('apiBaseUrl') || API_BASE_URL
   shareServer.value = localStorage.getItem('shareServer') || SHARE_SERVER
-  iframeBase.value = localStorage.getItem('iframeBase') || IFRAME_BASE
+  iframeBase.value = getIframeBase()
   const exp = localStorage.getItem('tokenExpire')
   if (exp) {
     const d = new Date(Number(exp))
