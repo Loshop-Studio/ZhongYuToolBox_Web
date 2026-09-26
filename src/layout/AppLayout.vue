@@ -82,6 +82,9 @@
         @click="scrollToTop"
       />
     </transition>
+
+    <!-- 全局阻断弹窗（版本强制更新 / 风控封禁），覆盖全屏阻止继续使用 -->
+    <ForceBlock />
   </div>
 </template>
 
@@ -99,9 +102,11 @@ import {
   SwitchButton
 } from '@element-plus/icons-vue'
 import SideMenu from './SideMenu.vue'
+import ForceBlock from '@/components/ForceBlock.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'
+import { checkVersion } from '@/utils/track'
 import { useIsMobile } from '@/composables/useIsMobile'
 
 const route = useRoute()
@@ -153,18 +158,28 @@ function onProxyStatusChange(localOk: boolean, isWindows: boolean) {
   }
 }
 
+// 更新分发：启动即检测一次，并每 10 分钟复检（仅 electron / uniapp 实际生效）
+let versionTimer: number | null = null
+
 onMounted(() => {
   startProxyPolling(onProxyStatusChange)
   const content = document.querySelector('.content')
   content?.addEventListener('scroll', onScroll)
   // 让接管顶栏的二级页面（如在线专栏）也能唤起移动端侧栏抽屉
   window.addEventListener('app:open-drawer', onOpenDrawer)
+  // 更新分发检测
+  checkVersion()
+  versionTimer = window.setInterval(checkVersion, 10 * 60 * 1000)
 })
 onUnmounted(() => {
   stopProxyPolling()
   const content = document.querySelector('.content')
   content?.removeEventListener('scroll', onScroll)
   window.removeEventListener('app:open-drawer', onOpenDrawer)
+  if (versionTimer !== null) {
+    clearInterval(versionTimer)
+    versionTimer = null
+  }
 })
 
 function onOpenDrawer() {

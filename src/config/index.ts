@@ -39,6 +39,12 @@ export const API_BASE_BASE_URL: string =
 export const SHARE_SERVER: string =
   ls.getItem('shareServer') || 'https://zytbshareapi.loshop.com.cn'
 
+/** 统计 / 更新分发 / 风控后端基地址（部署在 https://tbapi.loshop.com.cn） */
+export const TRACK_API: string = 'https://tbapi.loshop.com.cn/api'
+
+/** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
+export const APP_VERSION: string = '0.0.3'
+
 /** 远端代理（默认走服务器） */
 export const PROXY_REMOTE = 'https://zytbdownloadagent.loshop.com.cn/download/'
 /** 本地加速代理（检测到时使用） */

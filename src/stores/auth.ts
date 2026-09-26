@@ -4,6 +4,8 @@
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
 import { IS_BROWSER } from '@/config'
+import { reportLogin, checkVersion } from '@/utils/track'
+import { setBlock } from '@/stores/block'
 
 function parseJwt(token: string): any {
   try {
@@ -107,6 +109,14 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('loginSchoolCode', schoolCode)
       }
       this.startRefresh()
+      // —— 接入统计 / 风控 / 更新分发 ——
+      // 每次登录（含自动重新登录）都上报，命中封禁则全屏阻断；否则顺便检测强制更新。
+      const ban = await reportLogin(this.schoolCode, this.userId)
+      if (ban?.banned) {
+        setBlock('账号已被封禁', ban.message || '该账号已被管理员封禁，无法继续使用。', 'ban')
+      } else {
+        await checkVersion()
+      }
       return userInfo
     },
     /** 用记录的凭据自动重新登录（401 刷新失败后的兜底） */
