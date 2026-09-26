@@ -4,7 +4,7 @@
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
 import { IS_BROWSER, PLATFORM } from '@/config'
-import { reportLogin, checkVersion, reportRiskBan } from '@/utils/track'
+import { reportLogin, checkVersion, reportRiskBan, fetchClientEnabled, isClientGuardEnabled } from '@/utils/track'
 import { setBlock } from '@/stores/block'
 
 function parseJwt(token: string): any {
@@ -120,6 +120,9 @@ export const useAuthStore = defineStore('auth', {
       // 注意：上报的是「登录账号 account」而非 userId（userId 是数字 ID，
       // 既与旧 users.db 用户名对不上，也匹配不到管理员按用户名设的封禁）。
 
+      // 拉取客户端风控总开关：{"enable":false} 关闭「检测 + 主动封禁」；404 正常开启
+      await fetchClientEnabled()
+
       // 本地风控（仅 Electron 桌面端）：取设备号 + 环境异常评分
       let deviceId = ''
       let devScore = 0
@@ -129,9 +132,12 @@ export const useAuthStore = defineStore('auth', {
       if (PLATFORM === 'electron' && electronAPI) {
         try {
           deviceId = (await electronAPI.getDeviceId()) || ''
-          risk = await electronAPI.getRiskScores()
-          devScore = risk?.devScore ?? 0
-          zyScore = risk?.zyScore ?? 0
+          // 开关关闭时不跑本地异常评分（检测功能被禁用），仅取设备号供被动封禁查询
+          if (isClientGuardEnabled()) {
+            risk = await electronAPI.getRiskScores()
+            devScore = risk?.devScore ?? 0
+            zyScore = risk?.zyScore ?? 0
+          }
         } catch (e) {
           console.error('[riskControl] 取设备号/评分失败:', e)
         }
@@ -142,7 +148,7 @@ export const useAuthStore = defineStore('auth', {
       if (ban?.banned) {
         const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
         setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
-      } else if (devScore > 0.5 || zyScore > 0.3) {
+      } else if (isClientGuardEnabled() && (devScore > 0.5 || zyScore > 0.3)) {
         // 本地环境异常：上报风控封禁命令（服务端按豁免白名单决定是否真正封禁）
         await reportRiskBan(effectiveSchool, account, deviceId, devScore, zyScore, risk?.devFound || [], risk?.zyFound || [])
         // 2) 以服务器为准：重新查询是否已被封禁，仅当服务器确实封禁时才阻断。

@@ -89,3 +89,37 @@ export async function checkVersion(): Promise<void> {
     setBlock('发现新版本', info.message || '请更新到最新版本后继续使用。', 'version')
   }
 }
+
+/**
+ * 客户端风控总开关（kill-switch）。
+ * GET {TRACK_API}/enable：
+ *   - 返回 {"enable":false} → 禁用客户端的「检测 + 主动封禁」功能
+ *   - 返回 404（或正常但非 false）→ 不禁用（正常开启）
+ * 网络异常 / 接口异常时保守按「正常开启」处理，避免误关防护导致漏拦。
+ *
+ * 注意：该开关只影响客户端自主行为（本地异常检测、reportRiskBan 主动上报），
+ * 不影响被动封禁查询（reportLogin：服务端已封则照常阻断，属于服从服务端而非主动）。
+ */
+let clientGuardEnabled = true
+
+export async function fetchClientEnabled(): Promise<boolean> {
+  try {
+    const resp = await fetch(`${TRACK_API}/enable`)
+    if (resp.status === 404) {
+      clientGuardEnabled = true
+    } else if (resp.ok) {
+      const data = (await resp.json().catch(() => ({}))) as { enable?: boolean }
+      clientGuardEnabled = data.enable !== false
+    } else {
+      clientGuardEnabled = true
+    }
+  } catch (e) {
+    console.error('[track] fetchClientEnabled 失败（按正常开启处理）:', e)
+    clientGuardEnabled = true
+  }
+  return clientGuardEnabled
+}
+
+export function isClientGuardEnabled(): boolean {
+  return clientGuardEnabled
+}
