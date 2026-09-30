@@ -56,6 +56,7 @@ import DPlayer from 'dplayer'
 import VueOfficePptx from '@vue-office/pptx'
 import { proxyUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
+import { loadPdfjs } from '@/utils/pdfWorker'
 
 const route = useRoute()
 const router = useRouter()
@@ -104,11 +105,7 @@ async function renderPdf(src: string) {
   if (!pdfRef.value) return
   pdfLoading.value = true
   try {
-    const pdfjs = await import('pdfjs-dist/build/pdf.mjs')
-    if (!pdfjs.GlobalWorkerOptions.workerPort) {
-      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
-      pdfjs.GlobalWorkerOptions.workerPort = new Worker(workerUrl, { type: 'module' })
-    }
+    const pdfjs = await loadPdfjs()
     const container = pdfRef.value
     container.innerHTML = ''
     const doc = await pdfjs.getDocument(proxyUrl(src)).promise

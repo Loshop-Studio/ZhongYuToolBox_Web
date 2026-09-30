@@ -6,6 +6,7 @@
  */
 import CryptoJS from 'crypto-js'
 import JSZip from 'jszip'
+import { loadPdfjs } from '@/utils/pdfWorker'
 
 export interface PdfPageImage {
   pageNum: number
@@ -52,12 +53,8 @@ export async function convertPdfToImages(
 
   onProgress?.(0.05, 0, 1)
 
-  // 动态引入 pdfjs-dist，并初始化 worker（与主视图一致的模块级单例）
-  const pdfjs = await import('pdfjs-dist/build/pdf.mjs')
-  if (!pdfjs.GlobalWorkerOptions.workerPort) {
-    const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
-    pdfjs.GlobalWorkerOptions.workerPort = new Worker(workerUrl, { type: 'module' })
-  }
+  // 加载 pdfjs-dist 并初始化 worker（统一封装，见 utils/pdfWorker.ts）
+  const pdfjs = await loadPdfjs()
 
   const data = await pdfFile.arrayBuffer()
   const doc = await pdfjs.getDocument({ data }).promise

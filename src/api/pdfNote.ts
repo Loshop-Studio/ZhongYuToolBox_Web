@@ -82,47 +82,133 @@ function generatePageHash(): string {
 }
 
 /**
- * 读取打包内置的模板文件为 Blob。
- * 5+ App 下页面以 file:// 加载，fetch 不能读 file://（URL scheme "file" is not supported），
- * 故内置资源改走 plus.io：_www/example/xxx -> entry.file -> FileReader.readAsDataURL -> Blob。
- * 其它环境（浏览器/开发态）仍用 fetch。
+ * 5+ 下模板文件在 _www 中的基础前缀。
+ * - 旧版纯 5+ App：页面在 _www/，模板即 _www/example/...
+ * - uni-app WebView 壳：离线包整体位于 _www/hybrid/html/，模板即 _www/hybrid/html/example/...
+ * 若仍用 _www/example/... 会在错误目录查找 -> “解析模板文件失败”。
  */
-function readBundledBlob(rel: string): Promise<Blob> {
-  const w: any = window as any
-  if (isPlus && w.plus && w.plus.io) {
-    return new Promise<Blob>((resolve, reject) => {
-      w.plus.io.resolveLocalFileSystemURL(
-        '_www/' + TEMPLATE_BASE + rel,
-        (entry: any) => {
-          entry.file(
-            (file: any) => {
-              const reader = new w.plus.io.FileReader()
-              reader.onloadend = () => {
-                try {
-                  const dataUrl = String(reader.result || '')
-                  const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
-                  const bin = atob(b64)
-                  const bytes = new Uint8Array(bin.length)
-                  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-                  resolve(new Blob([bytes], { type: file.type || 'application/octet-stream' }))
-                } catch {
-                  reject(new Error('解析模板文件失败: ' + rel))
-                }
-              }
-              reader.onerror = () => reject(new Error('读取模板文件失败: ' + rel))
-              reader.readAsDataURL(file)
-            },
-            () => reject(new Error('读取模板文件失败: ' + rel))
-          )
-        },
-        () => reject(new Error('解析模板文件失败: ' + rel))
-      )
-    })
-  }
-  return fetch(TEMPLATE_BASE + rel).then((resp) => {
-    if (!resp.ok) throw new Error('加载模板文件失败: ' + rel)
-    return resp.blob()
+function wwwTemplateBase(): string {
+  const path = window.location.pathname || ''
+  return path.includes('/hybrid/html/') ? '_www/hybrid/html/' : '_www/'
+}
+
+/**
+ * 用 XHR 读取包内 www 资源（相对路径）。
+ * 关键：正式 APK 里 www 被打进 APK 的 assets（映射为 _www），不是真实文件系统路径，
+ * plus.io.resolveLocalFileSystemURL 打不开（真机调试/自定义基座因资源被解压到磁盘而正常）
+ * —— 这正是“运行到手机正常、打包后报解析模板失败”的根因。
+ * 改用网络请求方式（App 自身 JS/CSS 就是这么从 www 加载的）即可在打包后照常读取。
+ * 本地(file://)读取时状态码常为 0，需一并视为成功。
+ */
+function xhrReadBlob(url: string, XHRClass: any): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    let xhr: any
+    try {
+      xhr = new XHRClass()
+      xhr.open('GET', url, true)
+    } catch (e) {
+      reject(e)
+      return
+    }
+    try {
+      xhr.responseType = 'arraybuffer'
+    } catch {
+      /* 个别实现不支持 responseType，忽略 */
+    }
+    xhr.onload = () => {
+      const ok = xhr.status === 0 || (xhr.status >= 200 && xhr.status < 300)
+      if (!ok) {
+        reject(new Error('请求失败 HTTP ' + xhr.status + ' ' + url))
+        return
+      }
+      const buf = xhr.response
+      if (!buf) {
+        reject(new Error('空响应 ' + url))
+        return
+      }
+      resolve(new Blob([buf]))
+    }
+    xhr.onerror = () => reject(new Error('请求失败 ' + url))
+    xhr.send()
   })
+}
+
+/** 依次尝试：5+ 的 XHR -> 原生 XHR -> fetch */
+async function readByRequest(url: string): Promise<Blob> {
+  const w: any = window as any
+  const errors: string[] = []
+  const plusXHR = w.plus && w.plus.net && w.plus.net.XMLHttpRequest
+  if (plusXHR) {
+    try {
+      return await xhrReadBlob(url, plusXHR)
+    } catch (e: any) {
+      errors.push('plus.net.XMLHttpRequest: ' + (e?.message || e))
+    }
+  }
+  if (typeof XMLHttpRequest !== 'undefined') {
+    try {
+      return await xhrReadBlob(url, XMLHttpRequest)
+    } catch (e: any) {
+      errors.push('XMLHttpRequest: ' + (e?.message || e))
+    }
+  }
+  try {
+    const resp = await fetch(url)
+    if (!resp.ok) throw new Error('HTTP ' + resp.status)
+    return await resp.blob()
+  } catch (e: any) {
+    errors.push('fetch: ' + (e?.message || e))
+  }
+  throw new Error('加载模板文件失败(' + url + ')：' + errors.join(' | '))
+}
+
+/** 兜底：5+ 文件系统 API（真机调试/自定义基座可用；正式包 assets 下通常失败） */
+function readByPlusIo(plus: any, rel: string): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) => {
+    plus.io.resolveLocalFileSystemURL(
+      wwwTemplateBase() + TEMPLATE_BASE + rel,
+      (entry: any) => {
+        entry.file(
+          (file: any) => {
+            const reader = new plus.io.FileReader()
+            reader.onloadend = () => {
+              try {
+                const dataUrl = String(reader.result || '')
+                const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+                const bin = atob(b64)
+                const bytes = new Uint8Array(bin.length)
+                for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+                resolve(new Blob([bytes], { type: file.type || 'application/octet-stream' }))
+              } catch {
+                reject(new Error('解析模板文件失败: ' + rel))
+              }
+            }
+            reader.onerror = () => reject(new Error('读取模板文件失败: ' + rel))
+            reader.readAsDataURL(file)
+          },
+          () => reject(new Error('读取模板文件失败: ' + rel))
+        )
+      },
+      () => reject(new Error('解析模板文件失败: ' + rel))
+    )
+  })
+}
+
+/**
+ * 读取打包内置的模板文件为 Blob。
+ * 主路径改用「相对路径的网络请求」（打包后仍有效，见 xhrReadBlob 注释）；
+ * 失败再回退 5+ 文件系统 API（兼容个别环境）。
+ */
+async function readBundledBlob(rel: string): Promise<Blob> {
+  const w: any = window as any
+  try {
+    return await readByRequest(TEMPLATE_BASE + rel)
+  } catch (e) {
+    if (w.plus && w.plus.io) {
+      return readByPlusIo(w.plus, rel)
+    }
+    throw e
+  }
 }
 
 /** 加载模板 bin 文件（复刻 loadTemplateFiles） */
