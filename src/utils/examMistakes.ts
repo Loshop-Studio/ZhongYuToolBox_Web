@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
-import { getExamTask } from '@/api/exam'
+import { getExamTask, getQuestionAnalysis } from '@/api/exam'
+import { analysisWrongQuestions, getExamReview } from './examReview'
 import { request, unwrapResult } from '@/utils/request'
 import { accountKey, localGet, localPut } from './localData'
 import { fetchQstHtml } from '@/api/mistake'
@@ -42,13 +43,21 @@ async function officialView(examId: number, questionId: number, related: boolean
   const result = unwrapResult(await request(`/api/services/app/Task/${endpoint}?examId=${examId}&${param}=${questionId}`, { signal }))
   return related ? (Array.isArray(result) ? result : []) : result ? [result] : []
 }
-export async function syncExamMistakes(taskId: number, key: string, signal?: AbortSignal) {
+export async function syncExamMistakes(taskId: number, key: string, signal?: AbortSignal, reviewedIds?: number[]) {
   ensureAccount(key, signal)
   const task = await getExamTask(taskId, signal)
   ensureAccount(key, signal)
   const examId = task.examId
   if (!Number.isSafeInteger(examId) || examId <= 0) throw new Error('测评缺少有效 examId')
-  const wrong = gradedWrongQuestions(task)
+  const snapshot = getExamReview(taskId, key)
+  if (!reviewedIds && snapshot && snapshot.examId !== examId) throw new Error('作业已更新，请重新查看题目分析')
+  const review = reviewedIds ?? snapshot?.questionIds
+  if (!review) throw new Error('请先打开此作业的题目分析，识别本人错题')
+  const analysis = await getQuestionAnalysis(examId, signal)
+  ensureAccount(key, signal)
+  const detected = analysisWrongQuestions(task, analysis, key.slice(key.lastIndexOf('|') + 1))
+  if (detected.unmatched) throw new Error('题目分析存在无法匹配的题目，请刷新后重试')
+  const wrong = detected.questions.filter(q => review.includes(q.id))
   let entries = await listLocalMistakes(key)
   let saved = 0
   const seen = new Set<string>()
@@ -106,7 +115,7 @@ export async function syncExamMistakes(taskId: number, key: string, signal?: Abo
     }
     await localPut('mistakes|' + key, entries); mistakeSyncState.revision++
   }
-  return { total: wrong.length, saved, pending: entries.filter(e => e.examId === examId && e.sync === 'pending').length }
+  return { total: seen.size, saved, pending: entries.filter(e => seen.has(e.id) && e.sync === 'pending').length }
 }
 
 /** A single queue prevents overlapping auto/import actions and concurrent local writes. */
