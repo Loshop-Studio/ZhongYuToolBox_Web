@@ -79,6 +79,7 @@
 #app .windows-ui .aside { background: var(--surface); border-right: 1px solid var(--line); transition: none; scrollbar-width: thin; }
 #app .windows-ui .brand { height: 88px; min-height: 88px; padding: 0 22px; justify-content: flex-start; gap: 12px; border: 0; color: var(--ink); box-sizing: border-box; }
 #app .windows-ui .edition-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; background: var(--violet); color: #29242d; font-size: 26px; }
+#app .windows-ui .edition-app-icon { width:36px; height:36px; flex-shrink:0; }
 #app .windows-ui .aside.is-collapsed .brand { padding: 0; justify-content: center; }
 #app .windows-ui .aside.is-collapsed { scrollbar-width: none; }
 .edition-brand-text { display: flex; flex-direction: column; gap: 5px; }
