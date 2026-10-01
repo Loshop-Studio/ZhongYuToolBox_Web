@@ -24,12 +24,13 @@
 
 客户端先本地保存题干；尚未加入官方错题本时，本机渲染题干截图，通过官方 ObjectStorage/GenerateTokenV2Async 获取 mistake_v2（fc=4）STS 并上传，然后提交非空 stemShoot。这个过程不要求图库客户端。
 
-流程：已完成作业 → 题目分析（只读取并识别）→ 返回新测评 → 加入官方错题本（写入）。写入前重新读取分析，确认候选题仍属于本人错题；不根据个人得分、学生姓名或班级错误人数推测。不再展示独立本地错题本；按账号保存的审核及失败重试缓存只服务于官方同步。
+流程：打开新测评的已完成作业列表 → 当前页顺序自动读取任务详情与题目分析 → 列表显示本人错题及加入按钮 → 点击加入官方错题本（写入）。翻页、重新进入页面或刷新后自动重新识别；取消或账号切换停止后续请求。单个作业读取失败不阻断队列，失败不沿用旧识别结果启用按钮。写入前再次读取分析，确认候选题仍属于本人错题；不根据个人得分、学生姓名或班级错误人数推测。不再展示独立本地错题本；按账号保存的审核及失败重试缓存只服务于官方同步。
 
-## 错题本导出
+## 官方错题删除与导出
 
 - GET /api/services/app/MistakeBook/GetMyMistakeBooksAsync。
 - POST /api/services/app/MistakeBook/SearchMistakeQstItemsAsync：bookId、skipCount、maxResultCount 及空筛选项，按科目遍历分页。
 - GET /api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId={id}。
+- POST /api/services/app/MistakeBook/MultiRemoveMistakeItemsAsync：JSON 正文 `{ "bookId": 科目错题本编号, "itemIds": [错题条目编号] }`。依据错题本 APK 的 MistakeApi `retrofit2/http/POST` 注解和 MultiRemoveMistakeReq 的 `bookId: int`、`itemIds: ArrayList` 字段，并与已取得的 API schema 交叉核对。不是题目 questionId，也不是测评 examId。单题删除同样传单元素数组，提交前确认；空选择和无效 ID 不发送请求，官方 success=false 不记录成功。
 
-题干和图片读取后在本机生成 A4 PDF，支持长题续页。读取非学校 origin 资源不携带账号 Bearer Token。同步新增和云笔记修改已做模拟合约回归，尚未使用真实账号执行这些写操作。
+题干和图片读取后在本机生成 A4 PDF，支持长题续页。读取非学校 origin 资源不携带账号 Bearer Token。同步新增、错题删除和云笔记修改已做模拟合约回归，未使用真实账号执行破坏性删除测试。
