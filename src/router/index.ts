@@ -84,7 +84,7 @@ const router = createRouter({
 // 未登录拦截（登录页除外）
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  const publicPages = ['/login']
+  const publicPages = ['/login', '/about', '/donate']
   if (!publicPages.includes(to.path) && !auth.isLoggedIn) {
     return { path: '/login' }
   }
