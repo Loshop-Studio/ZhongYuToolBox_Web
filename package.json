@@ -15,7 +15,8 @@
     "build:plus": "vue-tsc -b && vite build --mode plus",
     "preview": "vite preview",
     "build:windows": "node scripts/build-windows.mjs",
-    "test:windows": "node scripts/build-windows.mjs --qa"
+    "test:windows": "node scripts/build-windows.mjs --qa",
+    "build:installer": "node scripts/build-installer.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
