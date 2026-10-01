@@ -9,5 +9,5 @@ export default defineConfig({
   ] },
   optimizeDeps: { exclude: ['pdfjs-dist'] },
   worker: { format: 'es' },
-  server: { host: '127.0.0.1', port: 5175, strictPort: true }
+  server: { host: '127.0.0.1', port: 5175, strictPort: true, watch: { ignored: ['**/.local/**', '**/release/**'] } }
 })

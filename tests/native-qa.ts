@@ -107,10 +107,12 @@ async function main() {
     let status = await guestStatus()
     for (let i = 0; i < 30 && !status.loaded; i++) { await new Promise(resolve => setTimeout(resolve, 200)); status = await guestStatus() }
     check(status.present && status.loaded && status.bridgeDisabled && status.noPrivilegedBridge, '远端独立 WebView2 加载成功且无原生权限')
+    check((await host.getEmbeddedState({id:guestArgs.id})).loaded, '生产桥提供嵌入页面加载状态')
     await host.resizeEmbedded({ ...guestArgs, width: 400, height: 160 }); status = await guestStatus()
     check(status.width === 400 && status.height === 160, '嵌入区域随布局更新尺寸')
     await host.closeEmbedded({ id: guestArgs.id }); status = await guestStatus()
     check(!status.present, '离开页面释放远端视图')
+    check(!(await host.getEmbeddedState({id:guestArgs.id})).loaded, '已释放视图不残留加载成功状态')
   }
   return { passed: true, checks, pages: pages.length, savedBytes: host ? 2 * 1024 * 1024 + 7 : 0 }
 }
