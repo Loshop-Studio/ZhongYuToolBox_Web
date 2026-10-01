@@ -5,8 +5,9 @@
  * - zipBlobs: 打包为 zip（用于下载）
  */
 import CryptoJS from 'crypto-js'
-import JSZip from 'jszip'
 import { loadPdfjs } from '@/utils/pdfWorker'
+import JSZip from 'jszip'
+import { fitPageToCanvas } from './noteCanvas'
 
 export interface PdfPageImage {
   pageNum: number
@@ -22,6 +23,10 @@ export interface ConvertPdfOptions {
   type?: 'image/png' | 'image/jpeg' | 'image/webp'
   /** 有损格式质量 0~1，默认 0.92 */
   quality?: number
+  /** Preview only the first N pages; uploads omit this option. */
+  maxPages?: number
+  /** Entire visible PDF page fits inside this canvas, with white letterboxing. */
+  canvasSize?: { width: number; height: number }
   /**
    * 逐页回调（流式）。提供后，每渲染完一页立即交付并「不再累积」到返回值，
    * 调用方可在回调里边转边传、用完即弃，避免多页 Blob 同时占满内存导致 WebView 崩溃。
@@ -53,12 +58,12 @@ export async function convertPdfToImages(
 
   onProgress?.(0.05, 0, 1)
 
-  // 加载 pdfjs-dist 并初始化 worker（统一封装，见 utils/pdfWorker.ts）
+  // 动态引入 pdfjs-dist，并初始化 worker（与主视图一致的模块级单例）
   const pdfjs = await loadPdfjs()
 
   const data = await pdfFile.arrayBuffer()
   const doc = await pdfjs.getDocument({ data }).promise
-  const total = doc.numPages
+  const total = opts.maxPages ? Math.min(doc.numPages, opts.maxPages) : doc.numPages
   // 仅在未提供 onPage 时才累积（用于预览/打包下载）；提供 onPage 则逐页交付、不占内存
   const images: PdfPageImage[] = opts.onPage ? [] : []
 
@@ -66,17 +71,20 @@ export async function convertPdfToImages(
     for (let i = 1; i <= total; i++) {
       onProgress?.(((i - 1) / total) * 0.92, i, total)
       const page = await doc.getPage(i)
-      const viewport = page.getViewport({ scale })
+      const baseViewport = page.getViewport({ scale: 1 })
+      const fit = opts.canvasSize ? fitPageToCanvas(baseViewport.width, baseViewport.height, opts.canvasSize) : null
+      const viewport = page.getViewport({ scale: fit?.scale ?? scale })
       const canvas = document.createElement('canvas')
-      canvas.width = Math.ceil(viewport.width)
-      canvas.height = Math.ceil(viewport.height)
+      canvas.width = opts.canvasSize?.width ?? Math.ceil(viewport.width)
+      canvas.height = opts.canvasSize?.height ?? Math.ceil(viewport.height)
       const ctx = canvas.getContext('2d')
       if (!ctx) throw new Error('无法创建画布上下文')
       // 白底填充，避免透明背景在笔记中显示异常
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       // intent: 'print' 走打印级渲染管线，文字/矢量更锐利、避免灰边
-      await page.render({ canvasContext: ctx, viewport, intent: 'print' }).promise
+      await page.render({ canvasContext: ctx, viewport, intent: 'print',
+        transform: fit ? [1, 0, 0, 1, fit.x, fit.y] : undefined }).promise
       const blob = await new Promise<Blob>((resolve, reject) =>
         canvas.toBlob(
           (b) => (b ? resolve(b) : reject(new Error('第 ' + i + ' 页导出图片失败'))),
@@ -84,6 +92,7 @@ export async function convertPdfToImages(
           quality
         )
       )
+      if (blob.type !== type) throw new Error('当前环境无法导出所需图片格式：' + type)
       const img: PdfPageImage = { pageNum: i, blob, url: '' }
       if (opts.onPage) {
         // 流式：交付给调用方后立即释放，不被本数组持有（关键：避免多页同时占内存）
@@ -97,10 +106,9 @@ export async function convertPdfToImages(
       page.cleanup()
     }
   } finally {
-    onProgress?.(1, total, total)
-    doc.destroy()
+    await doc.destroy()
   }
-
+  onProgress?.(1, total, total)
   return images
 }
 

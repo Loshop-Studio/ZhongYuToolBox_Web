@@ -1,4 +1,4 @@
-import { PLATFORM } from '@/config'
+import { PLATFORM, IS_WINDOWS } from '@/config'
 import { formatError, logError } from '@/utils/errorText'
 
 /**
@@ -45,7 +45,7 @@ export async function saveBlobFile(blob: Blob, filename: string): Promise<void> 
       return
     }
   }
-  if (PLATFORM === 'electron') {
+  if (IS_WINDOWS) {
     const ab = await blobToArrayBuffer(blob)
     await saveByElectron(ab, safeName)
     return
@@ -497,7 +497,8 @@ async function saveByElectron(ab: ArrayBuffer, filename: string): Promise<void> 
   // 优先使用宿主桥接 API（推荐在主进程 contextBridge 暴露 saveFile）
   const bridge = (window as any).electronAPI
   if (bridge && typeof bridge.saveFile === 'function') {
-    await bridge.saveFile(ab, filename)
+    const result = await bridge.saveFile(ab, filename)
+    if (result?.canceled || result === false) throw new Error('已取消保存')
     return
   }
   // 渲染进程开启 nodeIntegration 时，直接用 fs 写入系统下载目录

@@ -1,7 +1,6 @@
 /**
  * 资源代理工具（复刻旧 index.js window.proxyUrl / proxyImgSrc / detectLocalProxy）
- * 中育资源默认走远端代理 zytbdownloadagent.loshop.com.cn，
- * 若本机运行 tbHelper 加速插件（127.0.0.1:5005）则切换到本地代理。
+ * 浏览器资源使用本机代理；Windows WebView2 通过原生网络桥读取官方资源。
  *
  * 内嵌 App 环境（IS_BROWSER=false，即 PLATFORM=electron/plus）：忽略跨域，
  * 资源与 API 直接请求，不走任何代理（见 USE_PROXY）。
@@ -46,6 +45,7 @@ export function proxyImgSrc(url: string): string {
  */
 export function isCorsExemptRuntime(): boolean {
   if (typeof window === 'undefined') return false
+  if ((window as any).nativeHost?.kind === 'webview2') return true
   if (location.protocol !== 'file:') return false
   if ('plus' in window) return true
   if ('electronAPI' in window) return true
@@ -123,7 +123,7 @@ export async function detectLocalProxy(): Promise<void> {
   } else if (windows) {
     toast(
       '加速插件未检测到',
-      '检测到您使用的是 Windows 系统，建议下载并运行加速插件以提升资源加载速度。不使用加速插件不会影响使用。',
+      '检测到您使用的是 Windows 系统，建议下载并运行加速插件以提升资源加载速度。浏览器下载及导出需启动本机资源代理；Windows WebView2 客户端无需此插件。',
       0,
       '<a href="https://wumama.lanzouw.com/iG92334tbeeb" target="_blank" rel="noopener" style="color:#fff;text-decoration:none;background:#007bff;padding:6px 12px;border-radius:4px;">下载 tbHelperInstaller.exe</a>'
     )

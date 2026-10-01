@@ -121,7 +121,9 @@ export async function request<T = any>(
   }
 
   if (raw) return resp as unknown as T
-  return (await resp.json()) as T
+  const json = await resp.json()
+  if (json?.success === false) throw new Error(json.error?.message || '官方接口拒绝该操作')
+  return json as T
 }
 
 /** ABP 框架接口返回结构：{ result, targetUrl, success, error, unAuthorizedRequest } */
