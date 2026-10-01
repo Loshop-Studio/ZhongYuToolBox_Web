@@ -106,4 +106,11 @@ assert.equal(progress.at(-1),100)
 uploads=[]; saves=[]
 await uploadPdfAsNote({file:input,noteName:'TEST_REPEAT',images:[{pageNum:1,blob:new Blob(['TEST_REPEAT'],{type:'image/webp'}),url:''}]})
 assert.equal(uploads.length,9, 'cached templates remain complete on repeated upload')
+const stableId = 'h' + 'g' + '0'.repeat(31)
+for (let attempt=0;attempt<2;attempt++) {
+  uploads=[]; saves=[]
+  await uploadPdfAsNote({file:input,noteName:'STABLE_RETRY',fileId:stableId,images:[{pageNum:1,blob:new Blob(['TEST_RETRY'],{type:'image/webp'}),url:''}]})
+  assert.equal(saves[1].body.fileId,stableId, 'batch retry reuses the same note identity')
+}
+await assert.rejects(()=>uploadPdfAsNote({file:input,noteName:'BAD_ID',fileId:'../../invalid',images:[{pageNum:1,blob:new Blob(['TEST']),url:''}]}),/文件 ID/)
 console.log('PASS: portrait/landscape/pre-rotated/square pages, original preserved, invalid PDF rejected; offline upload hashes, SHA chains, actual URLs, monotonic progress, retry and repeated upload. No real network requests.')
