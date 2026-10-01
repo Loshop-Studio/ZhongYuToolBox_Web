@@ -41,3 +41,8 @@
 现有来源只核实了 PictureLibrary/GetAllPicturesFromLibrary 与 AddPictureAsync。用户提供的 APK 不包含图库客户端，公开资料未提供可验证的永久删除请求。本版本不猜测删除路径和参数，不发送图库永久删除请求。
 
 PDF 排版使用 随包思源宋体，标准页宽下正文约 12 磅，1.5 倍行距，紧凑段落间距；长题优先利用当前页余量，空白行附近续页，答案部分仍另起一页。
+## 中育学生应用下载
+
+- GET `/api/services/app/AppStore/CheckUpdateAsync?packageName=<Android包名>&version=0&appType=0`：官方用户中心 APK 已核实 `packageName` / `version` / `appType` 参数。学生端使用 0；响应 `result` 包含 `name`、`packageName`、`versionName`、`versionCode`、`fileUrl`、`size`、`icon`、`disabled`。公开更新查询不携带账号 Token，也不登记设备或提交下载遥测。
+- 查询当前登录学校 API；未登录时默认省锡中。`result=null` 或 `disabled=true` 不提供下载；包名、类型不匹配时拒绝使用响应。
+- 从返回的中育资源地址下载 APK，核对记录大小和 APK 基本结构，生成本地 SHA-256。未验证平板安装、官方签名及账号课程权限。
