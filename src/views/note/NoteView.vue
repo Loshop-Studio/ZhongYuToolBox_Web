@@ -3,7 +3,7 @@
     <div v-if="['dir','all','search'].includes(activeTab)" class="selection-bar">
       <el-checkbox :model-value="allVisibleSelected" :indeterminate="someVisibleSelected && !allVisibleSelected" :disabled="moving || !visibleNotes.length" @change="selectVisible">选择当前页</el-checkbox>
       <span>已选 {{ selected.size }} 条</span><el-button link :disabled="moving || !selected.size" @click="selected.clear()">清空选择</el-button>
-      <NoteBatchMove :ids="[...selected]" @busy="moving = $event" @moved="afterMove" />
+      <NoteBatchMove v-if="selected.size" :ids="[...selected]" @busy="moving = $event" @moved="afterMove" />
     </div>
     <el-tabs v-model="activeTab" class="note-tabs" @tab-change="handleTabChange">
       <!-- 文件夹 -->
@@ -25,7 +25,11 @@
             v-for="note in dirNotes"
             :key="note.fileId"
             class="note-row"
-            @click="handleDirItemClick(note)"
+            @click="onRowClick(note)"
+            @contextmenu.prevent="onContextMenu(note, $event)"
+            @touchstart.passive="startPress(note)"
+            @touchend="endPress"
+            @touchmove="endPress"
           >
             <div class="row-left">
               <el-checkbox v-if="[1,12].includes(note.type)" :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
@@ -40,7 +44,7 @@
             </div>
             <div class="row-end">
               <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">{{ note.type === 0 ? '文件夹' : '笔记' }}</el-tag>
-              <NoteActions :note="note" @changed="refreshLists" />
+  
             </div>
           </div>
         </div>
@@ -60,7 +64,11 @@
             v-for="note in pagedAllNotes"
             :key="note.fileId"
             class="note-row"
-            @click="openPreview(note)"
+            @click="onRowClick(note)"
+            @contextmenu.prevent="onContextMenu(note, $event)"
+            @touchstart.passive="startPress(note)"
+            @touchend="endPress"
+            @touchmove="endPress"
           >
             <div class="row-left">
               <el-checkbox :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
@@ -68,7 +76,7 @@
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
-            <NoteActions :note="note" @changed="refreshLists" />
+
           </div>
         </div>
         <el-pagination
@@ -109,7 +117,11 @@
             v-for="note in pagedSearchResults"
             :key="note.fileId"
             class="note-row"
-            @click="openPreview(note)"
+            @click="onRowClick(note)"
+            @contextmenu.prevent="onContextMenu(note, $event)"
+            @touchstart.passive="startPress(note)"
+            @touchend="endPress"
+            @touchmove="endPress"
           >
             <div class="row-left">
               <el-checkbox :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
@@ -117,7 +129,7 @@
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
-            <NoteActions :note="note" @changed="refreshLists" />
+
           </div>
         </div>
         <el-pagination
@@ -139,7 +151,8 @@
       <el-tab-pane label="图片上传" name="images" lazy><PdfUploadPanel source="images" /></el-tab-pane>
       <el-tab-pane label="回收站" name="recycle"><NoteRecycleBin v-if="activeTab === 'recycle'" @changed="allLoaded = false" /></el-tab-pane>
     </el-tabs>
-  </div>
+    <NoteRowMenu v-if="menuNote" :note="menuNote" :x="menuX" :y="menuY" :mobile="menuMobile" @close="menuNote = null" @changed="onMenuChanged" />
+    </div>
 </template>
 
 <script setup lang="ts">
@@ -156,9 +169,58 @@ import {
   type NoteItem
 } from '@/api/note'
 import PdfUploadPanel from './PdfUploadPanel.vue'
-import NoteActions from '@/components/NoteActions.vue'
+import NoteRowMenu from '@/components/NoteRowMenu.vue'
+import { useIsMobile } from '@/composables/useIsMobile'
 
 const router = useRouter()
+const { isMobile } = useIsMobile()
+const menuNote = ref<NoteItem | null>(null)
+const menuX = ref(0)
+const menuY = ref(0)
+const menuMobile = ref(false)
+let pressTimer: number | undefined
+let pressConsumed = false
+
+function onContextMenu(note: NoteItem, ev: MouseEvent) {
+  ev.preventDefault()
+  menuNote.value = note
+  if (isMobile.value) {
+    menuMobile.value = true
+    pressConsumed = true
+  } else {
+    menuMobile.value = false
+    menuX.value = ev.clientX
+    menuY.value = ev.clientY
+  }
+}
+function openMobileMenu(note: NoteItem) {
+  menuNote.value = note
+  menuMobile.value = true
+  pressConsumed = true
+}
+function startPress(note: NoteItem) {
+  if (!isMobile.value) return
+  endPress()
+  pressTimer = window.setTimeout(() => openMobileMenu(note), 450)
+}
+function endPress() {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = undefined
+  }
+}
+function onRowClick(note: NoteItem) {
+  if (pressConsumed) {
+    pressConsumed = false
+    return
+  }
+  if (activeTab.value === 'dir') handleDirItemClick(note)
+  else openPreview(note)
+}
+function onMenuChanged() {
+  menuNote.value = null
+  refreshLists()
+}
 const selected = ref(new Set<string>()), moving = ref(false)
 const visibleNotes = computed(() => (activeTab.value === 'dir' ? dirNotes.value : activeTab.value === 'all' ? pagedAllNotes.value : pagedSearchResults.value).filter(n => [1,12].includes(n.type)))
 const allVisibleSelected = computed(() => !!visibleNotes.value.length && visibleNotes.value.every(n => selected.value.has(n.fileId)))

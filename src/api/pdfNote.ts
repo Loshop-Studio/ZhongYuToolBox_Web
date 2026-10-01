@@ -7,7 +7,7 @@
 import { aesEncrypt } from '@/utils/crypto'
 import { uploadFile } from '@/utils/oss'
 import { blobToMd5, convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
-import { prepareLandscapePdf } from '@/utils/pdfLandscape'
+import { prepareLandscapePdf, type RotationMode } from '@/utils/pdfLandscape'
 import { PLATFORM, IS_WINDOWS } from '@/config'
 import { NOTE_CANVAS } from '@/utils/noteCanvas'
 import { isPlus } from '@/utils/plusPicker'
@@ -284,8 +284,8 @@ export interface UploadPdfOptions {
   noteName: string
   /** 已转换好的图片（若已预先转换可传入，避免重复转换） */
   images?: PdfPageImage[]
-  /** Windows default: rotate each portrait page counterclockwise 90 degrees locally. */
-  autoLandscape?: boolean
+  /** 本地旋转模式（默认不旋转）；取代原 autoLandscape 的自动竖版旋转行为。 */
+  rotationMode?: RotationMode
   /** Stable ID for a batch item, reused on retry to avoid duplicate notes. */
   fileId?: string
   onProgress?: (percent: number, text: string) => void
@@ -329,11 +329,11 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
     if (!sessionUser || apiBase() !== sessionBase || getUserIdFromToken() !== sessionUser) throw new Error('账号或学校已切换，已停止笔记上传')
   }
   let uploadSource = file
-  if (!opts.images?.length && (opts.autoLandscape ?? IS_WINDOWS)) {
-    report(1, '正在本地检测 PDF 页面方向...')
-    const prepared = await prepareLandscapePdf(file)
+  if (!opts.images?.length && opts.rotationMode && opts.rotationMode !== 'none') {
+    report(1, '正在本地处理 PDF 页面方向...')
+    const prepared = await prepareLandscapePdf(file, opts.rotationMode)
     uploadSource = prepared.file
-    report(4, prepared.rotatedPages.length ? `已在本地旋转 ${prepared.rotatedPages.length} 页，准备上传` : '页面已为横版，准备上传')
+    report(4, `已在本地按所选方向处理 ${prepared.rotatedPages.length} 页，准备上传`)
   }
 
   // 步骤1：加载模板文件

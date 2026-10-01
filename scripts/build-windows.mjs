@@ -29,7 +29,7 @@ const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
 const output = path.join(root, 'release', `${dev ? 'webview2-dev' : qa ? 'webview2-qa' : 'windows-webview2'}-${stamp}`)
 fs.mkdirSync(output, { recursive: true })
 const framework = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319')
-const exe = path.join(output, '中育工具箱-aoki.exe')
+const exe = path.join(output, '中育Toolbox.exe')
 const refs = ['System.dll', 'System.Core.dll', 'System.Web.Extensions.dll', 'System.Net.Http.dll', 'System.Xaml.dll',
   'WPF/WindowsBase.dll', 'WPF/PresentationCore.dll', 'WPF/PresentationFramework.dll'].map(f => '/reference:' + path.join(framework, f))
 refs.push(...['Core', 'Wpf'].map(f => '/reference:' + path.join(sdk, `lib/net462/Microsoft.Web.WebView2.${f}.dll`)))
@@ -61,7 +61,6 @@ for (const name of ['vue', 'pinia', 'element-plus', 'pdf-lib', 'pdfjs-dist', 'ht
     if (fs.statSync(path.join(directory, file)).isFile()) fs.copyFileSync(path.join(directory, file), path.join(output, 'LICENSES', name + '-' + file))
   }
 }
-fs.copyFileSync('WINDOWS_AOKI.txt', path.join(output, 'WINDOWS_AOKI.txt'))
 execFileSync(exe, ['--self-test'], { windowsHide: true })
 fs.writeFileSync(dev ? '.local/latest-dev-windows-build.json' : '.local/latest-windows-build.json', JSON.stringify({ exe, output, qa, dev }, null, 2))
 console.log(`Windows WebView2 build: ${exe}`)

@@ -13,7 +13,7 @@ internal static class InstallerSmoke {
         Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", args[0]);
         string report = args[1];
         var app = new Application();
-        var type = Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "中育工具箱-aoki.exe")).GetType("ToolboxWindow", true);
+        var type = Assembly.LoadFrom(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "中育Toolbox.exe")).GetType("ToolboxWindow", true);
         var window = (Window)Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { false, null }, null);
         window.Opacity = 0; window.ShowInTaskbar = false; window.ShowActivated = false;
         var view = (WebView2)((Grid)window.Content).Children[0];

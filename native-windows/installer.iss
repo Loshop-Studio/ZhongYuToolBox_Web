@@ -2,19 +2,19 @@
 #ifndef AppVersion
   #error AppVersion is required
 #endif
-#define AppName "中育工具箱 · aoki"
-#define AppExe "中育工具箱-aoki.exe"
+#define AppName "中育Toolbox"
+#define AppExe "中育Toolbox.exe"
 
 [Setup]
 AppId={{79877EC8-D1D0-4FD6-BBA4-2F354332AF13}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
-AppPublisher=Loshop; co-author: aoki
+AppPublisher=Loshop
 AppPublisherURL=https://github.com/nickfox395/ZhongYuToolBox_Web
 AppSupportURL=https://github.com/nickfox395/ZhongYuToolBox_Web/issues
 AppUpdatesURL=https://github.com/nickfox395/ZhongYuToolBox_Web/releases
-DefaultDirName={localappdata}\Programs\ZhongYuToolbox-aoki
+DefaultDirName={localappdata}\Programs\ZhongYuToolbox
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=no
 DisableDirPage=no
@@ -24,7 +24,7 @@ ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 MinVersion=10.0
 OutputDir={#OutputDir}
-OutputBaseFilename=ZhongYuToolBox-aoki-{#FileVersion}-Windows-x64-Setup
+OutputBaseFilename=ZhongYuToolBox-{#FileVersion}-Windows-x64-Setup
 SetupIconFile={#AppIcon}
 UninstallDisplayIcon={app}\{#AppExe}
 UninstallDisplayName={#AppName}
@@ -36,8 +36,8 @@ CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
 VersionInfoVersion={#NumericVersion}
-VersionInfoDescription=中育工具箱 aoki Windows 安装程序
-VersionInfoCompany=Loshop; co-author: aoki
+VersionInfoDescription=中育Toolbox Windows 安装程序
+VersionInfoCompany=Loshop
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#NumericVersion}
 VersionInfoProductTextVersion={#AppVersion}
@@ -55,11 +55,11 @@ Source: "{#Bootstrapper}"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"
-Name: "{group}\卸载中育工具箱"; Filename: "{uninstallexe}"
+Name: "{group}\卸载中育Toolbox"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "启动中育工具箱"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#AppExe}"; Description: "启动中育Toolbox"; Flags: nowait postinstall skipifsilent
 
 [Code]
 const

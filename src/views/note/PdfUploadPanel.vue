@@ -32,6 +32,15 @@
           </div>
         </el-form-item>
 
+        <el-form-item label="旋转">
+          <el-select v-model="rotationMode" :disabled="uploading || preparing" style="width: 220px">
+            <el-option label="不旋转" value="none" />
+            <el-option label="顺时针 90°" value="cw90" />
+            <el-option label="逆时针 90°" value="ccw90" />
+            <el-option label="180°" value="180" />
+          </el-select>
+        </el-form-item>
+
         <div v-if="!imageMode && pdfFiles.length" class="pdf-queue">
           <p class="image-help">每个 PDF 单独保存为一条笔记，按队列在本机转横版并上传。成功项不会重复上传；失败项可重试。</p>
           <div v-for="(job,index) in pdfFiles" :key="job.id" class="pdf-queue-row">
@@ -44,13 +53,10 @@
         </div>
 
         <div v-if="imageMode" class="image-selection">
-          <p class="image-help">每张图片一页，按下面的顺序合成 PDF。竖版页逆时针旋转 90°，手动旋转每次逆时针 90°，手动设置后不再自动旋转该页；原图片不修改。支持 PNG、JPG、WebP；超过 4096 像素的长边等比例缩小。</p>
+          <p class="image-help">每张图片一页，按下面的顺序合成 PDF。可用上方“旋转”下拉框统一设置方向（不旋转 / 顺时针 90° / 逆时针 90° / 180°）；原图片不修改。支持 PNG、JPG、WebP；超过 4096 像素的长边等比例缩小。</p>
           <div v-for="(item, index) in imageFiles" :key="item.id" class="image-selection-row">
-            <img :src="item.url" :alt="item.file.name" :style="{transform: `rotate(${-90 * (item.rotation ?? 0)}deg)`}" />
+            <img :src="item.url" :alt="item.file.name" :style="{transform: `rotate(${modeDeg}deg)`}" />
             <span class="image-file-name">{{ index + 1 }}. {{ item.file.name }}</span>
-            <el-tag size="small">{{ item.rotation === null ? '自动横版' : '逆时针 ' + item.rotation * 90 + '°' }}</el-tag>
-            <el-button :aria-label="'逆时针旋转图片 ' + (index + 1)" @click="rotateImage(index)">↶ 90°</el-button>
-            <el-button v-if="item.rotation !== null" @click="resetRotation(index)">自动</el-button>
             <el-button :disabled="uploading || preparing || index === 0" :aria-label="'上移图片 ' + (index + 1)" @click="moveImage(index, -1)">上移</el-button>
             <el-button :disabled="uploading || preparing || index === imageFiles.length - 1" :aria-label="'下移图片 ' + (index + 1)" @click="moveImage(index, 1)">下移</el-button>
             <el-button :aria-label="'移除图片 ' + (index + 1)" @click="removeImage(index)">移除</el-button>
@@ -101,10 +107,10 @@
       <el-alert type="info" :closable="false" class="usage">
         <template #title>使用说明</template>
         <ul class="usage-list">
-          <li>Windows 版选择 PDF 后，在本机检测方向并逆时针旋转竖版页，整页等比例放入横版笔记画布，原文件不被覆盖。</li>
+          <li>Windows 版选择 PDF 后，按“旋转”下拉框的设置在本机处理页面方向，整页等比例放入横版笔记画布，原文件不被覆盖。</li>
           <li v-if="imageMode">直接开始上传时，会先在本机按当前顺序合成 PDF。生成并预览是可选步骤。</li>
           <li>预览显示处理后的前 5 页，也可以先保存生成的 PDF 到本机。</li>
-          <li>点击“开始上传”后，在本地转换页面图片，再上传并保存到当前账号的云笔记。</li>
+          <li>点击"开始上传"后，在本地转换页面图片，再上传并保存到当前账号的云笔记。</li>
           <li>上传完成后可下载页面图片 ZIP；请保持网络连接和页面开启。</li>
         </ul>
       </el-alert>
@@ -120,7 +126,7 @@ import { uploadPdfAsNote, generateCustomFileId } from '@/api/pdfNote'
 import { runNoteUploadQueue, type NoteUploadJob } from '@/utils/noteUploadQueue'
 import { accountKey } from '@/utils/localData'
 import { convertPdfToImages, zipBlobs, type PdfPageImage } from '@/utils/pdf'
-import { prepareLandscapePdf } from '@/utils/pdfLandscape'
+import { prepareLandscapePdf, type RotationMode } from '@/utils/pdfLandscape'
 import { PLATFORM, IS_WINDOWS } from '@/config'
 import { NOTE_CANVAS } from '@/utils/noteCanvas'
 import { saveBlobFile } from '@/utils/saveFile'
@@ -130,7 +136,7 @@ import { formatError, logError } from '@/utils/errorText'
 
 const props = withDefaults(defineProps<{ source?: 'pdf' | 'images' }>(), { source: 'pdf' })
 const imageMode = computed(() => props.source === 'images')
-const imageFiles = ref<Array<{id: number; file: File; url: string; rotation: number | null}>>([])
+const imageFiles = ref<Array<{id: number; file: File; url: string}>>([])
 const pdfFiles = ref<NoteUploadJob[]>([]), stopQueue = ref(false)
 let disposed = false
 let nextImageId = 0
@@ -141,7 +147,15 @@ const currentFile = ref<File | null>(null)
 const preparedPdf = ref<File | null>(null)
 const preparing = ref(false)
 const rotatedPages = ref<number[]>([])
-const orientationText = ref(imageMode.value ? '图片按各自的方向设置在本机生成 PDF；自动模式会将竖版页逆时针旋转 90°。' : '竖版页面会在本机逆时针旋转 90°，横版及方形页面保持不变。')
+const orientationText = ref(imageMode.value
+  ? '图片按"旋转"下拉框的设置在本机合成 PDF；原图片不修改。'
+  : '选择 PDF 后会按"旋转"下拉框的设置在本机处理页面方向，原文件不被修改；默认不旋转。')
+const rotationMode = ref<RotationMode>('none')
+const modeText = computed(() => ({ none: '不旋转', cw90: '顺时针 90°', ccw90: '逆时针 90°', '180': '180°' } as Record<RotationMode, string>)[rotationMode.value])
+const modeDeg = computed(() => ({ none: 0, cw90: 90, ccw90: -90, '180': 180 } as Record<RotationMode, number>)[rotationMode.value])
+function modeToQuarter(mode: RotationMode): number {
+  return ({ none: 0, cw90: 3, ccw90: 1, '180': 2 } as Record<RotationMode, number>)[mode]
+}
 let selectionRevision = 0
 const uploading = ref(false)
 const progressPercent = ref(0)
@@ -175,13 +189,13 @@ async function applyFile(file: File) {
   const revision = ++selectionRevision
   preparing.value = true
   try {
-    const result = await prepareLandscapePdf(file)
+    const result = await prepareLandscapePdf(file, rotationMode.value)
     if (revision !== selectionRevision) return
     preparedPdf.value = result.file
     rotatedPages.value = result.rotatedPages
     orientationText.value = result.rotatedPages.length
-      ? `共 ${result.totalPages} 页，已在本机旋转 ${result.rotatedPages.length} 张竖版页面。原文件未修改。`
-      : `共 ${result.totalPages} 页，没有竖版页面，保持原方向。`
+      ? `共 ${result.totalPages} 页，已在本机按"${modeText.value}"旋转全部页面。原文件未修改。`
+      : `共 ${result.totalPages} 页，未做旋转。`
     const preview = await convertPdfToImages(result.file, undefined, {maxPages: 5, canvasSize: {width: NOTE_CANVAS.width / 4, height: NOTE_CANVAS.height / 4}})
     if (revision === selectionRevision) buildPreview(preview)
   } catch (error: any) {
@@ -223,7 +237,7 @@ function addPdfs(files:File[]) {
     pdfFiles.value.push({id:generateCustomFileId(),file,name:file.name.replace(/\.pdf$/i,''),status:'pending',percent:0,error:''})
   }
   if (pdfFiles.value.length === 1) { noteName.value = pdfFiles.value[0].name; applyFile(pdfFiles.value[0].file) }
-  else { currentFile.value = null; preparedPdf.value = null; clearPreview(); progressStatus.value = undefined; progressPercent.value = 0; progressText.value = `已选择 ${pdfFiles.value.length} 个 PDF，等待批量上传`; orientationText.value = '上传时逐个在本机处理方向，不修改原文件。' }
+  else { currentFile.value = null; preparedPdf.value = null; clearPreview(); progressStatus.value = undefined; progressPercent.value = 0; progressText.value = `已选择 ${pdfFiles.value.length} 个 PDF，等待批量上传`; orientationText.value = '上传时按"旋转"下拉框的设置逐个在本机处理方向，不修改原文件。' }
 }
 function removePdf(index:number) {
   if (preparing.value || uploading.value) return
@@ -268,18 +282,7 @@ function addImages(files: File[]) {
   const newNote = !imageFiles.value.length
   invalidateImagePdf()
   if (newNote || !noteName.value) noteName.value = files[0].name.replace(/\.[^.]+$/, '')
-  imageFiles.value.push(...files.map(file => ({id: ++nextImageId, file, rotation: null, url: URL.createObjectURL(file)})))
-}
-function rotateImage(index: number) {
-  if (preparing.value || uploading.value) return
-  const item = imageFiles.value[index]
-  item.rotation = ((item.rotation ?? 0) + 1) % 4
-  invalidateImagePdf()
-}
-function resetRotation(index: number) {
-  if (preparing.value || uploading.value) return
-  imageFiles.value[index].rotation = null
-  invalidateImagePdf()
+  imageFiles.value.push(...files.map(file => ({id: ++nextImageId, file, url: URL.createObjectURL(file)})))
 }
 function moveImage(index: number, delta: number) {
   if (preparing.value || uploading.value || index + delta < 0 || index + delta >= imageFiles.value.length) return
@@ -304,7 +307,7 @@ async function prepareImages(showPreview: boolean): Promise<File | null> {
       (current, total) => {
         orientationText.value = '正在本地合成 PDF：' + current + '/' + total
         if (uploading.value) { progressPercent.value = Math.round(10 * current / total); progressText.value = orientationText.value }
-      }, conversionAbort.signal, imageFiles.value.map(item => item.rotation))
+      }, conversionAbort.signal, imageFiles.value.map(() => modeToQuarter(rotationMode.value)))
     if (revision !== selectionRevision) return null
     preparedPdf.value = file
     currentFile.value = file
@@ -357,7 +360,7 @@ async function handleUpload() {
     const result = await uploadPdfAsNote({
       file: preparedPdf.value || currentFile.value,
       noteName: uploadName,
-      autoLandscape: !preparedPdf.value,
+      rotationMode: 'none',
       onProgress: (p, t) => {
         progressPercent.value = Math.round(needsImageConversion ? 10 + 0.9 * p : p)
         progressText.value = t
@@ -390,9 +393,9 @@ async function uploadPdfs() {
     const result = await runNoteUploadQueue(jobs,{isActive,shouldStop:()=>stopQueue.value,
       upload:async (job,onProgress) => {
         onProgress(1,'正在本地检查页面方向')
-        const source = currentFile.value === job.file && preparedPdf.value ? preparedPdf.value : IS_WINDOWS ? (await prepareLandscapePdf(job.file)).file : job.file
+        const source = currentFile.value === job.file && preparedPdf.value ? preparedPdf.value : IS_WINDOWS ? (await prepareLandscapePdf(job.file, rotationMode.value)).file : job.file
         if (!isActive()) throw new Error('账号已变更或页面已关闭')
-        return await uploadPdfAsNote({file:source,noteName:job.name.trim(),fileId:job.id,autoLandscape:false,onProgress})
+        return await uploadPdfAsNote({file:source,noteName:job.name.trim(),fileId:job.id,rotationMode:'none',onProgress})
       },onProgress:(percent,text) => { progressPercent.value = percent; progressText.value = text },
       onResult:(job,result) => { if (!disposed) { noteName.value = job.name; images.value = result; buildPreview(result) } }
     })

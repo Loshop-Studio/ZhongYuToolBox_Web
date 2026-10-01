@@ -86,7 +86,7 @@ export async function createMistakePdf(subject: string, questions: ExportQuestio
   onProgress?: (current: number, total: number) => void, signal?: AbortSignal): Promise<Blob> {
   if (!questions.length) throw new Error('该科目暂无可导出的错题')
   const pdf = await PDFDocument.create()
-  pdf.setTitle(subject + ' - 错题本'); pdf.setAuthor('Loshop; co-author: aoki')
+  pdf.setTitle(subject + ' - 错题本'); pdf.setAuthor('Loshop')
   const width = 595.28, height = 841.89, margin = 32, bottom = height - margin - 20
   let page = pdf.addPage([width, height]), y = margin, done = 0
   const sections = mistakePdfSections(subject, questions, answers), total = questions.length * sections.length
@@ -118,6 +118,6 @@ export async function createMistakePdf(subject: string, questions: ExportQuestio
     for (const question of section.questions) { await append(question); onProgress?.(++done,total) }
   }
   const font = await pdf.embedFont(StandardFonts.Helvetica)
-  pdf.getPages().forEach((page, index, pages) => page.drawText(`${index + 1} / ${pages.length}   ZhongYuToolBox | aoki`, { x: margin, y: 18, size: 9, font, color: rgb(.4, .4, .4) }))
+  pdf.getPages().forEach((page, index, pages) => page.drawText(`${index + 1} / ${pages.length}   中育Toolbox`, { x: margin, y: 18, size: 9, font, color: rgb(.4, .4, .4) }))
   return new Blob([Uint8Array.from(await pdf.save()).buffer], { type: 'application/pdf' })
 }

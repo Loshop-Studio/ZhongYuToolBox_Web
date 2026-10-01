@@ -6,7 +6,7 @@
   font-display: swap;
 }
 /* Screen approximations inspired by Quiet Violet and Cloud Dancer, not print colour specifications. */
-:root.windows-edition, #app .windows-ui {
+:root.aoki-edition {
   --violet: #a693ac;
   --cloud: #f0eee9;
   --canvas: #f0eee9;
@@ -46,7 +46,7 @@
   color: var(--ink);
   background: var(--canvas);
 }
-:root.windows-edition.dark {
+:root.aoki-edition.dark {
   --canvas: #1c191f;
   --surface: #26212a;
   --surface-soft: #342c39;
@@ -63,7 +63,7 @@
   color-scheme: dark;
 }
 /* Variables on the shell inherit from html, including system dark-mode changes. */
-:root.windows-edition.dark #app .windows-ui {
+:root.aoki-edition.dark {
   --canvas: #1c191f; --surface: #26212a; --surface-soft: #342c39;
   --ink: #f0eee9; --muted: #c0b5c7; --line: #483d4f;
   --accent: #cbb2d4; --accent-soft: #44344e;
@@ -72,13 +72,74 @@
   --el-color-primary-dark-2: #dec9e4;
   color-scheme: dark;
 }
-.windows-edition body { margin: 0; background: var(--canvas); }
-.windows-edition button, .windows-edition input, .windows-edition textarea,
+
+/* ===== Aero 皮肤（亮/暗）：蓝色调，无衬线字体 ===== */
+:root.aero-edition {
+  --violet: #2f6fb0;
+  --cloud: #f4f7fb;
+  --canvas: #f4f7fb;
+  --surface: #ffffff;
+  --surface-soft: #e9eef5;
+  --ink: #1f2933;
+  --muted: #5c6b7a;
+  --line: #d8e0ea;
+  --accent: #2f6fb0;
+  --accent-soft: #e3edf8;
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: #5b8fc4;
+  --el-color-primary-light-5: #87aed3;
+  --el-color-primary-light-7: #b3cbe4;
+  --el-color-primary-light-8: #c9dcec;
+  --el-color-primary-light-9: var(--accent-soft);
+  --el-color-primary-dark-2: #255a90;
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink);
+  --el-text-color-secondary: var(--muted);
+  --el-text-color-placeholder: var(--muted);
+  --el-bg-color: var(--surface);
+  --el-bg-color-page: var(--canvas);
+  --el-bg-color-overlay: var(--surface);
+  --el-fill-color: var(--surface-soft);
+  --el-fill-color-light: var(--surface-soft);
+  --el-fill-color-lighter: var(--canvas);
+  --el-fill-color-blank: var(--surface);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-radius-base: 8px;
+  --el-font-family: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  color-scheme: light;
+  font-family: var(--el-font-family);
+  font-synthesis: none;
+  color: var(--ink);
+  background: var(--canvas);
+}
+:root.aero-edition.dark {
+  --canvas: #1b2026;
+  --surface: #252b33;
+  --surface-soft: #2f3741;
+  --ink: #e8edf2;
+  --muted: #9aa7b4;
+  --line: #3a444f;
+  --accent: #5aa0e6;
+  --accent-soft: #243447;
+  --el-color-primary-light-3: #6fb0ec;
+  --el-color-primary-light-5: #417fb5;
+  --el-color-primary-light-7: #2e577a;
+  --el-color-primary-light-8: #2a4d6e;
+  --el-color-primary-dark-2: #8cc1f0;
+  color-scheme: dark;
+}
+
+.aoki-edition body, .aero-edition body { margin: 0; background: var(--canvas); }
+.aoki-edition button, .aoki-edition input, .aoki-edition textarea,
+.aero-edition button, .aero-edition input, .aero-edition textarea,
 #app .windows-ui button, #app .windows-ui input { font-family: var(--el-font-family); }
 #app .windows-ui .bg-cover { display: none; }
+.layout-root.is-plain .bg-cover { display: none; }
 #app .windows-ui .aside { background: var(--surface); border-right: 1px solid var(--line); transition: width 220ms cubic-bezier(.32,.72,0,1); scrollbar-width: thin; overflow-x: hidden; }
 #app .windows-ui .brand { height: 88px; min-height: 88px; padding: 0 22px; justify-content: flex-start; gap: 12px; border: 0; color: var(--ink); box-sizing: border-box; }
-#app .windows-ui .edition-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; background: var(--violet); color: #29242d; font-size: 26px; }
+#app .windows-ui .edition-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; background: var(--accent); color: #29242d; font-size: 26px; }
 #app .windows-ui .edition-app-icon { width:36px; height:36px; flex-shrink:0; }
 #app .windows-ui .brand { transition: padding 220ms cubic-bezier(.32,.72,0,1), gap 220ms cubic-bezier(.32,.72,0,1); }
 #app .windows-ui .aside.is-collapsed .brand { padding: 0 18px; gap: 0; }
@@ -125,7 +186,6 @@
 #app .windows-ui .login-page { min-height: 0; justify-content: flex-start; align-items: flex-start; }
 #app .windows-ui .login-card { width: 540px; max-width: 100%; }
 #app .windows-ui .login-card .card-title { color: var(--ink); font-size: 26px; }
-#app .windows-ui .login-intro { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.6; }
 #app .windows-ui .login-card .el-button--primary { height: 48px; }
 #app .windows-ui .note-tabs { border-radius: 24px; overflow: hidden; border-color: var(--line); background: var(--surface); }
 #app .windows-ui .note-tabs .el-tabs__header { background: var(--surface); }
@@ -155,5 +215,5 @@
   #app .windows-ui .el-button:active { transform: none; }
 }
 
-#app .windows-ui .theme-select { width: 132px; }
+#app .windows-ui .theme-select { width: 150px; }
 #app .windows-ui .theme-select .el-select__wrapper { min-height: 36px; font-size: 14px; }

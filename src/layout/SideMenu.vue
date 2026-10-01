@@ -5,9 +5,9 @@
     :collapse="collapse"
     :collapse-transition="false"
     @select="onSelect"
-    :background-color="light ? 'var(--surface)'  : '#1f2937'"
-    :text-color="light ? 'var(--muted)'  : '#cbd5e1'"
-    :active-text-color="light ? 'var(--accent)'  : '#ffffff'"
+    :background-color="plain ? undefined : (light ? 'var(--surface)' : '#1f2937')"
+    :text-color="plain ? undefined : (light ? 'var(--muted)' : '#cbd5e1')"
+    :active-text-color="plain ? undefined : (light ? 'var(--accent)' : '#ffffff')"
   >
     <el-menu-item v-for="item in items" :key="item.index" :index="item.index" :aria-label="item.title" :class="{ 'is-support': item.index === '/donate', 'is-section-start': light && ['/advance', '/donate'].includes(item.index) }" @click="onClick(item.index)">
       <el-icon><component :is="item.icon" /></el-icon>
@@ -21,7 +21,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MENU_ITEMS } from './menuItems'
 
-const props = defineProps<{ collapse: boolean; light?: boolean }>()
+const props = defineProps<{ collapse: boolean; light?: boolean; plain?: boolean }>()
 const emit = defineEmits<{ (e: 'select'): void }>()
 const router = useRouter()
 const route = useRoute()

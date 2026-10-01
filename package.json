@@ -1,9 +1,9 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.5-aoki",
+  "version": "0.0.7",
   "private": true,
-  "author": "Loshop; co-author: aoki",
-  "description": "ZhongYuToolBox Windows WebView2 shell, themes, local image/PDF conversion",
+  "author": "Loshop",
+  "description": "Next Gen ZhongYuToolBox",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {

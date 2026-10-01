@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-root" :class="{ 'windows-ui': isWindowsEdition }">
+  <div class="layout-root" :class="{ 'windows-ui': showEditionUI, 'is-plain': isLoshopPlain }">
     <!-- 背景封面氛围 -->
     <div class="bg-cover" :style="{ backgroundImage: `url(${bgUrl})` }"></div>
 
@@ -26,12 +26,12 @@
       <!-- 侧边栏（桌面端常驻） -->
       <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed, 'instant-collapse': instantCollapse }">
         <div class="brand">
-          <img v-if="isWindowsEdition" :src="`${baseUrl}icon.svg`" class="edition-app-icon" alt="中育工具箱 aoki" />
+          <img v-if="showEditionUI" :src="`${baseUrl}icon.png`" class="edition-app-icon" alt="中育Toolbox" />
           <img v-else :src="`${baseUrl}icon.png`" class="brand-icon" alt="中育ToolBox" />
-          <div v-if="isWindowsEdition" class="edition-brand-text" :aria-hidden="collapsed"><strong>中育工具箱</strong><small>学习工作空间</small></div>
+          <div v-if="showEditionUI" class="edition-brand-text" :aria-hidden="collapsed"><strong>中育Toolbox</strong><small>学习工作空间</small></div>
         </div>
-        <SideMenu :collapse="collapsed" :light="isWindowsEdition" />
-        <div v-if="isWindowsEdition" class="edition-sidebar-footer" :aria-hidden="collapsed">原作者 {{ EDITION.originalAuthor }}<br>Co-author · {{ EDITION.coAuthor }}</div>
+        <SideMenu :collapse="collapsed" :light="showEditionUI" :plain="isLoshopPlain" />
+        <div v-if="showEditionUI" class="edition-sidebar-footer" :aria-hidden="collapsed">作者 {{ EDITION.originalAuthor }}</div>
       </el-aside>
 
       <!-- 主区域 -->
@@ -42,12 +42,15 @@
             <Expand v-if="collapsed" />
             <Fold v-else />
           </el-icon></el-button>
-          <span class="header-title">中育工具箱</span>
+          <span class="header-title">中育Toolbox</span>
           <div class="header-right">
-            <el-select v-if="isWindowsEdition" v-model="themeMode" aria-label="外观模式" class="theme-select" @change="setThemeMode">
-              <el-option label="浅色" value="light" />
-              <el-option label="深色" value="dark" />
-              <el-option label="跟随系统" value="system" />
+            <el-select v-if="isWindowsEdition" v-model="currentTheme" aria-label="主题" class="theme-select" @change="setTheme">
+              <el-option label="Loshop 亮色" value="loshop-light" />
+              <el-option label="Loshop 深色" value="loshop-dark" />
+              <el-option label="aoki 亮色" value="aoki-light" />
+              <el-option label="aoki 深色" value="aoki-dark" />
+              <el-option label="Aero 亮色" value="aero-light" />
+              <el-option label="Aero 深色" value="aero-dark" />
             </el-select>
             <el-tag v-if="proxyLocal" type="success" size="small" effect="dark">本地加速已启用</el-tag>
             <el-button text :icon="User" @click="goLogin">
@@ -57,7 +60,7 @@
         </el-header>
 
         <el-main class="content" :class="{ flush: hideHeader }" ref="mainRef">
-          <div v-if="isWindowsEdition && !hideHeader" class="edition-page-heading">
+          <div v-if="showEditionUI && !hideHeader" class="edition-page-heading">
             <div><div class="edition-breadcrumb">工作空间 <span>/</span> {{ currentTitle }}</div><h1>{{ currentTitle }}</h1><p>{{ currentDescription }}</p></div>
             <el-tag :type="auth.isLoggedIn ? 'success' : 'info'" round effect="plain">{{ auth.isLoggedIn ? '账号已登录' : '账号未登录' }}</el-tag>
           </div>
@@ -69,7 +72,7 @@
               <component :is="Component" v-else :key="String(route.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
             </transition>
           </router-view>
-          <footer v-if="isWindowsEdition && !hideHeader" class="edition-footer"><span>原作者 {{ EDITION.originalAuthor }} · Co-author {{ EDITION.coAuthor }}</span><el-button text @click="router.push('/about')">关于与致谢</el-button></footer>
+          <footer v-if="showEditionUI && !hideHeader" class="edition-footer"><span>作者 {{ EDITION.originalAuthor }}</span><el-button text @click="router.push('/about')">关于与致谢</el-button></footer>
         </el-main>
       </el-container>
     </el-container>
@@ -119,7 +122,7 @@ import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/pr
 import { useIsMobile } from '@/composables/useIsMobile'
 import { PLATFORM, IS_WINDOWS } from '@/config'
 import { EDITION } from '@/config/edition'
-import { themeMode, setThemeMode } from '@/composables/useTheme'
+import { currentTheme, currentSkin, setTheme } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,10 +130,13 @@ const auth = useAuthStore()
 const proxy = useProxyStore()
 const { isMobile } = useIsMobile()
 const isWindowsEdition = IS_WINDOWS
+// 主题切换：仅 aoki/Aero 启用自定义外壳；Loshop 退回纯 Element Plus 默认布局。
+const showEditionUI = computed(() => isWindowsEdition && currentSkin.value !== 'loshop')
+const isLoshopPlain = computed(() => isWindowsEdition && currentSkin.value === 'loshop')
 const baseUrl = import.meta.env.BASE_URL
 const descriptions: Record<string, string> = {
   '/login': '管理账号，快速进入你的学习资源。', '/note': '浏览笔记与文件夹，将 PDF 整理到云端。',
-  '/exam': '查看测评任务、题目与分析。', '/donate': '支持原作者，帮助工具箱持续维护。',
+  '/exam': '查看测评任务、题目与分析。', '/donate': '支持作者，帮助工具箱持续维护。',
   '/about': '使用说明、项目致谢与本版本的贡献者。'
 }
 const currentDescription = computed(() => descriptions[route.path] || '在一个工作空间中管理你的学习资源。')
@@ -236,6 +242,10 @@ function onOpenDrawer() {
   z-index: 2;
   scrollbar-width: none; /* Firefox 隐藏滚动条 */
 }
+/* Loshop（纯 EP 默认）：去掉自定义深色侧栏背景 */
+.layout-root.is-plain .aside {
+  background: transparent;
+}
 .aside::-webkit-scrollbar {
   display: none; /* Chrome/Safari/Edge 隐藏滚动条 */
 }
@@ -259,11 +269,10 @@ function onOpenDrawer() {
   border-radius: 6px;
 }
 .header {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
+  background: var(--el-bg-color, #ffffff);
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid var(--el-border-color-light, #ebeef5);
   padding: 0 16px;
 }
 .collapse-btn {
@@ -284,7 +293,7 @@ function onOpenDrawer() {
   gap: 12px;
 }
 .content {
-  background: rgba(245, 247, 250, 0.82);
+  background: var(--el-bg-color-page, #f2f3f5);
   overflow-y: auto;
   padding: 20px;
   position: relative;

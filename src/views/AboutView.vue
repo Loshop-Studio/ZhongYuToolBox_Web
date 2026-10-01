@@ -1,12 +1,5 @@
 <template>
   <div class="about-page">
-    <el-card class="block" header="aoki fork · 新增功能">
-      <p class="muted">Windows 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
-      <div class="feature-list">
-        <section v-for="feature in forkFeatures" :key="feature.title"><h3>{{ feature.title }}</h3><p>{{ feature.description }}</p></section>
-      </div>
-      <p><a href="https://github.com/nickfox395/ZhongYuToolBox_Web/releases" target="_blank" rel="noopener noreferrer">下载本 fork 的 Windows 正式版</a></p>
-    </el-card>
     <el-card class="block" header="使用说明">
       <section class="usage">
         <h3>云笔记</h3>
@@ -17,9 +10,9 @@
           <li>点击笔记即可下载原始图片压缩包</li>
           <li>支持 <strong>PDF 上传</strong> 转存到云笔记</li>
           <li>Windows 版支持多张 PNG、JPG、WebP 图片在本机合成 PDF 后上传，可调整页面顺序。</li>
-          <li>每张图片可手动逆时针旋转 90°，连续点击循环切换方向；也可恢复自动方向。</li>
+          <li>图片与 PDF 均可使用“旋转”下拉框统一设置方向：不旋转 / 顺时针 90° / 逆时针 90° / 180°，原文件不被修改。</li>
           <li>笔记列表支持重命名、批量移动文件夹和移至中育官方回收站；回收站支持查看、单条和批量永久删除。恢复请使用官方客户端。</li>
-          <li>竖版页面逆时针旋转 90°，整页等比例放入横版画布，原文件不被修改。</li>
+
         </ul>
 
         <h3>在线专栏</h3>
@@ -94,8 +87,7 @@
     <el-card class="block" header="致谢">
       <p>感谢各位的使用，我们有缘再会。</p>
       <p>开发：Loshop</p>
-      <p>Co-author：{{ EDITION.coAuthor }}。本 fork 的贡献见上方独立功能列表。</p>
-      <p>本版本基于原项目独立改造，感谢 Loshop 与项目贡献者。原作者的署名及“支持作者”入口保留。</p>
+
       <p>界面字体：<a href="https://github.com/atelier-anchor/smiley-sans" target="_blank" rel="noopener noreferrer">得意黑 Smiley Sans · atelierAnchor</a>，按 SIL Open Font License 1.1 分发。</p>
       <p>PDF 正文字体：<a href="https://github.com/adobe-fonts/source-han-serif" target="_blank" rel="noopener noreferrer">思源宋体 · Adobe / Google</a>，按 SIL Open Font License 1.1 分发。</p>
       <p>设计参考：<a href="https://github.com/emilkowalski/skills" target="_blank" rel="noopener noreferrer">Emil Kowalski 的 Design Engineering</a> 与 <a href="https://wise.design/" target="_blank" rel="noopener noreferrer">Wise Design</a>。界面为本版本独立实现。</p>
@@ -121,14 +113,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { EDITION } from '@/config/edition'
-const forkFeatures = [
-  {title:'Windows 原生壳与界面',description:'WPF + 系统 WebView2；得意黑字体、紫白配色、浅色 / 深色 / 跟随系统，侧栏与页面过渡。保留支持原作者入口。'},
-  {title:'云笔记上传与整理',description:'多个 PDF 独立命名、排队上传与失败重试；图片本地合成 PDF、调整顺序及逆时针旋转；竖版 PDF 整页转横版。支持重命名、批量移动和回收站管理。'},
-  {title:'新测评与官方错题本',description:'自动读取当前页已完成作业的本人错题；手动确认后批量加入中育官方错题本，核对官方状态避免重复。支持单题及选中批量删除。'},
-  {title:'教辅式错题 PDF',description:'可导出选中题目或本科全部错题。题目连续编号，答案与解析在全部题目后另起一页，并保持对应编号。'},
-  {title:'本地处理与官方服务直连',description:'转换与离线加密分享在本机处理；学习数据直接访问学校官方接口，不依赖原作者的网页代理。选课嵌入页使用独立 WebView2。'}
-]
-
 interface UpdateEntry {
   date: string
   items: string[]
@@ -159,10 +143,6 @@ onMounted(loadChangelog)
 .block {
   margin-bottom: 16px;
 }
-.feature-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 12px; margin: 24px 0; }
-.feature-list section { padding: 18px; border: 1px solid var(--el-border-color); border-radius: 16px; }
-.feature-list h3 { margin: 0 0 10px; font-size: 18px; font-weight: 400; color: var(--el-color-primary); }
-.feature-list p { margin: 0; line-height: 1.8; color: var(--el-text-color-secondary); }
 .title {
   margin: 0 0 12px;
 }

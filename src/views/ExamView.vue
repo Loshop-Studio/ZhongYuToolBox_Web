@@ -1,6 +1,5 @@
 <template>
   <div class="exam-page">
-    <el-alert title="已完成作业会自动读取题目分析、识别本人错题。识别后直接点击“加入官方错题本”，无需逐个打开作业。" type="info" :closable="false" class="flow-tip" />
     <!-- 列表卡片 -->
     <el-card class="list-card" shadow="never">
       <div class="list-head">
@@ -143,7 +142,6 @@ onDeactivated(stop); onBeforeUnmount(stop)
   padding: 0;
   box-sizing: border-box;
 }
-.flow-tip { margin-bottom: 18px; }
 .recognition-progress { font-size:13px; color:var(--el-text-color-secondary); }
 .recognition-error { color:var(--el-color-danger); }
 .review-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:14px; }
