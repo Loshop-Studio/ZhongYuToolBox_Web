@@ -286,6 +286,8 @@ export interface UploadPdfOptions {
   images?: PdfPageImage[]
   /** Windows default: rotate each portrait page counterclockwise 90 degrees locally. */
   autoLandscape?: boolean
+  /** Stable ID for a batch item, reused on retry to avoid duplicate notes. */
+  fileId?: string
   onProgress?: (percent: number, text: string) => void
 }
 
@@ -341,7 +343,8 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
   const userId = getUserIdFromToken()
   assertSession()
   if (!userId) throw new Error('无法从登录信息获取用户 ID')
-  const customFileId = generateCustomFileId()
+  const customFileId = opts.fileId || generateCustomFileId()
+  if (!/^[a-z0-9]{33}$/.test(customFileId) || !/[g-z]/.test(customFileId.slice(1))) throw new Error('笔记文件 ID 无效')
   const timestamp = new Date().toLocaleString('zh-CN', {
     year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
     minute: '2-digit', second: '2-digit', hour12: false

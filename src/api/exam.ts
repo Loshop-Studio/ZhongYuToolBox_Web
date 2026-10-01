@@ -18,7 +18,7 @@ export interface ExamTask {
 }
 
 /** 分页拉取学生测评任务列表（复刻 fetchExams） */
-export async function getExamTasks(page: number, signal?: AbortSignal): Promise<{ items: ExamTask[]; totalCount: number }> {
+export async function getExamTasks(page: number, signal?: AbortSignal, taskListType = 4): Promise<{ items: ExamTask[]; totalCount: number }> {
   const skipCount = (page - 1) * PAGE_SIZE
   const resp = await request<any>('/api/services/app/Task/GetStudentTaskListAsync', {
     method: 'POST',
@@ -26,7 +26,7 @@ export async function getExamTasks(page: number, signal?: AbortSignal): Promise<
     body: JSON.stringify({
       maxResultCount: PAGE_SIZE,
       skipCount,
-      taskListType: 0
+      taskListType
     })
   })
   const result = unwrapResult<any>(resp)
@@ -55,11 +55,11 @@ export async function getQstAnswerView(qstId: number): Promise<string> {
 }
 
 /** 考试概览（复刻 fetchExamOverview） */
-export async function getExamOverview(examId: number): Promise<any> {
+export async function getExamOverview(examId: number, signal?: AbortSignal): Promise<any> {
   const resp = await request<any>(
     `/api/services/app/LearningSituations/GetExamOverviewAsync?examId=${examId}`,
     {
-      headers: {
+      signal, headers: {
         AppName: 'WebClient',
         AppVersion: '0'
       }
@@ -69,11 +69,11 @@ export async function getExamOverview(examId: number): Promise<any> {
 }
 
 /** 题目分析（复刻 fetchQuestionAnalysis） */
-export async function getQuestionAnalysis(examId: number): Promise<any> {
+export async function getQuestionAnalysis(examId: number, signal?: AbortSignal): Promise<any> {
   const resp = await request<any>(
     `/api/services/app/LearningSituations/GetQuestionAnalysisAsync?examId=${examId}`,
     {
-      headers: {
+      signal, headers: {
         AppName: 'WebClient',
         AppVersion: '0'
       }
