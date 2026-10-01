@@ -47,6 +47,7 @@ export async function renderQuestion(question: ExportQuestion, answers: boolean,
   checkAbort(signal)
   await loadMistakePrintFont(); checkAbort(signal)
   const element = document.createElement('div')
+  element.className = 'aoki-mistake-print'
   // 16.28 CSS px × (531.28 / 720) gives approximately 12 pt in the A4 PDF.
   // Source Han Serif CN is bundled under OFL, avoiding unavailable system fonts.
   element.style.cssText = 'position:fixed;left:-10000px;top:0;width:720px;padding:0;box-sizing:border-box;background:#fff;color:#111;font:16.28px/1.5 "Aoki PDF Song",serif;'
@@ -60,13 +61,25 @@ export async function renderQuestion(question: ExportQuestion, answers: boolean,
   const urls: string[] = []
   document.body.append(element)
   try {
+    const { prepareMistakeMath } = await import('./mistakeMath')
+    await prepareMistakeMath(content); checkAbort(signal)
     for (const image of [...element.querySelectorAll('img')]) {
       checkAbort(signal)
       const response = await fetch(resourceFetchUrl(image.src), { signal })
       if (!response.ok) throw new Error('题目图片读取失败：' + response.status)
       const url = URL.createObjectURL(await response.blob()); urls.push(url)
       image.src = url; image.style.cssText = 'max-width:100%;height:auto;object-fit:contain;'
+      // Preserve the editor's display width instead of enlarging high-DPI images.
+      const declaredWidth = Number(image.getAttribute('width')), declaredHeight = Number(image.getAttribute('height'))
       try { await image.decode() } catch { throw new Error('题目图片无法解码') }
+      if (declaredWidth > 0) image.style.width = declaredWidth + 'px'
+      else if (declaredHeight > 0) image.style.width = (declaredHeight * image.naturalWidth / image.naturalHeight) + 'px'
+      if (image.dataset.printWidth) image.style.width = image.dataset.printWidth
+      else if (image.dataset.printHeight) image.style.width = (parseFloat(image.dataset.printHeight) * parseFloat(getComputedStyle(image).fontSize) * image.naturalWidth / image.naturalHeight) + 'px'
+      // Inline bitmap formulas have no text baseline: align their centre with the
+      // surrounding text, instead of putting the image's bottom on the baseline.
+      if (image.getBoundingClientRect().height <= 4 * parseFloat(getComputedStyle(image).fontSize)
+        && image.parentElement?.textContent?.trim()) image.style.verticalAlign = 'middle'
     }
     await document.fonts.ready
     // Uniformly scale wide tables instead of clipping their right edge.
@@ -118,6 +131,7 @@ export async function createMistakePdf(subject: string, questions: ExportQuestio
     for (const question of section.questions) { await append(question); onProgress?.(++done,total) }
   }
   const font = await pdf.embedFont(StandardFonts.Helvetica)
-  pdf.getPages().forEach((page, index, pages) => page.drawText(`${index + 1} / ${pages.length}   中育Toolbox`, { x: margin, y: 18, size: 9, font, color: rgb(.4, .4, .4) }))
+  // Helvetica uses WinAnsi: keep the footer ASCII to avoid failing every export.
+  pdf.getPages().forEach((page, index, pages) => page.drawText(`${index + 1} / ${pages.length}   ZhongYuToolBox`, { x: margin, y: 18, size: 9, font, color: rgb(.4, .4, .4) }))
   return new Blob([Uint8Array.from(await pdf.save()).buffer], { type: 'application/pdf' })
 }

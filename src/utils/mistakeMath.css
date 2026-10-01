@@ -1,0 +1,8 @@
+/* KaTeX defaults to 1.21em. The PDF uses the same 1em / ~12pt as its Song body. */
+.aoki-mistake-print .katex { font-size: 1em; }
+/* A small optical correction for inline Latin math beside the CJK Song body.
+   Keep the whole formula together, so fractions and scripts retain their axis. */
+.aoki-mistake-print .aoki-print-formula:not(.aoki-print-display) { vertical-align: -0.08em; }
+.aoki-mistake-print .katex-display { margin: 4px 0; text-align: left; }
+.aoki-mistake-print .katex-display > .katex { text-align: left; }
+.aoki-mistake-print .katex .text .textrm { font-family: 'Aoki PDF Song', serif; }
