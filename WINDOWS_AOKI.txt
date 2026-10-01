@@ -12,8 +12,12 @@ WebView2 Runtime 官方说明：https://learn.microsoft.com/microsoft-edge/webvi
 
 架构：C# WPF 原生窗口 + 系统 WebView2，发布包不包含 Electron、Node 或 node_modules。
 浏览器渲染引擎仍然存在，由系统 WebView2 Runtime 提供。
-新版使用独立的用户数据目录，需要重新登录；不自动迁移旧 Electron 账号缓存。
+WebView2 版与旧 Electron 使用不同的用户数据目录，不自动迁移旧 Electron 账号缓存。
 用户数据：%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2
+同一 Windows 用户的各版便携包共享上述本地目录，重新解压或升级仍会记住登录状态。
+“便携”表示无需安装，不代表账号缓存跟随解压目录。发布包不包含这个用户数据目录。
+当前登录实现会在本地 WebView2 存储中保存 Token，以及供自动重登使用的账号和密码。
+在用户中心退出登录可删除应用保存的登录凭据；不会因升级自动清除当前账号。
 本地界面从 https://toolbox.local 加载，这个域名由宿主映射到随包 dist，不请求外部网页。
 选课/专栏使用独立的远端 WebView2，退出页面时释放；远端页面没有原生文件读写桥。
 HTTPS 保持证书校验。官方返回 HTTP 地址时沿用已经授权的 HTTP 连接。
