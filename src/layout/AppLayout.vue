@@ -137,7 +137,8 @@ const baseUrl = import.meta.env.BASE_URL
 const descriptions: Record<string, string> = {
   '/login': '管理账号，快速进入你的学习资源。', '/note': '浏览笔记与文件夹，将 PDF 整理到云端。',
   '/exam': '查看测评任务、题目与分析。', '/donate': '支持作者，帮助工具箱持续维护。',
-  '/about': '使用说明、项目致谢与本版本的贡献者。'
+  '/about': '使用说明、项目致谢与本版本的贡献者。',
+  '/apps': '从学校官方更新服务下载中育学生应用。'
 }
 const currentDescription = computed(() => descriptions[route.path] || '在一个工作空间中管理你的学习资源。')
 

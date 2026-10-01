@@ -39,6 +39,7 @@ export const MENU_ITEMS: MenuItem[] = [
   { index: '/mistake', title: '错题本', icon: Notebook },
   { index: '/quora', title: '随身答', icon: ChatDotRound },
   { index: '/linspirer', title: '领创', icon: Present },
+  { index: '/apps', title: '中育应用下载', icon: Download },
   { index: '/lesson', title: '优客畅学', icon: Reading },
   { index: '/advance', title: '高级选项', icon: Setting },
   { index: '/dev', title: '开发工具', icon: Tools },
