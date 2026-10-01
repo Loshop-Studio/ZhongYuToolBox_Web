@@ -1,6 +1,5 @@
 <template>
   <div class="mistake-page">
-    <PersonalMistakes />
     <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers">附答案与解析</el-checkbox><el-button :disabled="!activeBookId" :loading="exporting" @click="exportSubject">导出当前科目 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
     <el-empty v-if="!booksLoading && books.length === 0" description="暂无错题本" />
 
@@ -33,7 +32,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
-import PersonalMistakes from '@/components/PersonalMistakes.vue'
 import { createMistakePdf, type ExportQuestion } from '@/utils/mistakePdf'
 import { parseQuestionHtml } from '@/utils/questionHtml'
 import { getMistakeDetail, fetchQstHtml } from '@/api/mistake'

@@ -1,10 +1,10 @@
 <template>
   <div class="exam-page">
-    <PersonalMistakes :tasks="exams" />
+    <el-alert title="打开已完成作业 → 查看题目分析 → 返回本页 → 加入中育官方错题本" type="info" :closable="false" class="flow-tip" />
     <!-- 列表卡片 -->
     <el-card class="list-card" shadow="never">
       <div class="list-head">
-        <span class="list-title">学生测评任务</span>
+        <el-radio-group v-model="listType" @change="load(1)"><el-radio-button :value="4">已完成作业</el-radio-button><el-radio-button :value="1">待处理作业</el-radio-button><el-radio-button :value="2">全部作业</el-radio-button></el-radio-group>
         <span class="list-count" v-if="totalCount">共 {{ totalCount }} 条</span>
       </div>
 
@@ -14,12 +14,15 @@
           v-for="e in exams"
           :key="examKey(e)"
           class="exam-row"
-          :class="{ disabled: e.examState == 2 }"
           @click="openQuestions(e)"
         >
           <el-icon class="row-icon"><Document /></el-icon>
           <span class="row-name">{{ e.examName }}</span>
-          <el-tag v-if="e.examState == 2" type="info" size="small" effect="plain">已结束</el-tag>
+          <div v-if="reviewFor(e)" class="review-status" @click.stop>
+            <span>本人错题 {{ reviewFor(e)!.questionIds.length }} 题<span v-if="reviewFor(e)!.unmatched">，{{ reviewFor(e)!.unmatched }} 题无法匹配</span></span>
+            <el-button size="small" :disabled="!!syncing || !reviewFor(e)!.questionIds.length || !!reviewFor(e)!.unmatched" :loading="syncing === examKey(e)" @click="importWrong(e)">加入官方错题本</el-button>
+            <small v-if="reviewFor(e)!.message">{{ reviewFor(e)!.message }}</small>
+          </div>
           <el-icon class="row-arrow"><ArrowRight /></el-icon>
         </div>
       </div>
@@ -39,8 +42,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import PersonalMistakes from '@/components/PersonalMistakes.vue'
+import { ref, computed, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
+import { getExamReview, loadExamReviews, setExamReviewMessage } from '@/utils/examReview'
+import { syncExamMistakes } from '@/utils/examMistakes'
+import { accountKey } from '@/utils/localData'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, ArrowRight } from '@element-plus/icons-vue'
@@ -51,6 +56,23 @@ const exams = ref<ExamTask[]>([])
 const page = ref(1)
 const totalCount = ref(0)
 const loading = ref(false)
+const listType = ref(4), syncing = ref('')
+let abort: AbortController | undefined, requestAbort: AbortController | undefined
+let initialized = false
+function reviewFor(e: ExamTask) { try { return getExamReview(Number(e.examTaskId || e.id)) } catch { return undefined } }
+async function importWrong(e: ExamTask) {
+  if (syncing.value) return
+  const id = Number(e.examTaskId || e.id), key = accountKey()
+  syncing.value = examKey(e); abort = new AbortController()
+  try {
+    const result = await syncExamMistakes(id, key, abort.signal)
+    const message = result.pending ? `${result.pending} 题未同步，可重试` : `${result.total} 题已在官方错题本（本次新增 ${result.saved} 题）`
+    await setExamReviewMessage(id, message, key)
+    if (result.pending) ElMessage.warning(message); else ElMessage.success(message)
+  } catch (error) {
+    if (!abort.signal.aborted) { await setExamReviewMessage(id, (error as Error).message, key); ElMessage.error((error as Error).message) }
+  } finally { syncing.value = '' }
+}
 
 const totalPages = computed(() => Math.ceil(totalCount.value / PAGE_SIZE))
 
@@ -59,16 +81,20 @@ function examKey(e: ExamTask): string {
 }
 
 async function load(pageNo: number) {
+  requestAbort?.abort(); const controller = requestAbort = new AbortController()
   loading.value = true
   try {
-    const res = await getExamTasks(pageNo)
+    const res = await getExamTasks(pageNo, controller.signal, listType.value)
+    if (controller.signal.aborted) return
     exams.value = res.items
     totalCount.value = res.totalCount
     page.value = pageNo
+    initialized = true
+    await loadExamReviews(res.items.map(e => Number(e.examTaskId || e.id)))
   } catch (e: any) {
-    ElMessage.error('加载测评任务失败：' + (e.message || e))
+    if (!controller.signal.aborted) ElMessage.error('加载测评任务失败：' + (e.message || e))
   } finally {
-    loading.value = false
+    if (requestAbort === controller) loading.value = false
   }
 }
 
@@ -82,7 +108,12 @@ function openQuestions(e: ExamTask) {
   router.push(`/exam/${taskId}${e.examName ? `?name=${encodeURIComponent(e.examName)}` : ''}`)
 }
 
-onMounted(() => load(1))
+onActivated(() => {
+  if (!initialized || loading.value) load(page.value)
+  else loadExamReviews(exams.value.map(e => Number(e.examTaskId || e.id))).catch(error => ElMessage.error(error.message))
+})
+function stop() { abort?.abort(); requestAbort?.abort() }
+onDeactivated(stop); onBeforeUnmount(stop)
 </script>
 
 <style scoped>
@@ -92,6 +123,10 @@ onMounted(() => load(1))
   padding: 0;
   box-sizing: border-box;
 }
+.flow-tip { margin-bottom: 18px; }
+.review-status { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-size:14px; }
+.review-status small { width:100%; color:var(--el-text-color-secondary); }
+.exam-row { flex-wrap:wrap; }
 .list-card {
   border-radius: 8px;
 }
