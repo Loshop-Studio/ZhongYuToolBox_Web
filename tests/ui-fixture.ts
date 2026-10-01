@@ -4,11 +4,15 @@ const base = 'http://sxz.api.zykj.org'
 localStorage.setItem('token','test.'+btoa(JSON.stringify({sub:'QA_UI_ONLY',exp:Math.floor(Date.now()/1000)+3600}))+'.test')
 for(const [key,value] of Object.entries({apiBaseUrl:base,userId:'QA_UI_ONLY',realName:'演示账号 · 测试数据',photo:'icon.png',schoolCode:'sxz'})) localStorage.setItem(key,value)
 Object.defineProperty(window,'nativeHost',{value:{kind:'webview2',setThemeDark:async()=>{}}})
+Object.defineProperty(window,'electronAPI',{value:{saveFile:async(bytes:ArrayBuffer,name:string)=>{
+  document.getElementById('fixture-export')?.remove()
+  const link=document.createElement('a');link.id='fixture-export';link.textContent='测试导出文件：'+name;link.download=name;link.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));link.style.cssText='position:fixed;bottom:12px;right:24px;z-index:9999;background:#fff;padding:12px;border:1px solid #705776;color:#705776';document.body.append(link);return {canceled:false}
+}}})
 const canvas=document.createElement('canvas');canvas.width=720;canvas.height=450
 const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,720,450);ctx.fillStyle='#705776';ctx.font='30px sans-serif';ctx.fillText('x² + y² = 1',60,70);ctx.strokeStyle='#a693ac';ctx.lineWidth=4;ctx.beginPath();ctx.arc(360,240,130,0,2*Math.PI);ctx.stroke()
 const image=canvas.toDataURL('image/png')
 const noteTemplate={type:1,fileUrl:'https://fixture.invalid/note',parentId:'0',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,updateTime:'2026-10-01'}
-const notes=[{...noteTemplate,fileId:'QA_NOTE',fileName:'数学 · 几何复习'},{...noteTemplate,fileId:'QA_NOTE_2',fileName:'物理 · 力学复习'},{...noteTemplate,type:0,fileId:'QA_FOLDER',fileName:'归档'}]
+let notes=[{...noteTemplate,fileId:'QA_NOTE',fileName:'数学 · 几何复习'},{...noteTemplate,fileId:'QA_NOTE_2',fileName:'物理 · 力学复习'},{...noteTemplate,type:0,fileId:'QA_FOLDER',fileName:'归档'},{...noteTemplate,fileId:'QA_RECYCLE',fileName:'已废弃 · 几何草稿',isRecycleBin:true}]
 const task={id:77,examTaskId:77,examId:991,examName:'数学 · 单元测评（离线演示）',topicName:'数学',enableScore:true,groups:[{questions:[{id:11,originScore:2,myScore:10,score:10,completed:false,number:'1'},{id:12,originScore:1,score:5,number:'2'}]}]}
 const html='<div class="stem"><p>已知 x² + y² = 1，求图形面积。</p><img src="'+image+'"></div><div class="answers"><p>答案：π。</p></div><div class="analysis"><p>半径为 1，由圆的面积公式可得。</p></div>'
 let mistakeItems=[{id:1,source:'数学 · 单元测评',stemShoot:image,creationTime:'2026-10-01'},{id:2,source:'数学 · 综合训练',stemShoot:image,creationTime:'2026-09-30'}]
@@ -23,7 +27,8 @@ window.fetch=async(url,options)=>{
   if(address.startsWith('data:')||address.startsWith('blob:')||address.startsWith('/')||address.startsWith('http://127.0.0.1:5175/'))return originalFetch(url,options)
   if(address.includes('/CloudNotes/api/Notes/Update')){const payload=JSON.parse(aesDecrypt(String(options?.body)));const note=notes.find(n=>n.fileId===payload.fileId)!;Object.assign(note,payload);note.version++;return json({code:0,data:aesEncrypt(JSON.stringify({version:note.version}))})}
   if(address.includes('/CloudNotes/api/Notes/MoveToRecycleBin')){notes[0].isRecycleBin=true;return json({code:0})}
-  if(address.includes('/CloudNotes/api/Notes/')){const parent=address.includes('GetByParentId') ? new URLSearchParams(aesDecrypt(new URL(address).search.slice(1))).get('parentid') : null;return json({code:0,data:aesEncrypt(JSON.stringify({noteList:notes.filter(n=>!n.isRecycleBin && (!parent || n.parentId===parent))}))})}
+  if(address.includes('/CloudNotes/api/Notes/Delete')){if(new URL(location.href).searchParams.get('deleteFailure')==='1')return json({code:1001,msg:'离线模拟：官方拒绝删除'});const ids=JSON.parse(aesDecrypt(String(options?.body)));notes=notes.filter(n=>!ids.includes(n.fileId));return json({code:0})}
+  if(address.includes('/CloudNotes/api/Notes/')){const parent=address.includes('GetByParentId') ? new URLSearchParams(aesDecrypt(new URL(address).search.slice(1))).get('parentid') : null;return json({code:0,data:aesEncrypt(JSON.stringify({noteList:notes.filter(n=>!parent || n.parentId===parent)}))})}
   if(address.includes('GetStudentTaskListAsync'))return json({success:true,result:{items:[task],totalCount:1}})
   if(address.includes('GetExamTaskAsync'))return json({success:true,result:task})
   if(address.includes('GetExamOverviewAsync'))return json({success:true,result:{studentGrades:[{studentId:'QA_UI_ONLY',studentName:'演示账号'},{studentId:'OTHER',studentName:'其他学生'}]}})
