@@ -30,10 +30,18 @@ Windows 10/11 x64，.NET Framework 4.8，Microsoft Edge WebView2 Runtime。解�
 ```powershell
 npm ci
 npm run test:pdf
-npm run build:windows
+npm run test:linspirer
+npm run dev:ww2
+# 正式构建（与 build:windows 相同）
+npm run build:ww2
+npm run build:installer
 ```
 
 构建需要 Windows 内置 C# 编译器，不需要 .NET SDK。缺少 WebView2 SDK 缓存时由脚本从官方 NuGet 下载固定版本。完整验证流程见 WINDOWS_AOKI.txt。保留上游 Android / 5+ Worker 与模板兼容性修复；本 fork 只发布 Windows 包。
+
+`dev:ww2` 编译原生窗口后启动仅监听 `127.0.0.1:5174` 的 Vite 服务，窗口加载开发页面，支持 HMR 和 WebView2 开发工具。关闭窗口或按 Ctrl+C 会停止启动器创建的服务。可用 `npm run dev:ww2 -- --port=5175` 换端口；端口被占用时直接报错，不连接其他服务。开发账号缓存单独位于 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2-dev`，正式版缓存不受影响；开发产物不能打包为安装程序。
+
+1.1.5 修复领创计算器设备号大小写问题：密码计算与联网用户查询统一去除首尾空白并转为小写，空设备号不发请求。回归使用虚构设备与用户资料。
 
 得意黑按 SIL Open Font License 1.1 分发，授权见 public/fonts/OFL.txt。设计参考 Emil Kowalski 的 Design Engineering 和 Wise Design，UI 独立实现。
 

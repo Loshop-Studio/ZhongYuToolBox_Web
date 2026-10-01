@@ -1,6 +1,6 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.4-aoki",
+  "version": "1.1.5-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
   "description": "ZhongYuToolBox Windows WebView2 shell, themes, local image/PDF conversion",
@@ -9,12 +9,15 @@
   "scripts": {
     "dev": "vite",
     "test:pdf": "node scripts/test-pdf.mjs",
+    "test:linspirer": "node scripts/test-linspirer.mjs",
     "dev:electron": "node scripts/dev-electron.mjs",
     "build": "vue-tsc -b && vite build",
     "build:electron": "vue-tsc -b && vite build --mode electron && electron-builder --config electron-builder.config.cjs",
     "build:plus": "vue-tsc -b && vite build --mode plus",
     "preview": "vite preview",
     "build:windows": "node scripts/build-windows.mjs",
+    "build:ww2": "node scripts/build-windows.mjs",
+    "dev:ww2": "node scripts/dev-windows.mjs",
     "test:windows": "node scripts/build-windows.mjs --qa",
     "build:installer": "node scripts/build-installer.mjs"
   },
