@@ -34,7 +34,7 @@ export async function getMyMistakeBooks(): Promise<MistakeBook[]> {
 }
 
 /** 搜索错题列表（按 bookId 筛选） */
-export async function searchMistakes(bookId: string | number): Promise<MistakeSearchResult> {
+export async function searchMistakes(bookId: string | number, skipCount = 0, maxResultCount = 200): Promise<MistakeSearchResult> {
   const resp = await request<{ result: MistakeSearchResult }>(
     `/api/services/app/MistakeBook/SearchMistakeQstItemsAsync`,
     {
@@ -45,8 +45,8 @@ export async function searchMistakes(bookId: string | number): Promise<MistakeSe
         diff: [],
         errorReason: [],
         haveNoTag: false,
-        maxResultCount: 1000,
-        skipCount: 0,
+        maxResultCount,
+        skipCount,
         tagIdList: []
       })
     }
@@ -71,14 +71,16 @@ export async function getMistakeDetail(itemId: string | number): Promise<Mistake
 }
 
 /** 获取题目 HTML（qstPath 拼接后 fetch 纯文本） */
-export async function fetchQstHtml(qstPath: string): Promise<string> {
+export async function fetchQstHtml(qstPath: string, signal?: AbortSignal): Promise<string> {
   const host = localStorage.getItem('apiBaseUrl') || API_BASE_URL
-  const url = qstPath.startsWith('http')
-    ? qstPath + (qstPath.includes('?') ? '&' : '?') + 'showAnalysis=true'
-    : host + qstPath + '?showAnalysis=true'
-  const resp = await fetch(url, {
-    headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  const url = new URL(qstPath, host.replace(/\/$/, '') + '/')
+  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('题目地址无效')
+  url.searchParams.set('showAnalysis', 'true')
+  const resp = await fetch(url.href, {
+    signal,
+    headers: url.origin === new URL(host).origin ? { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } : {}
   })
+  if (!resp.ok) throw new Error('题目读取失败：' + resp.status)
   return resp.text()
 }
 

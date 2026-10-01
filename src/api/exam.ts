@@ -18,10 +18,11 @@ export interface ExamTask {
 }
 
 /** 分页拉取学生测评任务列表（复刻 fetchExams） */
-export async function getExamTasks(page: number): Promise<{ items: ExamTask[]; totalCount: number }> {
+export async function getExamTasks(page: number, signal?: AbortSignal): Promise<{ items: ExamTask[]; totalCount: number }> {
   const skipCount = (page - 1) * PAGE_SIZE
   const resp = await request<any>('/api/services/app/Task/GetStudentTaskListAsync', {
     method: 'POST',
+    signal,
     body: JSON.stringify({
       maxResultCount: PAGE_SIZE,
       skipCount,
@@ -36,8 +37,8 @@ export async function getExamTasks(page: number): Promise<{ items: ExamTask[]; t
 }
 
 /** 测评任务详情（含题目分组）（复刻 fetchExamTask） */
-export async function getExamTask(examId: number): Promise<any> {
-  const resp = await request<any>(`/api/services/app/Task/GetExamTaskAsync?id=${examId}`)
+export async function getExamTask(examId: number, signal?: AbortSignal): Promise<any> {
+  const resp = await request<any>(`/api/services/app/Task/GetExamTaskAsync?id=${examId}`, {signal})
   return unwrapResult<any>(resp)
 }
 

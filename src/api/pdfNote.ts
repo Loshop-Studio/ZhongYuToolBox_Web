@@ -1,12 +1,15 @@
 /**
- * PDF 上传云笔记（1:1 复刻 pdf-upload.js 的 uploadPdfAsNote 主流程）
+ * PDF 上传云笔记：本地页面方向处理、逐页渲染和上传。
  *
- * 流程：加载模板 bin -> PDF 转图 -> 上传模板到 OSS -> 逐页上传图片并构建
+ * 流程：本地旋转竖版 -> 加载模板 -> PDF 转图 -> 逐页上传图片与模板并构建
  * resourceList（每页 9 条固定结构）-> Resources/AddOrUpdate -> Notes/AddOrUpdate
  */
 import { aesEncrypt } from '@/utils/crypto'
 import { uploadFile } from '@/utils/oss'
-import { convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
+import { blobToMd5, convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
+import { prepareLandscapePdf } from '@/utils/pdfLandscape'
+import { PLATFORM, IS_WINDOWS } from '@/config'
+import { NOTE_CANVAS } from '@/utils/noteCanvas'
 import { isPlus } from '@/utils/plusPicker'
 
 const TEMPLATE_BASE = 'example/'
@@ -27,41 +30,10 @@ const TEMPLATE_FILES = [
   `${TEMPLATE_UUID}/snapshot.bin`
 ]
 
-/** 每页固定的 8 条模板资源（相对路径 + 固定 md5 + resourceType） */
-const TEMPLATE_RESOURCES: Array<{ rel: string; md5: string; resourceType: number }> = [
-  { rel: 'page_router.bin', md5: 'C6FFAEB070ADBEC6B886BE63587CB0F8', resourceType: 1 },
-  {
-    rel: `${TEMPLATE_UUID}/059848e4-1971-47fb-9e47-517266cdef05_matrix.bin`,
-    md5: '5D03C5A75809ED20D24C18388BB8AB63',
-    resourceType: 1
-  },
-  {
-    rel: `${TEMPLATE_UUID}/a2b4fb47-3623-45be-9fe9-57fc62e66651_file.bin`,
-    md5: '5924B6262213683E6A4A2AFD3E4A270B',
-    resourceType: 1
-  },
-  {
-    rel: `${TEMPLATE_UUID}/e339e39b-64d9-4de0-bfaa-dace2a3f8e7d_command.bin`,
-    md5: 'FEC4C90827E797E54126BB996BF0AF05',
-    resourceType: 1
-  },
-  { rel: `${TEMPLATE_UUID}/header.bin`, md5: 'A929A287A521818CA4E56A9E643866AE', resourceType: 1 },
-  { rel: `${TEMPLATE_UUID}/router.bin`, md5: '053971527BD9F3D4E3F9B2A1A4D2023F', resourceType: 1 },
-  {
-    rel: `${TEMPLATE_UUID}/screenshot.png`,
-    md5: '538BC7AC54289E9EAA758C50A006AE59',
-    resourceType: 2
-  },
-  { rel: `${TEMPLATE_UUID}/snapshot.bin`, md5: '9A26C2CA8A7C8731602497EA578C994F', resourceType: 1 }
-]
-
-/** 图片资源的固定 md5（复刻 core.py） */
-const IMG_MD5 = '4126E637D965204140D4982A1B847283'
-
 let templateFilesCache: Record<string, Blob> | null = null
 
 function apiBase(): string {
-  return localStorage.getItem('apiBaseUrl') || 'https://zyapi.loshop.com.cn'
+  return localStorage.getItem('apiBaseUrl') || 'http://sxz.api.zykj.org'
 }
 
 /** 生成自定义 fileId（复刻 generateCustomFileId，须含 g-z 字符） */
@@ -77,8 +49,10 @@ export function generateCustomFileId(prefix = 'h', length = 32): string {
 }
 
 /** 生成页 hash（复刻 generatePageHash） */
+let lastPageHash = 0
 function generatePageHash(): string {
-  return String(Date.now() + Math.floor(Math.random() * 1000))
+  lastPageHash = Math.max(Date.now(), lastPageHash + 1)
+  return String(lastPageHash)
 }
 
 /**
@@ -201,6 +175,7 @@ function readByPlusIo(plus: any, rel: string): Promise<Blob> {
  */
 async function readBundledBlob(rel: string): Promise<Blob> {
   const w: any = window as any
+  if (IS_WINDOWS && w.electronAPI?.readNoteTemplate) return new Blob([await w.electronAPI.readNoteTemplate(rel)])
   try {
     return await readByRequest(TEMPLATE_BASE + rel)
   } catch (e) {
@@ -272,7 +247,7 @@ async function saveResourceList(resourceList: ResourceEntry[]): Promise<void> {
     body: data
   })
   const result = await resp.json()
-  if (result.code !== 0) throw new Error('保存资源失败: ' + JSON.stringify(result))
+  if (!resp.ok || result.code !== 0) throw new Error('保存资源失败: ' + JSON.stringify(result))
 }
 
 /** 保存笔记（复刻 saveNote） */
@@ -280,10 +255,9 @@ async function saveNote(
   userId: string,
   customFileId: string,
   fileName: string,
-  todayStr: string
+  fileUrl: string
 ): Promise<void> {
   const token = localStorage.getItem('token')
-  const fileUrl = `http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/note_v2/res/${userId}/${todayStr}/${customFileId}/`
   const data = aesEncrypt(
     JSON.stringify({
       fileId: customFileId,
@@ -302,7 +276,7 @@ async function saveNote(
     body: data
   })
   const result = await resp.json()
-  if (result.code !== 0) throw new Error('保存笔记失败: ' + JSON.stringify(result))
+  if (!resp.ok || result.code !== 0) throw new Error('保存笔记失败: ' + JSON.stringify(result))
 }
 
 export interface UploadPdfOptions {
@@ -310,128 +284,122 @@ export interface UploadPdfOptions {
   noteName: string
   /** 已转换好的图片（若已预先转换可传入，避免重复转换） */
   images?: PdfPageImage[]
+  /** Windows default: rotate each portrait page counterclockwise 90 degrees locally. */
+  autoLandscape?: boolean
   onProgress?: (percent: number, text: string) => void
+}
+
+async function sha256(blob: Blob): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+function replaceDigest(bytes: Uint8Array, digest: string, expected?: string): Blob {
+  const text = Array.from(bytes, byte => String.fromCharCode(byte)).join('')
+  const matches = [...text.matchAll(expected ? new RegExp(expected, 'g') : /[0-9a-f]{64}/g)]
+  if (matches.length !== 1) throw new Error('笔记模板中的资源摘要结构无效')
+  const updated = bytes.slice()
+  updated.set(new TextEncoder().encode(digest), matches[0].index)
+  return new Blob([updated])
+}
+
+export async function preparePageTemplates(templates: Record<string, Blob>, image: Blob): Promise<Record<string, Blob>> {
+  const result = { ...templates }
+  const descriptor = `${TEMPLATE_UUID}/a2b4fb47-3623-45be-9fe9-57fc62e66651_file.bin`
+  const router = `${TEMPLATE_UUID}/router.bin`
+  result[descriptor] = replaceDigest(new Uint8Array(await templates[descriptor].arrayBuffer()), await sha256(image))
+  result[router] = replaceDigest(new Uint8Array(await templates[router].arrayBuffer()), await sha256(result[descriptor]), await sha256(templates[descriptor]))
+  return result
 }
 
 /** PDF 上传为云笔记主流程（复刻 uploadPdfAsNote） */
 export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageImage[]> {
   const { file, noteName, onProgress } = opts
-  const report = (p: number, t: string) => onProgress?.(p, t)
+  let lastProgress = 0
+  const report = (p: number, t: string) => {
+    lastProgress = Math.max(lastProgress, p)
+    onProgress?.(lastProgress, t)
+  }
 
   if (!isTokenValid()) throw new Error('登录已过期，请重新登录')
+  const sessionBase = apiBase(), sessionUser = getUserIdFromToken()
+  const assertSession = () => {
+    if (!sessionUser || apiBase() !== sessionBase || getUserIdFromToken() !== sessionUser) throw new Error('账号或学校已切换，已停止笔记上传')
+  }
+  let uploadSource = file
+  if (!opts.images?.length && (opts.autoLandscape ?? IS_WINDOWS)) {
+    report(1, '正在本地检测 PDF 页面方向...')
+    const prepared = await prepareLandscapePdf(file)
+    uploadSource = prepared.file
+    report(4, prepared.rotatedPages.length ? `已在本地旋转 ${prepared.rotatedPages.length} 页，准备上传` : '页面已为横版，准备上传')
+  }
 
   // 步骤1：加载模板文件
   report(5, '正在加载模板文件...')
   const templates = await loadTemplateFiles()
 
-  // 提前算好上传所需的标识与时间戳（流式逐页上传会用到）
   const userId = getUserIdFromToken()
+  assertSession()
+  if (!userId) throw new Error('无法从登录信息获取用户 ID')
   const customFileId = generateCustomFileId()
-  const todayStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const timestamp = new Date()
-    .toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    })
-    .replace(/\//g, '-')
-  const ossPageHash = generatePageHash()
-
-  // 步骤3：上传模板文件到 OSS（先于转换，拿到 ossRoot）
-  report(12, '正在上传模板文件...')
-  const testFileUrl = await uploadFile(
-    templates['page_router.bin'],
-    userId,
-    'note_v2',
-    customFileId,
-    ossPageHash + '/page_router.bin'
-  )
-  const urlObj = new URL(testFileUrl)
-  const ossRoot = urlObj.protocol + '//' + urlObj.host + '/'
-  delete templates['page_router.bin']
-  for (const f of Object.keys(templates)) {
-    if (f.includes('/')) {
-      await uploadFile(templates[f], userId, 'note_v2', customFileId, ossPageHash + '/' + f)
-    }
-  }
-
-  const ossBase = `${ossRoot}note_v2/res/${userId}/${todayStr}/${customFileId}`
-  const baseOss = `${ossBase}/${ossPageHash}`
+  const timestamp = new Date().toLocaleString('zh-CN', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit',
+    minute: '2-digit', second: '2-digit', hour12: false
+  }).replace(/\//g, '-')
   const resourceList: ResourceEntry[] = []
-  // plus 端内存受限：仅保留前 5 页用于预览/打包；桌面端保留全部
-  const keepAll = !isPlus
   const previewPages: PdfPageImage[] = []
+  let noteRoot = ''
   let pageIndex = 0
 
-  // 单页：上传图片到 OSS 并构建该页的 resourceList 条目（不持有 blob 之外的额外内存）
-  const uploadOnePage = async (img: PdfPageImage) => {
+  const uploadOnePage = async (img: PdfPageImage, total: number) => {
+    if (img.blob.type !== 'image/webp') throw new Error('笔记图片必须为 WebP 格式')
     const pageHash = generatePageHash()
-    const pageBase = `/storage/emulated/0/Android/data/com.friday.cloudsnote/userNote/${userId}/note/${customFileId}/${pageHash}`
-    await uploadFile(img.blob, userId, 'note_v2', customFileId, `${pageHash}/${IMG_FILENAME}`)
-    for (const tpl of TEMPLATE_RESOURCES) {
+    const pageBase = '/storage/emulated/0/Android/data/com.friday.cloudsnote/userNote/' + userId + '/note/' + customFileId + '/' + pageHash
+    const pageTemplates = await preparePageTemplates(templates, img.blob)
+    const resources = [...TEMPLATE_FILES.map(rel => ({ rel, blob: pageTemplates[rel], type: rel.endsWith('.png') ? 2 : 1 })),
+      { rel: 'res/image/' + IMG_FILENAME, blob: img.blob, type: 0 }]
+    for (const [fileIndex, resource] of resources.entries()) {
+      assertSession()
+      const remoteName = resource.type === 0 ? IMG_FILENAME : resource.rel
+      const uploadedUrl = await uploadFile(resource.blob, userId, 'note_v2', customFileId, pageHash + '/' + remoteName)
+      if (!noteRoot) {
+        const parsed = new URL(uploadedUrl)
+        const suffix = pageHash + '/' + remoteName
+        if (!parsed.pathname.endsWith(suffix)) throw new Error('上传返回的资源路径无法解析')
+        noteRoot = parsed.origin + parsed.pathname.slice(0, -suffix.length)
+      }
       resourceList.push({
-        id: `${pageBase}/${tpl.rel}`,
-        fileId: customFileId,
-        pageName: pageBase,
-        pageIndex,
-        md5: tpl.md5,
-        resourceType: tpl.resourceType,
-        ossImageUrl: `${baseOss}/${tpl.rel}`,
-        createTimeStamp: timestamp,
-        updateTimeStamp: timestamp,
-        toBeUploaded: false,
-        wasDeleted: false
+        id: pageBase + '/' + resource.rel, fileId: customFileId, pageName: pageBase, pageIndex,
+        md5: await blobToMd5(resource.blob), resourceType: resource.type, ossImageUrl: uploadedUrl,
+        createTimeStamp: timestamp, updateTimeStamp: timestamp, toBeUploaded: false, wasDeleted: false
       })
+      report(15 + ((pageIndex + (fileIndex + 1) / resources.length) / total) * 75,
+        '上传第 ' + (pageIndex + 1) + '/' + total + ' 页 · 资源 ' + (fileIndex + 1) + '/' + resources.length)
     }
-    resourceList.push({
-      id: `${pageBase}/res/image/${IMG_FILENAME}`,
-      fileId: customFileId,
-      pageName: pageBase,
-      pageIndex,
-      md5: IMG_MD5,
-      resourceType: pageIndex,
-      ossImageUrl: `${ossBase}/${pageHash}/${IMG_FILENAME}`,
-      createTimeStamp: timestamp,
-      updateTimeStamp: timestamp,
-      toBeUploaded: false,
-      wasDeleted: false
-    })
+    if (!isPlus || pageIndex < 5) previewPages.push(img)
+    pageIndex++
   }
 
-  // 步骤2+4：转换并「逐页上传」（流式：边转边传、用完即弃，避免多页 Blob 同时占满内存 -> 白屏崩溃）
-  report(15, '正在转换PDF...')
-  if (opts.images && opts.images.length) {
-    for (const img of opts.images) {
-      await uploadOnePage(img)
-      if (keepAll || pageIndex < 5) previewPages.push(img)
-      report(65 + ((pageIndex + 1) / opts.images.length) * 25, `已上传第 ${pageIndex + 1}/${opts.images.length} 页`)
-      pageIndex++
-    }
+  if (opts.images?.length) {
+    for (const img of opts.images) await uploadOnePage(img, opts.images.length)
   } else {
-    await convertPdfToImages(
-      file,
-      (p, c, t) => report(15 + p * 30, `转换PDF：第 ${c}/${t} 页`),
-      {
-        onPage: async (img, _idx, total) => {
-          await uploadOnePage(img)
-          if (keepAll || pageIndex < 5) previewPages.push(img)
-          report(65 + ((pageIndex + 1) / total) * 25, `已上传第 ${pageIndex + 1}/${total} 页`)
-          pageIndex++
-        }
-      }
-    )
+    report(15, '正在本地渲染并上传 PDF...')
+    await convertPdfToImages(uploadSource, undefined, {
+      type: 'image/webp', quality: 0.96,
+      canvasSize: NOTE_CANVAS,
+      onPage: (img, _index, total) => uploadOnePage(img, total)
+    })
   }
+  if (!noteRoot || !pageIndex) throw new Error('PDF 中没有可上传的页面')
 
   // 步骤5、6：保存资源与笔记
   report(92, '正在保存资源...')
+  assertSession()
   await saveResourceList(resourceList)
 
   report(97, '正在保存笔记...')
-  await saveNote(userId, customFileId, noteName, todayStr)
+  assertSession()
+  await saveNote(userId, customFileId, noteName, noteRoot)
 
   report(100, '上传完成！')
   return previewPages
