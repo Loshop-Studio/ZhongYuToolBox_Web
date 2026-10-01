@@ -50,9 +50,9 @@ export async function syncExamMistakes(taskId: number, key: string, signal?: Abo
   const examId = task.examId
   if (!Number.isSafeInteger(examId) || examId <= 0) throw new Error('测评缺少有效 examId')
   const snapshot = getExamReview(taskId, key)
-  if (!reviewedIds && snapshot && snapshot.examId !== examId) throw new Error('作业已更新，请重新查看题目分析')
+  if (!reviewedIds && snapshot && snapshot.examId !== examId) throw new Error('作业已更新，请刷新新测评重新识别')
   const review = reviewedIds ?? snapshot?.questionIds
-  if (!review) throw new Error('请先打开此作业的题目分析，识别本人错题')
+  if (!review) throw new Error('请先在新测评页面完成自动识别')
   const analysis = await getQuestionAnalysis(examId, signal)
   ensureAccount(key, signal)
   const detected = analysisWrongQuestions(task, analysis, key.slice(key.lastIndexOf('|') + 1))
