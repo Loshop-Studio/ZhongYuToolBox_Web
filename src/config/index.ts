@@ -7,7 +7,7 @@
 /**
  * 运行平台开关。
  * - IS_BROWSER=true（默认，普通浏览器 Web 构建）：保持全部原有逻辑
- *   （资源代理、zyapi 默认地址、跨域处理等）。
+ *   （资源代理、官方学校发现地址、跨域处理等）。
  * - IS_BROWSER=false（内嵌 App 构建）：由 PLATFORM 区分运行环境：
  *     'electron'：Electron 内嵌，忽略跨域，资源与 API 直接请求，不走代理。
  *     'plus'：HBuilder H5+ App 内嵌，使用 5+ API，资源与 API 直接请求，不走代理。
@@ -17,36 +17,45 @@
 export const IS_BROWSER: boolean =
   (import.meta.env.VITE_IS_BROWSER as string | undefined) !== 'false'
 
-export type Platform = 'browser' | 'electron' | 'plus'
+export type Platform = 'browser' | 'electron' | 'webview2' | 'plus'
 
 export const PLATFORM: Platform = IS_BROWSER
   ? 'browser'
   : (import.meta.env.VITE_PLATFORM as string | undefined) === 'plus'
     ? 'plus'
-    : 'electron'
+    : (import.meta.env.VITE_PLATFORM as string | undefined) === 'webview2' ? 'webview2' : 'electron'
+
+export const IS_WINDOWS = PLATFORM === 'electron' || PLATFORM === 'webview2'
 
 /** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */
 export const USE_PROXY: boolean = IS_BROWSER
 
 const ls = window.localStorage
+let migratedAuthorApi = false
+for (const key of ['apiBaseUrl', 'apiBaseOrigin', 'iframeBase', 'shareServer']) {
+  const value = ls.getItem(key)
+  try { if (value && /(^|\.)loshop\.com\.cn$/i.test(new URL(value).hostname)) { ls.removeItem(key); if (key === 'apiBaseUrl') migratedAuthorApi = true } } catch { ls.removeItem(key) }
+}
+
+if (migratedAuthorApi) { for (const key of ['token', 'refreshToken', 'userId']) ls.removeItem(key) }
 
 export const API_BASE_URL: string =
-  ls.getItem('apiBaseUrl') || 'https://zyapi.loshop.com.cn'
+  ls.getItem('apiBaseUrl') || 'http://sxz.api.zykj.org'
 
 export const API_BASE_BASE_URL: string =
-  ls.getItem('apiBaseOrigin') || 'https://zyapi.loshop.com.cn'
+  ls.getItem('apiBaseOrigin') || 'http://sxz.api.zykj.org'
 
 export const SHARE_SERVER: string =
-  ls.getItem('shareServer') || 'https://zytbshareapi.loshop.com.cn'
+  ls.getItem('shareServer') || ''
 
-/** 统计 / 更新分发 / 风控后端基地址（部署在 https://tbapi.loshop.com.cn） */
-export const TRACK_API: string = 'https://tbapi.loshop.com.cn/api'
+/** 旧版统计接口已禁用，不发送遥测。 */
+export const TRACK_API: string = ''
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
-export const APP_VERSION: string = '0.0.6'
+export const APP_VERSION: string = '1.1.0-aoki'
 
-/** 远端代理（默认走服务器） */
-export const PROXY_REMOTE = 'https://zytbdownloadagent.loshop.com.cn/download/'
+/** 浏览器资源代理（仅本机） */
+export const PROXY_REMOTE = 'http://127.0.0.1:5005/proxy/'
 /** 本地加速代理（检测到时使用） */
 export const PROXY_LOCAL = 'http://127.0.0.1:5005/proxy/'
 /** 本地代理探测地址 */
@@ -56,8 +65,8 @@ export const PROXY_LOCAL_PING = 'http://127.0.0.1:5005/proxy/ping'
 export const LINSPIRER = {
   KEY: '1191ADF18489D8DA',
   IV: '5E9B755A8B674394',
-  API_BASE: 'https://zytb-linspirer-api.loshop.com.cn',
-  API: 'https://zytb-linspirer-api.loshop.com.cn/public-interface.php',
+  API_BASE: 'https://cloud.linspirer.com:883',
+  API: 'https://cloud.linspirer.com:883/public-interface.php',
   CLIENT_VERSION: 'zhongyukejiao_hem_6.10.004.6',
   FIXED_UUID: '40E06F51-30D0-D6AD-7F7D-008AD0ADC570'
 }
@@ -122,14 +131,14 @@ export const SUBJECTS: Array<[number, string]> = [
  * 跨域时 useIframeInject 的样式注入会自动失效（不报错），与专栏行为一致。
  *
  * 该函数每次调用动态读取 localStorage.iframeBase：
- *   - 浏览器模式：未设置时默认 https://zyapi.loshop.com.cn。
+ *   - 浏览器模式：未设置时默认 http://sxz.api.zykj.org。
  *   - 内嵌 App 模式：登录后由 discover 返回的 webServer 写入 localStorage.iframeBase；
  *     未登录时不提供默认（路由守卫已拦截，不会实际用到）。
  */
 export function getIframeBase(): string {
   const stored = ls.getItem('iframeBase')
   if (stored) return stored
-  return IS_BROWSER ? 'https://zyapi.loshop.com.cn' : ''
+  return 'http://sxz.school.zykj.org'
 }
 
 /** OSS 上传类型前缀（复刻 index.html #selectFc 选项） */
