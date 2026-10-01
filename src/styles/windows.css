@@ -76,13 +76,16 @@
 .windows-edition button, .windows-edition input, .windows-edition textarea,
 #app .windows-ui button, #app .windows-ui input { font-family: var(--el-font-family); }
 #app .windows-ui .bg-cover { display: none; }
-#app .windows-ui .aside { background: var(--surface); border-right: 1px solid var(--line); transition: none; scrollbar-width: thin; }
+#app .windows-ui .aside { background: var(--surface); border-right: 1px solid var(--line); transition: width 220ms cubic-bezier(.32,.72,0,1); scrollbar-width: thin; overflow-x: hidden; }
 #app .windows-ui .brand { height: 88px; min-height: 88px; padding: 0 22px; justify-content: flex-start; gap: 12px; border: 0; color: var(--ink); box-sizing: border-box; }
 #app .windows-ui .edition-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; background: var(--violet); color: #29242d; font-size: 26px; }
 #app .windows-ui .edition-app-icon { width:36px; height:36px; flex-shrink:0; }
-#app .windows-ui .aside.is-collapsed .brand { padding: 0; justify-content: center; }
+#app .windows-ui .brand { transition: padding 220ms cubic-bezier(.32,.72,0,1), gap 220ms cubic-bezier(.32,.72,0,1); }
+#app .windows-ui .aside.is-collapsed .brand { padding: 0 18px; gap: 0; }
 #app .windows-ui .aside.is-collapsed { scrollbar-width: none; }
-.edition-brand-text { display: flex; flex-direction: column; gap: 5px; }
+.edition-brand-text { display: flex; flex-direction: column; gap: 5px; white-space: nowrap; opacity: 1; transition: opacity 150ms ease, transform 220ms cubic-bezier(.32,.72,0,1); }
+#app .windows-ui .aside.is-collapsed .edition-brand-text { opacity: 0; transform: translateX(-6px); pointer-events: none; }
+#app .windows-ui .aside.is-collapsed .edition-sidebar-footer { opacity: 0; pointer-events: none; }
 .edition-brand-text strong { font-size: 21px; font-weight: 400; }
 .edition-brand-text small { font-size: 12px; color: var(--muted); }
 #app .windows-ui .side-menu { height: auto; padding: 8px 12px; box-sizing: border-box; flex: 1; }
@@ -95,7 +98,7 @@
 #app .windows-ui .aside.is-collapsed .el-menu-item .el-icon { margin: 0; }
 #app .windows-ui .side-menu .el-menu-item.is-support { color: var(--accent); }
 #app .windows-ui .side-menu .el-menu-item.is-section-start { margin-top: 18px; }
-.edition-sidebar-footer { margin: 16px 22px 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.8; }
+.edition-sidebar-footer { margin: 16px 22px 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.8; white-space: nowrap; transition: opacity 150ms ease; }
 #app .windows-ui .header { height: 72px; flex-shrink: 0; background: var(--canvas); padding: 0 36px; border: 0; backdrop-filter: none; }
 #app .windows-ui .header-title { font-size: 16px; color: var(--muted); font-weight: 400; }
 #app .windows-ui .collapse-btn { margin-right: 16px; font-size: 20px; color: var(--ink); }
@@ -134,7 +137,10 @@
 #app .windows-ui .about-page, #app .windows-ui .pdf-panel { max-width: 1100px; }
 .edition-footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; }
 #app .windows-ui .edition-footer .el-button { font-size: 13px; color: var(--muted); }
-#app .windows-ui .fade-enter-active, #app .windows-ui .fade-leave-active { transition: none; }
+#app .windows-ui .fade-enter-active { transition: opacity 160ms ease-out, transform 160ms cubic-bezier(.23,1,.32,1); }
+#app .windows-ui .fade-leave-active { transition: opacity 90ms ease-out; }
+#app .windows-ui .fade-enter-from { opacity: 0; transform: translateY(4px); }
+#app .windows-ui .aside.instant-collapse, #app .windows-ui .aside.instant-collapse * { transition-duration: 0ms !important; }
 @media (hover: hover) and (pointer: fine) {
   #app .windows-ui .side-menu .el-menu-item:hover { background: var(--surface-soft); color: var(--ink); }
   #app .windows-ui .pdf-drop:hover { border-color: var(--accent); }
