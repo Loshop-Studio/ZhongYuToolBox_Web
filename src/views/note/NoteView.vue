@@ -32,9 +32,10 @@
                 <small>创建时间: {{ note.createTime || '-' }}</small>
               </div>
             </div>
-            <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">
-              {{ note.type === 0 ? '文件夹' : '笔记' }}
-            </el-tag>
+            <div class="row-end">
+              <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">{{ note.type === 0 ? '文件夹' : '笔记' }}</el-tag>
+              <NoteActions :note="note" @changed="refreshLists" />
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -60,6 +61,7 @@
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
+            <NoteActions :note="note" @changed="refreshLists" />
           </div>
         </div>
         <el-pagination
@@ -107,6 +109,7 @@
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
+            <NoteActions :note="note" @changed="refreshLists" />
           </div>
         </div>
         <el-pagination
@@ -125,6 +128,7 @@
       <el-tab-pane label="PDF上传" name="pdf">
         <PdfUploadPanel />
       </el-tab-pane>
+      <el-tab-pane label="图片上传" name="images" lazy><PdfUploadPanel source="images" /></el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -141,8 +145,15 @@ import {
   type NoteItem
 } from '@/api/note'
 import PdfUploadPanel from './PdfUploadPanel.vue'
+import NoteActions from '@/components/NoteActions.vue'
 
 const router = useRouter()
+async function refreshLists() {
+  allLoaded.value = false
+  await loadNotes(breadcrumb.value.at(-1)?.id || '0')
+  if (activeTab.value === 'all') await loadAllNotes(true)
+  if (activeTab.value === 'search' && searched.value) await doSearch()
+}
 
 const pageSize = 20
 
@@ -267,7 +278,7 @@ onMounted(() => loadNotes('0'))
   padding: 16px;
 }
 .note-tabs {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -304,11 +315,14 @@ onMounted(() => loadNotes('0'))
   background: var(--el-fill-color-light);
 }
 .row-left {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
+.row-end { display:flex; align-items:center; gap:12px; }
+.note-row { gap:12px; flex-wrap:wrap; }
 .row-icon {
   font-size: 20px;
 }
