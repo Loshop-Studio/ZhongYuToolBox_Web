@@ -52,7 +52,7 @@ export const SHARE_SERVER: string =
 export const TRACK_API: string = ''
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
-export const APP_VERSION: string = '1.1.1-aoki'
+export const APP_VERSION: string = '1.1.5-aoki'
 
 /** 浏览器资源代理（仅本机） */
 export const PROXY_REMOTE = 'http://127.0.0.1:5005/proxy/'
