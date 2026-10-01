@@ -24,21 +24,21 @@
 
     <el-container class="main-container" :class="{ 'is-mobile': isMobile }">
       <!-- 侧边栏（桌面端常驻） -->
-      <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed }">
+      <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed, 'instant-collapse': instantCollapse }">
         <div class="brand">
           <img v-if="isWindowsEdition" :src="`${baseUrl}icon.svg`" class="edition-app-icon" alt="中育工具箱 aoki" />
           <img v-else :src="`${baseUrl}icon.png`" class="brand-icon" alt="中育ToolBox" />
-          <div v-if="isWindowsEdition && !collapsed" class="edition-brand-text"><strong>中育工具箱</strong><small>学习工作空间</small></div>
+          <div v-if="isWindowsEdition" class="edition-brand-text" :aria-hidden="collapsed"><strong>中育工具箱</strong><small>学习工作空间</small></div>
         </div>
         <SideMenu :collapse="collapsed" :light="isWindowsEdition" />
-        <div v-if="isWindowsEdition && !collapsed" class="edition-sidebar-footer">原作者 {{ EDITION.originalAuthor }}<br>Co-author · {{ EDITION.coAuthor }}</div>
+        <div v-if="isWindowsEdition" class="edition-sidebar-footer" :aria-hidden="collapsed">原作者 {{ EDITION.originalAuthor }}<br>Co-author · {{ EDITION.coAuthor }}</div>
       </el-aside>
 
       <!-- 主区域 -->
       <el-container>
         <!-- 桌面端顶栏（二级页面隐藏） -->
         <el-header v-if="!isMobile && !hideHeader" class="header">
-          <el-button text class="collapse-btn" aria-label="展开或收起侧栏" @click="collapsed = !collapsed"><el-icon>
+          <el-button text class="collapse-btn" aria-label="展开或收起侧栏" :aria-expanded="!collapsed" @click="toggleSidebar"><el-icon>
             <Expand v-if="collapsed" />
             <Fold v-else />
           </el-icon></el-button>
@@ -136,6 +136,11 @@ const descriptions: Record<string, string> = {
 const currentDescription = computed(() => descriptions[route.path] || '在一个工作空间中管理你的学习资源。')
 
 const collapsed = ref(false)
+const instantCollapse = ref(false)
+function toggleSidebar(event: MouseEvent) {
+  instantCollapse.value = event.detail === 0
+  collapsed.value = !collapsed.value
+}
 const drawer = ref(false)
 const bgUrl = ref(`${import.meta.env.BASE_URL}bg3.jpg`)
 
