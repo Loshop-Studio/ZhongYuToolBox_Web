@@ -20,8 +20,15 @@ internal static class Program {
     [STAThread] public static int Main(string[] args) {
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         if (args.Contains("--self-test")) return ToolboxWindow.SelfTest();
+        string devUrl = null;
+        var devIndex = Array.IndexOf(args, "--dev-url");
+        if (devIndex >= 0) {
+            if (devIndex + 1 >= args.Length) return 2;
+            devUrl = args[devIndex + 1];
+            if (!ToolboxWindow.ValidDevUrl(devUrl)) return 2;
+        }
         var app = new Application();
-        app.Run(new ToolboxWindow(args.Contains("--qa")));
+        app.Run(new ToolboxWindow(args.Contains("--qa"), devUrl));
         return Environment.ExitCode;
     }
 }
@@ -39,6 +46,7 @@ internal sealed class ToolboxWindow : Window {
     string guestError;
     bool closing;
     readonly bool qa;
+    readonly Uri devOrigin;
     readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = 4 * 1024 * 1024 };
     readonly Dictionary<string, SaveSession> saves = new Dictionary<string, SaveSession>();
     readonly HttpClient http = new HttpClient(new HttpClientHandler {
@@ -48,9 +56,10 @@ internal sealed class ToolboxWindow : Window {
     CoreWebView2Environment environment;
     [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
-    public ToolboxWindow(bool qaMode) {
+    public ToolboxWindow(bool qaMode, string devUrl = null) {
         qa = qaMode;
-        Title = "中育工具箱 · aoki";
+        devOrigin = devUrl == null ? null : new Uri(devUrl);
+        Title = "中育工具箱 · aoki" + (devOrigin == null ? "" : " · 开发模式");
         var iconPath = Path.Combine(root, "dist", "icon.png");
         if (File.Exists(iconPath)) Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
         Width = 1280; Height = 820; MinWidth = 800; MinHeight = 600;
@@ -74,7 +83,8 @@ internal sealed class ToolboxWindow : Window {
         if (qa) File.AppendAllText(Path.Combine(root, "qa-trace.txt"), "Initializing WebView2\n");
         // Official school APIs may use HTTP; TLS validation for HTTPS remains enabled.
         var options = new CoreWebView2EnvironmentOptions("--allow-running-insecure-content");
-        environment = await CoreWebView2Environment.CreateAsync(null, qa ? profile + "-qa" : profile, options);
+        var userData = profile + (devOrigin == null ? "" : "-dev") + (qa ? "-qa" : "");
+        environment = await CoreWebView2Environment.CreateAsync(null, userData, options);
         if (closing) return;
         await main.EnsureCoreWebView2Async(environment);
         var core = main.CoreWebView2;
@@ -84,15 +94,27 @@ internal sealed class ToolboxWindow : Window {
         core.Settings.IsGeneralAutofillEnabled = false;
         core.Settings.IsPasswordAutosaveEnabled = false;
         core.Settings.IsZoomControlEnabled = false;
-        core.Settings.AreDevToolsEnabled = qa;
+        core.Settings.AreDevToolsEnabled = qa || devOrigin != null;
         core.WebMessageReceived += Message;
         core.NavigationStarting += (s, e) => {
-            if (!IsLocal(e.Uri)) { e.Cancel = true; OpenExternal(e.Uri); }
+            if (!IsTrusted(e.Uri)) { e.Cancel = true; OpenExternal(e.Uri); }
         };
         ConfigureExternal(core);
         if (qa) core.NavigationCompleted += (s, e) => File.AppendAllText(Path.Combine(root, "qa-trace.txt"), "Navigation: " + e.IsSuccess + " " + e.WebErrorStatus + "\n");
-        await core.AddScriptToExecuteOnDocumentCreatedAsync(File.ReadAllText(Path.Combine(root, "bridge.js"), Encoding.UTF8));
-        core.Navigate(LocalOrigin + (qa ? "/tests/native-qa.html" : "/index.html"));
+        var bridge = File.ReadAllText(Path.Combine(root, "bridge.js"), Encoding.UTF8);
+        if (devOrigin != null) bridge = bridge.Replace("'https://toolbox.local'", json.Serialize(devOrigin.GetLeftPart(UriPartial.Authority)));
+        await core.AddScriptToExecuteOnDocumentCreatedAsync(bridge);
+        core.Navigate((devOrigin == null ? LocalOrigin : devOrigin.GetLeftPart(UriPartial.Authority)) + (qa ? "/tests/native-qa.html" : "/index.html"));
+    }
+    internal static bool ValidDevUrl(string value) {
+        Uri uri;
+        return Uri.TryCreate(value, UriKind.Absolute, out uri) && uri.Scheme == "http" && uri.Host == "127.0.0.1" &&
+            uri.Port > 0 && uri.UserInfo.Length == 0 && uri.AbsolutePath == "/" && uri.Query.Length == 0 && uri.Fragment.Length == 0;
+    }
+    bool IsTrusted(string value) {
+        Uri uri;
+        return IsLocal(value) || (devOrigin != null && Uri.TryCreate(value, UriKind.Absolute, out uri) &&
+            uri.Scheme == devOrigin.Scheme && uri.Host == devOrigin.Host && uri.Port == devOrigin.Port && uri.UserInfo.Length == 0);
     }
     static bool IsLocal(string value) {
         Uri uri;
@@ -160,7 +182,7 @@ internal sealed class ToolboxWindow : Window {
     static string Text(Dictionary<string, object> data, string key) { return data.ContainsKey(key) ? Convert.ToString(data[key]) : ""; }
     static double Number(Dictionary<string, object> data, string key) { return data.ContainsKey(key) ? Convert.ToDouble(data[key]) : 0; }
     async void Message(object sender, CoreWebView2WebMessageReceivedEventArgs e) {
-        if (!IsLocal(e.Source) || !IsLocal(main.CoreWebView2.Source)) return;
+        if (!IsTrusted(e.Source) || !IsTrusted(main.CoreWebView2.Source)) return;
         object id = null;
         try {
             var message = json.Deserialize<Dictionary<string, object>>(e.WebMessageAsJson);
@@ -270,6 +292,8 @@ internal sealed class ToolboxWindow : Window {
         try {
             if (!AllowedTemplate("page_router.bin") || AllowedTemplate("../bridge.js") || AllowedTemplate("PAGE_ROUTER.bin")) throw new Exception("模板白名单失败");
             if (!IsRemote("https://sxz.api.zykj.org/api") || IsRemote("https://zykj.org.evil.test/") || IsRemote("file:///etc/passwd") || !IsLocal("https://toolbox.local/index.html") || IsLocal("https://toolbox.local.evil.test/")) throw new Exception("域名边界失败");
+            if (!ValidDevUrl("http://127.0.0.1:5174/") || ValidDevUrl("http://127.0.0.1.evil.test:5174/") ||
+                ValidDevUrl("https://127.0.0.1:5174/") || ValidDevUrl("http://user@127.0.0.1:5174/") || ValidDevUrl("http://127.0.0.1:5174/remote")) throw new Exception("开发地址边界失败");
             var path = Path.Combine(Path.GetTempPath(), "zytb-test-" + Guid.NewGuid().ToString("N") + ".bin");
             try {
                 File.WriteAllBytes(path, new byte[] { 9 });
