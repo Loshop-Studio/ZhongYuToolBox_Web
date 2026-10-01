@@ -1,6 +1,6 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.0-aoki",
+  "version": "1.1.1-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
   "description": "ZhongYuToolBox Windows WebView2 shell, themes, local image/PDF conversion",
