@@ -1,0 +1,152 @@
+@font-face {
+  font-family: 'Smiley Sans';
+  src: url('../../public/fonts/SmileySans.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+/* Screen approximations inspired by Quiet Violet and Cloud Dancer, not print colour specifications. */
+:root.windows-edition, #app .windows-ui {
+  --violet: #a693ac;
+  --cloud: #f0eee9;
+  --canvas: #f0eee9;
+  --surface: #faf9f6;
+  --surface-soft: #eae6eb;
+  --ink: #29242d;
+  --muted: #69606f;
+  --line: #ddd7df;
+  --accent: #705776;
+  --accent-soft: #e6deea;
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: #927997;
+  --el-color-primary-light-5: #b3a0b8;
+  --el-color-primary-light-7: #d0c2d4;
+  --el-color-primary-light-8: #ddd2df;
+  --el-color-primary-light-9: var(--accent-soft);
+  --el-color-primary-dark-2: #58405e;
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink);
+  --el-text-color-secondary: var(--muted);
+  --el-text-color-placeholder: var(--muted);
+  --el-bg-color: var(--surface);
+  --el-bg-color-page: var(--canvas);
+  --el-bg-color-overlay: var(--surface);
+  --el-fill-color: var(--surface-soft);
+  --el-fill-color-light: var(--surface-soft);
+  --el-fill-color-lighter: var(--canvas);
+  --el-fill-color-blank: var(--surface);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-radius-base: 12px;
+  --el-font-family: 'Smiley Sans', 'Microsoft YaHei', sans-serif;
+  color-scheme: light;
+  font-family: var(--el-font-family);
+  font-synthesis: none;
+  color: var(--ink);
+  background: var(--canvas);
+}
+:root.windows-edition.dark {
+  --canvas: #1c191f;
+  --surface: #26212a;
+  --surface-soft: #342c39;
+  --ink: #f0eee9;
+  --muted: #c0b5c7;
+  --line: #483d4f;
+  --accent: #cbb2d4;
+  --accent-soft: #44344e;
+  --el-color-primary-light-3: #b79ac1;
+  --el-color-primary-light-5: #806b89;
+  --el-color-primary-light-7: #58445f;
+  --el-color-primary-light-8: #4c3955;
+  --el-color-primary-dark-2: #dec9e4;
+  color-scheme: dark;
+}
+/* Variables on the shell inherit from html, including system dark-mode changes. */
+:root.windows-edition.dark #app .windows-ui {
+  --canvas: #1c191f; --surface: #26212a; --surface-soft: #342c39;
+  --ink: #f0eee9; --muted: #c0b5c7; --line: #483d4f;
+  --accent: #cbb2d4; --accent-soft: #44344e;
+  --el-color-primary-light-3: #b79ac1; --el-color-primary-light-5: #806b89;
+  --el-color-primary-light-7: #58445f; --el-color-primary-light-8: #4c3955;
+  --el-color-primary-dark-2: #dec9e4;
+  color-scheme: dark;
+}
+.windows-edition body { margin: 0; background: var(--canvas); }
+.windows-edition button, .windows-edition input, .windows-edition textarea,
+#app .windows-ui button, #app .windows-ui input { font-family: var(--el-font-family); }
+#app .windows-ui .bg-cover { display: none; }
+#app .windows-ui .aside { background: var(--surface); border-right: 1px solid var(--line); transition: none; scrollbar-width: thin; }
+#app .windows-ui .brand { height: 88px; min-height: 88px; padding: 0 22px; justify-content: flex-start; gap: 12px; border: 0; color: var(--ink); box-sizing: border-box; }
+#app .windows-ui .edition-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 12px; background: var(--violet); color: #29242d; font-size: 26px; }
+#app .windows-ui .aside.is-collapsed .brand { padding: 0; justify-content: center; }
+#app .windows-ui .aside.is-collapsed { scrollbar-width: none; }
+.edition-brand-text { display: flex; flex-direction: column; gap: 5px; }
+.edition-brand-text strong { font-size: 21px; font-weight: 400; }
+.edition-brand-text small { font-size: 12px; color: var(--muted); }
+#app .windows-ui .side-menu { height: auto; padding: 8px 12px; box-sizing: border-box; flex: 1; }
+#app .windows-ui .side-menu .el-menu-item { height: 44px; line-height: 44px; margin: 3px 0; border-radius: 12px; font-size: 16px; color: var(--muted); padding: 0 16px; }
+#app .windows-ui .side-menu .el-menu-item.is-active { background: var(--accent-soft); color: var(--accent); }
+#app .windows-ui .side-menu .el-menu-item .el-icon { font-size: 20px; width: 22px; margin-right: 12px; flex-shrink: 0; }
+#app .windows-ui .aside.is-collapsed .side-menu { width: 100%; padding: 8px 12px; }
+#app .windows-ui .aside.is-collapsed .el-menu-item { width: 48px; padding: 0; justify-content: center; }
+#app .windows-ui .aside.is-collapsed .el-menu-item .el-menu-tooltip__trigger { padding: 0; width: 100%; display: flex; justify-content: center; align-items: center; }
+#app .windows-ui .aside.is-collapsed .el-menu-item .el-icon { margin: 0; }
+#app .windows-ui .side-menu .el-menu-item.is-support { color: var(--accent); }
+#app .windows-ui .side-menu .el-menu-item.is-section-start { margin-top: 18px; }
+.edition-sidebar-footer { margin: 16px 22px 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); line-height: 1.8; }
+#app .windows-ui .header { height: 72px; flex-shrink: 0; background: var(--canvas); padding: 0 36px; border: 0; backdrop-filter: none; }
+#app .windows-ui .header-title { font-size: 16px; color: var(--muted); font-weight: 400; }
+#app .windows-ui .collapse-btn { margin-right: 16px; font-size: 20px; color: var(--ink); }
+#app .windows-ui .content { background: var(--canvas); padding: 16px 48px 36px; }
+#app .windows-ui .content.flush { padding: 0; }
+.edition-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 32px; }
+.edition-breadcrumb { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.edition-breadcrumb span { margin: 0 8px; }
+.edition-page-heading h1 { margin: 0 0 10px; font-size: 40px; line-height: 1.2; font-weight: 400; letter-spacing: -.5px; }
+.edition-page-heading p { margin: 0; font-size: 16px; color: var(--muted); line-height: 1.6; }
+#app .windows-ui .el-button { border-radius: 100px; font-size: 16px; min-height: 40px; font-weight: 400; transition: transform 120ms cubic-bezier(.23,1,.32,1); }
+#app .windows-ui .el-button:active { transform: scale(.97); }
+#app .windows-ui .el-button:focus-visible, #app .windows-ui .pdf-drop:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+#app .windows-ui .el-button--primary { color: var(--surface); }
+#app .windows-ui .el-button--primary.is-plain { color: var(--accent); }
+#app .windows-ui .el-card { border-radius: 24px; border: 1px solid var(--line); background: var(--surface); box-shadow: none; }
+#app .windows-ui .el-card__header { padding: 26px 32px 0; border: 0; font-size: 24px; font-weight: 400; }
+#app .windows-ui .el-card__body { padding: 28px 32px 32px; }
+#app .windows-ui .el-input__wrapper, #app .windows-ui .el-select__wrapper { min-height: 46px; box-sizing: border-box; border-radius: 12px; font-size: 16px; background: var(--surface); }
+#app .windows-ui .el-form-item__label { font-size: 16px; font-weight: 400; padding-bottom: 8px; color: var(--ink); }
+#app .windows-ui .el-form-item { margin-bottom: 24px; }
+#app .windows-ui .el-alert { border-radius: 14px; font-size: 14px; }
+#app .windows-ui .el-alert--info.is-light { background: var(--surface-soft); color: var(--muted); }
+#app .windows-ui .login-page { min-height: 0; justify-content: flex-start; align-items: flex-start; }
+#app .windows-ui .login-card { width: 540px; max-width: 100%; }
+#app .windows-ui .login-card .card-title { color: var(--ink); font-size: 26px; }
+#app .windows-ui .login-intro { font-size: 15px; color: var(--muted); margin: 10px 0 0; line-height: 1.6; }
+#app .windows-ui .login-card .el-button--primary { height: 48px; }
+#app .windows-ui .note-tabs { border-radius: 24px; overflow: hidden; border-color: var(--line); background: var(--surface); }
+#app .windows-ui .note-tabs .el-tabs__header { background: var(--surface); }
+#app .windows-ui .note-row { border-color: var(--line); border-radius: 12px; }
+#app .windows-ui .pdf-drop { border-radius: 18px; border-color: var(--line); background: var(--canvas); padding: 32px 0; }
+#app .windows-ui .pdf-drop .upload-icon { color: var(--accent); font-size: 40px; }
+#app .windows-ui .preview-container { border-color: var(--line); border-radius: 16px; background: var(--canvas); }
+#app .windows-ui .preview-item img { width: auto; height: auto; object-fit: contain; }
+#app .windows-ui .about-page, #app .windows-ui .pdf-panel { max-width: 1100px; }
+.edition-footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 13px; }
+#app .windows-ui .edition-footer .el-button { font-size: 13px; color: var(--muted); }
+#app .windows-ui .fade-enter-active, #app .windows-ui .fade-leave-active { transition: none; }
+@media (hover: hover) and (pointer: fine) {
+  #app .windows-ui .side-menu .el-menu-item:hover { background: var(--surface-soft); color: var(--ink); }
+  #app .windows-ui .pdf-drop:hover { border-color: var(--accent); }
+}
+@media (max-width: 1080px) {
+  #app .windows-ui .content { padding: 16px 24px 28px; }
+  #app .windows-ui .header { padding: 0 20px; }
+  .edition-page-heading h1 { font-size: 32px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app .windows-ui *, #app .windows-ui *::before, #app .windows-ui *::after { transition: none !important; animation: none !important; }
+  #app .windows-ui .el-button:active { transform: none; }
+}
+
+#app .windows-ui .theme-select { width: 132px; }
+#app .windows-ui .theme-select .el-select__wrapper { min-height: 36px; font-size: 14px; }
