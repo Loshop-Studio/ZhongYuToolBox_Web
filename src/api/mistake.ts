@@ -84,10 +84,10 @@ export interface MistakeDetail {
 }
 
 /** 获取错题详情（result 为 null 时返回 null，由调用方判断） */
-export async function getMistakeDetail(itemId: string | number): Promise<MistakeDetail | null> {
+export async function getMistakeDetail(itemId: string | number, signal?: AbortSignal): Promise<MistakeDetail | null> {
   const resp = await request<{ result: MistakeDetail | null }>(
     `/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId=${itemId}`,
-    { method: 'GET' }
+    { method: 'GET', signal }
   )
   return resp.result || null
 }

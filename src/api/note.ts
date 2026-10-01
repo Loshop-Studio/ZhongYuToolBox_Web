@@ -68,7 +68,7 @@ export async function getNotesByParentId(parentId = '0'): Promise<NoteItem[]> {
 }
 
 /** 获取全部笔记（复刻 noteGetAll 的取数部分，仅保留 type 1/12） */
-export async function getAllNoteNodes(signal?: AbortSignal): Promise<NoteItem[]> {
+export async function getAllNoteNodes(signal?: AbortSignal, recycle = false): Promise<NoteItem[]> {
   const res = await fetch(`${apiBase()}/CloudNotes/api/Notes/GetAll`, {
     method: 'GET', signal,
     headers: authHeaders()
@@ -79,7 +79,20 @@ export async function getAllNoteNodes(signal?: AbortSignal): Promise<NoteItem[]>
   // 响应体的 data 字段为 AES 加密内容，需解密后才能取 noteList
   const data = JSON.parse(aesDecrypt(json.data))
   const list: NoteItem[] = data.noteList || []
-  return list.filter((item) => !item.isRecycleBin)
+  return list.filter((item) => !!item.isRecycleBin === recycle)
+}
+/** Official note APK: Notes/GetAll includes recycled nodes; Notes/Delete accepts List<String>. */
+export async function getRecycledNotes(signal?: AbortSignal): Promise<NoteItem[]> {
+  return (await getAllNoteNodes(signal, true)).filter(item => [1,12].includes(item.type))
+}
+export async function deleteRecycledNotes(fileIds: string[], signal?: AbortSignal): Promise<void> {
+  const key = accountKey(), ids = [...new Set(fileIds)]
+  const ensure = () => { if (signal?.aborted || accountKey() !== key) throw new Error('删除已取消或账号已切换') }
+  if (!ids.length || ids.some(id => !id.trim())) throw new Error('请先选择回收站笔记')
+  ensure()
+  const recycled = await getRecycledNotes(signal); ensure()
+  if (ids.some(id => !recycled.some(note => note.fileId === id))) throw new Error('笔记已不在回收站，请刷新后重试')
+  await mutateNote('Delete', ids, signal); ensure()
 }
 export async function getAllNotes(): Promise<NoteItem[]> {
   return (await getAllNoteNodes()).filter(item => item.type === 1 || item.type === 12)
