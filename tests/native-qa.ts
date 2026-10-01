@@ -1,7 +1,7 @@
 import { PDFDocument } from 'pdf-lib'
 import { imagesToPdf, validateImageFiles } from '../src/utils/imagesToPdf'
 import { convertPdfToImages } from '../src/utils/pdf'
-import { initializeTheme, setThemeMode, resolveDarkMode } from '../src/composables/useTheme'
+import { initializeTheme, setTheme, currentSkin, type ThemeId } from '../src/composables/useTheme'
 import { buildInjectJS } from '../src/composables/useWebviewInject'
 import { featureQa } from './features-qa'
 
@@ -23,13 +23,19 @@ async function imageFile(width: number, height: number, type: string, name: stri
 }
 async function main() {
   initializeTheme()
-  const old = localStorage.getItem('aoki-theme-mode')
-  setThemeMode('dark'); check(document.documentElement.classList.contains('dark'), '手动深色模式')
-  check(localStorage.getItem('aoki-theme-mode') === 'dark', '主题设置持久化')
-  setThemeMode('light'); check(!document.documentElement.classList.contains('dark'), '手动浅色模式')
-  setThemeMode('system'); check(document.documentElement.classList.contains('dark') === matchMedia('(prefers-color-scheme: dark)').matches, '跟随当前系统主题')
-  check(resolveDarkMode('light', true) === false && resolveDarkMode('dark', false) === true && resolveDarkMode('system', true) === true && resolveDarkMode('system', false) === false, '系统变化不覆盖手动选择')
-  if (old) setThemeMode(old as any); else localStorage.removeItem('aoki-theme-mode')
+  const old = localStorage.getItem('aoki-theme')
+  for (const skin of ['loshop', 'aoki', 'aero'] as const) {
+    for (const mode of ['light', 'dark'] as const) {
+      const id: ThemeId = `${skin}-${mode}`
+      setTheme(id)
+      check(currentSkin.value === skin && document.documentElement.classList.contains('dark') === (mode === 'dark')
+        && document.documentElement.classList.contains('aoki-edition') === (skin === 'aoki')
+        && document.documentElement.classList.contains('aero-edition') === (skin === 'aero'), `上游主题正确应用：${id}`)
+      check(localStorage.getItem('aoki-theme') === id, `上游主题设置持久化：${id}`)
+    }
+  }
+  setTheme((old || 'loshop-light') as ThemeId)
+  if (!old) localStorage.removeItem('aoki-theme')
   const originals = await Promise.all([
     imageFile(400, 600, 'image/png', 'portrait.png'), imageFile(600, 400, 'image/jpeg', 'landscape.jpg'), imageFile(400, 400, 'image/webp', 'square.webp')
   ])
