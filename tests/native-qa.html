@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Windows 本地转换测试</title></head>
+<body><pre id="result">RUNNING</pre><div id="app"></div><script type="module">
+import('./native-qa.ts').catch(error => {
+  const result = { passed:false,error:error.stack || error.message,checks:[] };
+  document.getElementById('result').textContent = JSON.stringify(result);
+  if(window.nativeHost) window.chrome.webview.postMessage({id:0,method:'qaResult',args:result});
+});
+</script></body></html>

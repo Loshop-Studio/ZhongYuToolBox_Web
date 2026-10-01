@@ -61,7 +61,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useExamDetailLoad } from '@/composables/useExamDetailLoad'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, DataLine, TrendCharts, Download, Share, MoreFilled } from '@element-plus/icons-vue'
@@ -81,25 +82,21 @@ const { isMobile } = useIsMobile()
 const taskId = computed(() => Number(route.params.taskId))
 
 const name = ref(String(route.query.name || ''))
-const loading = ref(false)
 const questions = ref<ParsedQuestion[]>([])
 const examId = ref<number | null>(null)
 
-async function load() {
-  loading.value = true
+const loading = useExamDetailLoad('exam-questions', async ({ id, name: title, signal, isCurrent }) => {
   questions.value = []
-  try {
-    const exam = await getExamTask(taskId.value)
-    examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
-    // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
-    name.value = String(route.query.name || '') || exam?.examName || name.value
-    questions.value = await parseExamQuestions(exam, getQstAnswerView)
-  } catch (err: any) {
-    ElMessage.error('加载题目失败：' + (err.message || err))
-  } finally {
-    loading.value = false
-  }
-}
+  examId.value = null
+  const exam = await getExamTask(id, signal)
+  if (!isCurrent()) return
+  const actualExamId = Number(exam?.examId)
+  if (!Number.isSafeInteger(actualExamId) || actualExamId <= 0) throw new Error('测评缺少有效 examId')
+  examId.value = actualExamId
+  name.value = title || exam?.examName || ''
+  const parsed = await parseExamQuestions(exam, qstId => getQstAnswerView(qstId, signal), signal)
+  if (isCurrent()) questions.value = parsed
+}, err => ElMessage.error('加载题目失败：' + (err.message || err)))
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -145,12 +142,6 @@ function sheetCommand(cmd: string) {
   else if (cmd === 'share') shareExam()
 }
 
-onMounted(load)
-// keep-alive 会复用同一组件实例，切换不同考试任务时需重新加载
-watch(
-  () => [route.params.taskId, route.query.name],
-  () => load()
-)
 </script>
 
 <style scoped>
@@ -158,7 +149,7 @@ watch(
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .appbar {
   display: flex;

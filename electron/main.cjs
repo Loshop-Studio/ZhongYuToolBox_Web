@@ -11,6 +11,7 @@ const path = require('node:path')
 const fs = require('node:fs')
 const crypto = require('node:crypto')
 const riskControl = require('./riskControl.cjs')
+const { readNoteTemplate } = require('./noteTemplates.cjs')
 
 const isDev = process.env.ELECTRON_DEV === '1'
 const DEV_URL = 'http://localhost:5173'
@@ -96,6 +97,8 @@ function getDeviceId() {
 
 ipcMain.handle('get-device-id', () => getDeviceId())
 ipcMain.handle('get-risk-scores', async () => riskControl.getRiskScores())
+ipcMain.handle('read-note-template', (_event, relative) =>
+  readNoteTemplate(path.join(__dirname, '..', 'dist', 'example'), relative))
 
 /**
  * 文件保存：弹出原生保存对话框并写入磁盘。

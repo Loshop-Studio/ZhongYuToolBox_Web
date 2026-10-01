@@ -2,16 +2,19 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/mobile.css'
+import './styles/windows.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { IS_BROWSER } from './config'
+import { IS_BROWSER, PLATFORM, IS_WINDOWS } from './config'
 import { setupPlusBackButton } from './utils/plusBack'
 import { logError } from './utils/errorText'
 import { ElMessage } from 'element-plus'
+import { initializeTheme } from './composables/useTheme'
 
 // 内嵌 App（electron / plus）直接请求资源与接口，不需要、也不应发送 Referer 头
 // （避免中育服务端按 Referer 校验导致图片/资源被拦截）。浏览器模式保持默认行为。
@@ -20,6 +23,10 @@ if (!IS_BROWSER) {
   meta.name = 'referrer'
   meta.content = 'no-referrer'
   document.head.appendChild(meta)
+}
+
+if (IS_WINDOWS) {
+  initializeTheme()
 }
 
 const app = createApp(App)

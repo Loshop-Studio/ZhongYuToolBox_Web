@@ -5,11 +5,11 @@
     :collapse="collapse"
     :collapse-transition="false"
     @select="onSelect"
-    background-color="#1f2937"
-    text-color="#cbd5e1"
-    active-text-color="#ffffff"
+    :background-color="light ? 'var(--surface)'  : '#1f2937'"
+    :text-color="light ? 'var(--muted)'  : '#cbd5e1'"
+    :active-text-color="light ? 'var(--accent)'  : '#ffffff'"
   >
-    <el-menu-item v-for="item in items" :key="item.index" :index="item.index" @click="onClick(item.index)">
+    <el-menu-item v-for="item in items" :key="item.index" :index="item.index" :aria-label="item.title" :class="{ 'is-support': item.index === '/donate', 'is-section-start': light && ['/advance', '/donate'].includes(item.index) }" @click="onClick(item.index)">
       <el-icon><component :is="item.icon" /></el-icon>
       <template #title>{{ item.title }}</template>
     </el-menu-item>
@@ -21,12 +21,15 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { MENU_ITEMS } from './menuItems'
 
-const props = defineProps<{ collapse: boolean }>()
+const props = defineProps<{ collapse: boolean; light?: boolean }>()
 const emit = defineEmits<{ (e: 'select'): void }>()
 const router = useRouter()
 const route = useRoute()
 
-const items = MENU_ITEMS
+const items = computed(() => props.light
+  ? [...MENU_ITEMS.filter(item => item.index !== '/donate' && item.index !== '/about'),
+    ...MENU_ITEMS.filter(item => ['/donate', '/about'].includes(item.index))]
+  : MENU_ITEMS)
 const activeIndex = computed(() => route.path)
 
 function onSelect(index: string) {

@@ -4,6 +4,7 @@
       <el-icon class="back" @click="goBack"><ArrowLeft /></el-icon>
       <span class="appbar-title">{{ name || '题目分析' }}</span>
       <div class="appbar-actions desktop-only">
+        <el-button size="small" @click="router.push('/exam')">返回新测评</el-button>
         <el-button size="small" :icon="Document" @click="goQuestions">试题</el-button>
         <el-button size="small" :icon="DataLine" @click="goOverview">概览</el-button>
       </div>
@@ -23,12 +24,14 @@
         <div class="actions-item" @click="sheetCommand('overview')">
           <el-icon><DataLine /></el-icon><span>概览</span>
         </div>
+        <div class="actions-item" @click="router.push('/exam'); mobileMenuVisible = false"><span>返回新测评</span></div>
         <div class="actions-cancel" @click="mobileMenuVisible = false">取消</div>
       </div>
     </Teleport>
 
     <el-scrollbar class="detail-scroll" v-loading="loading">
       <div class="detail-body">
+        <el-alert v-if="review" :title="`已识别本人错题 ${review.questionIds.length} 题${review.numbers.length ? '：' + review.numbers.join('、') : ''}${review.unmatched ? '；' + review.unmatched + ' 题无法匹配，暂不允许导入' : ''}。返回新测评后可加入官方错题本。`" type="info" :closable="false" class="review-tip" />
         <el-empty v-if="!loading && analysisGroups.length === 0" description="无题目分析数据" />
         <el-card
           v-for="(g, gi) in analysisGroups"
@@ -65,7 +68,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useExamDetailLoad } from '@/composables/useExamDetailLoad'
+import { saveExamReview, type ExamReview } from '@/utils/examReview'
+import { accountKey } from '@/utils/localData'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Document, DataLine, MoreFilled } from '@element-plus/icons-vue'
@@ -79,38 +85,38 @@ const taskId = computed(() => Number(route.params.taskId))
 const name = ref(String(route.query.name || ''))
 const examId = ref<number | null>(null)
 
-const loading = ref(false)
 const analysisGroups = ref<any[]>([])
 const studentMap = ref<Record<string, string>>({})
+const review = ref<ExamReview>()
 
 function mapStudent(sid: string | number): string {
   return studentMap.value[String(sid)] || String(sid)
 }
 
-async function load() {
-  loading.value = true
+const loading = useExamDetailLoad('exam-analysis', async ({ id, name: title, signal, isCurrent }) => {
+  const key = accountKey()
   analysisGroups.value = []
-  try {
-    const exam = await getExamTask(taskId.value)
-    examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
+  examId.value = null
+  review.value = undefined
+    const exam = await getExamTask(id, signal)
+    if (!isCurrent()) return
+    examId.value = Number(exam?.examId)
+    if (!Number.isSafeInteger(examId.value) || examId.value <= 0) throw new Error('测评缺少有效 examId')
     // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
-    name.value = String(route.query.name || '') || exam?.examName || name.value
+    name.value = title || exam?.examName || ''
 
-    const ov = await getExamOverview(examId.value)
+    const [ov, data] = await Promise.all([getExamOverview(examId.value, signal).catch(() => null), getQuestionAnalysis(examId.value, signal)])
+    if (!isCurrent()) return
     const map: Record<string, string> = {}
     ;(ov?.studentGrades || []).forEach((s: any) => {
       map[String(s.studentId)] = s.studentName || s.studentId
     })
     studentMap.value = map
 
-    const data = await getQuestionAnalysis(examId.value)
     analysisGroups.value = data?.testGroupAnalysis || []
-  } catch (e: any) {
-    ElMessage.error('加载题目分析失败：' + (e.message || e))
-  } finally {
-    loading.value = false
-  }
-}
+    const saved = await saveExamReview(id, exam, data, key, signal)
+    if (isCurrent()) review.value = saved
+}, e => ElMessage.error('加载题目分析失败：' + (e.message || e)))
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -130,12 +136,6 @@ function sheetCommand(cmd: string) {
   else if (cmd === 'overview') goOverview()
 }
 
-onMounted(load)
-// keep-alive 会复用同一组件实例，切换不同考试任务时需重新加载
-watch(
-  () => [route.params.taskId, route.query.name],
-  () => load()
-)
 </script>
 
 <style scoped>
@@ -143,8 +143,9 @@ watch(
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
+.review-tip { margin-bottom:16px; }
 .appbar {
   display: flex;
   align-items: center;

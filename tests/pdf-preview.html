@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="zh-cn"><head><meta charset="UTF-8"><title>PDF 本地预览测试</title></head><body><div id="app"></div><script type="module">
+import {createApp, h} from 'vue'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import '../src/styles/windows.css'
+import Panel from '../src/views/note/PdfUploadPanel.vue'
+createApp({render:()=>h('main',{class:'windows-ui',style:'padding:30px;max-width:900px;margin:auto'},[h(Panel)])}).use(ElementPlus).mount('#app')
+</script></body></html>

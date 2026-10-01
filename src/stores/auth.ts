@@ -3,9 +3,7 @@
  */
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
-import { IS_BROWSER, PLATFORM } from '@/config'
-import { reportLogin, checkVersion, reportRiskBan, fetchClientEnabled, isClientGuardEnabled } from '@/utils/track'
-import { setBlock } from '@/stores/block'
+import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
 
 function parseJwt(token: string): any {
   try {
@@ -38,7 +36,7 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token') || '',
     refreshToken: localStorage.getItem('refreshToken') || '',
     realName: localStorage.getItem('realName') || '',
-    photo: localStorage.getItem('photo') || 'https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png',
+    photo: localStorage.getItem('photo') || 'icon.png',
     schoolCode: localStorage.getItem('schoolCode') || 'sxz',
     userId: localStorage.getItem('userId') || '',
     apiBaseUrl: localStorage.getItem('apiBaseUrl') || '',
@@ -59,8 +57,8 @@ export const useAuthStore = defineStore('auth', {
     },
     setUserInfo(info: Record<string, any>, apiBaseUrl: string) {
       this.realName = info.realName || ''
-      this.photo = info.photo || 'https://s4.anilist.co/file/anilistcdn/user/avatar/large/default.png'
-      this.userId = info.userId || info.sub || info.nameid || ''
+      this.photo = info.photo || 'icon.png'
+      this.userId = String(info.userId || info.id || info.sub || info.nameid || parseJwt(this.token)?.sub || '')
       this.schoolCode = info.schoolCode || this.schoolCode
       this.apiBaseUrl = apiBaseUrl
       localStorage.setItem('realName', this.realName)
@@ -71,43 +69,20 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('apiBaseOrigin', apiBaseUrl)
     },
     async login(account: string, password: string, schoolSelect: string, schoolCode: string) {
-      let apiBaseUrl = 'https://zyapi.loshop.com.cn'
-      if (IS_BROWSER) {
-        // —— 浏览器模式：保持原逻辑 ——
-        // 注意：sxz 不信任 localStorage 里可能遗留的旧 http 域名
-        // （如 http://sxz.api.zykj.org），统一走现代 https 网关；
-        // 仅“其它学校”才走 discovery 自适应。
-        if (schoolSelect === 'other') {
-          if (!schoolCode) throw new Error('请输入学校代码')
-          const info = await discoverSchool(schoolCode)
-          // 复刻旧 index.js 的 apihost 特判：部分学校 discovery 返回的是旧 http 域名，
-          // 需替换为对应的 loshop.com.cn https 域名，否则下方 https 校验会误判不支持
-          if (info.server === 'http://sxzsyxx.api.zykj.org') info.server = 'https://zyapi-sxzsyxx.loshop.com.cn'
-          if (info.server === 'http://bjbsz.api2.zykj.org') info.server = 'https://zyapi-bjbsz.loshop.com.cn'
-          if (!info.server.startsWith('https://')) throw new Error('学校服务器环境不支持自适应登录')
-          apiBaseUrl = info.server
-        }
-      } else {
-        // —— 内嵌 App 模式：统一走自适应登录（含省锡中），不做 https 校验与特判 ——
-        // sxz 默认也走 discover；其它学校使用输入的学校代码。
-        const code = schoolSelect === 'other' ? schoolCode : 'sxz'
-        if (!code) throw new Error('请输入学校代码')
-        const info = await discoverSchool(code)
-        apiBaseUrl = info.server
-        // iframe 基地址使用 discover 返回的 webServer（navPage.html 走此域）
-        if (info.webServer) localStorage.setItem('iframeBase', info.webServer)
-      }
+      const code = schoolSelect === 'other' ? schoolCode : 'sxz'
+      if (!code) throw new Error('请输入学校代码')
+      const info = await discoverSchool(code)
+      const apiBaseUrl = info.server
+      if (info.webServer) localStorage.setItem('iframeBase', info.webServer)
       const result = await loginApi(account, password, apiBaseUrl)
       this.setTokenInfo(result)
       const userInfo = await getUserInfo(apiBaseUrl, result.accessToken)
       this.setUserInfo(userInfo, apiBaseUrl)
-      // 上报 / 封禁判定以「用户实际登录的学校」为准：省锡中选 'sxz'，
-      // 其它学校用其学校代码。否则 this.schoolCode 在 GetInfoAsync 不返回 schoolCode
-      // 时会停留在 'sxz' 默认值，导致非 sxz 学生的登录被错误归到 sxz（同时中育侧仍记真实学校）。
+      // Keep the actual selected school when GetInfoAsync omits schoolCode.
       const effectiveSchool = schoolSelect === 'other' ? schoolCode : 'sxz'
       this.schoolCode = effectiveSchool
       localStorage.setItem('schoolCode', effectiveSchool)
-      // 内嵌 App / Electron 模式：记录凭据，供登录过期后自动重新登录（不记明文密码到浏览器）
+      // 内嵌模式在本机用户数据中记录自动登录凭据，不进入导出文件
       if (!IS_BROWSER) {
         localStorage.setItem('loginAccount', account)
         localStorage.setItem('loginPassword', password)
@@ -115,54 +90,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('loginSchoolCode', schoolCode)
       }
       this.startRefresh()
-      // —— 接入统计 / 风控 / 更新分发 ——
-      // 每次登录（含自动重新登录）都上报，命中封禁则全屏阻断；否则顺便检测强制更新。
-      // 注意：上报的是「登录账号 account」而非 userId（userId 是数字 ID，
-      // 既与旧 users.db 用户名对不上，也匹配不到管理员按用户名设的封禁）。
-
-      // 拉取客户端风控总开关：{"enable":false} 关闭「检测 + 主动封禁」；404 正常开启
-      await fetchClientEnabled()
-
-      // 本地风控（仅 Electron 桌面端）：取设备号 + 环境异常评分
-      let deviceId = ''
-      let devScore = 0
-      let zyScore = 0
-      let risk = null
-      const electronAPI = (window as any).electronAPI
-      if (PLATFORM === 'electron' && electronAPI) {
-        try {
-          deviceId = (await electronAPI.getDeviceId()) || ''
-          // 开关关闭时不跑本地异常评分（检测功能被禁用），仅取设备号供被动封禁查询
-          if (isClientGuardEnabled()) {
-            risk = await electronAPI.getRiskScores()
-            devScore = risk?.devScore ?? 0
-            zyScore = risk?.zyScore ?? 0
-          }
-        } catch (e) {
-          console.error('[riskControl] 取设备号/评分失败:', e)
-        }
-      }
-
-      // 1) 先问服务器：该账号/设备是否已封禁（服务器以豁免白名单为准）
-      let ban = await reportLogin(effectiveSchool, account, deviceId)
-      if (ban?.banned) {
-        const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
-        setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
-      } else if (isClientGuardEnabled() && (devScore > 0.5 || zyScore > 0.3)) {
-        // 本地环境异常：上报风控封禁命令（服务端按豁免白名单决定是否真正封禁）
-        await reportRiskBan(effectiveSchool, account, deviceId, devScore, zyScore, risk?.devFound || [], risk?.zyFound || [])
-        // 2) 以服务器为准：重新查询是否已被封禁，仅当服务器确实封禁时才阻断。
-        //    豁免用户：服务端不会建封禁记录 → 不弹窗，正常进入。
-        ban = await reportLogin(effectiveSchool, account, deviceId)
-        if (ban?.banned) {
-          const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
-          setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
-        } else {
-          await checkVersion()
-        }
-      } else {
-        await checkVersion()
-      }
+      // Authentication is exclusively enforced by the school's official API.
       return userInfo
     },
     /** 用记录的凭据自动重新登录（401 刷新失败后的兜底） */

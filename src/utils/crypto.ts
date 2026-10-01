@@ -9,10 +9,10 @@ import { generateAesKey, LINSPIRER } from '@/config'
 import { logError } from '@/utils/errorText'
 
 /** 中育 AES-ECB 加解密（复刻 window.aesEncrypt/aesDecrypt） */
-const zyKey = CryptoJS.enc.Utf8.parse(generateAesKey())
+function currentZyKey() { return CryptoJS.enc.Utf8.parse(generateAesKey()) }
 
 export function aesEncrypt(data: string): string {
-  const encrypted = CryptoJS.AES.encrypt(data, zyKey, {
+  const encrypted = CryptoJS.AES.encrypt(data, currentZyKey(), {
     mode: CryptoJS.mode.ECB,
     padding: CryptoJS.pad.Pkcs7
   })
@@ -22,7 +22,7 @@ export function aesEncrypt(data: string): string {
 export function aesDecrypt(encryptedBase64Str?: string): string {
   if (!encryptedBase64Str) return ''
   try {
-    const decrypted = CryptoJS.AES.decrypt(encryptedBase64Str, zyKey, {
+    const decrypted = CryptoJS.AES.decrypt(encryptedBase64Str, currentZyKey(), {
       mode: CryptoJS.mode.ECB,
       padding: CryptoJS.pad.Pkcs7
     })

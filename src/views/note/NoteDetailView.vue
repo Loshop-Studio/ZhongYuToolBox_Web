@@ -133,7 +133,7 @@ import { useIsMobile } from '@/composables/useIsMobile'
 const { isMobile } = useIsMobile()
 
 const OSS_BASE = 'http://friday-note.oss-cn-hangzhou.aliyuncs.com/'
-const PDF_FOOTER = 'https://gl.zytb.loshop.com.cn'
+const PDF_FOOTER = 'https://github.com/Loshop-Studio/ZhongYuToolBox_Web'
 /** 仅图片资源可渲染，模板 .bin 等需过滤 */
 const IMG_EXT_RE = /\.(jpg|jpeg|png|webp|gif|bmp)$/i
 

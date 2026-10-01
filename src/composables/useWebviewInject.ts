@@ -41,7 +41,7 @@ export interface WebviewInjectOptions {
  * 构造在 webview 内部执行的注入脚本（字符串）。
  * 通过 JSON.stringify 安全嵌入配置，避免使用模板拼接导致注入逃逸。
  */
-function buildInjectJS(opts: WebviewInjectOptions): string {
+export function buildInjectJS(opts: WebviewInjectOptions): string {
   const payload = JSON.stringify({
     removeClass: opts.removeClass || '',
     targetId: opts.targetId || '',
@@ -58,7 +58,7 @@ function buildInjectJS(opts: WebviewInjectOptions): string {
     '    var changed=false;',
     '    if(o.removeClass){var h=doc.querySelector("."+o.removeClass); if(h){h.remove(); changed=true;}}',
     '    if(o.cssText){var s=doc.getElementById(o.styleId); if(!s){s=doc.createElement("style"); s.id=o.styleId; s.type="text/css"; s.appendChild(doc.createTextNode(o.cssText)); (doc.head||doc.documentElement).appendChild(s); changed=true;} else if(s.textContent!==o.cssText){s.textContent=o.cssText; changed=true;}}',
-    '    if(o.targetId){var a=doc.getElementById(o.targetId); if(a){a.style.setProperty("height","71vh","important"); a.style.setProperty("max-height","71vh","important"); a.style.setProperty("min-height","71vh","important"); changed=true;}}',
+    '    if(o.targetId){var a=doc.getElementById(o.targetId); if(a){["height","max-height","min-height"].forEach(function(p){if(a.style.getPropertyValue(p)!=="71vh"||a.style.getPropertyPriority(p)!=="important"){a.style.setProperty(p,"71vh","important");changed=true;}});}}',
     '    return changed;',
     '  }',
     '  function start(){',

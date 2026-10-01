@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-root">
+  <div class="layout-root" :class="{ 'windows-ui': isWindowsEdition }">
     <!-- 背景封面氛围 -->
     <div class="bg-cover" :style="{ backgroundImage: `url(${bgUrl})` }"></div>
 
@@ -24,23 +24,31 @@
 
     <el-container class="main-container" :class="{ 'is-mobile': isMobile }">
       <!-- 侧边栏（桌面端常驻） -->
-      <el-aside v-if="!isMobile" :width="collapsed ? '64px' : '220px'" class="aside">
+      <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed, 'instant-collapse': instantCollapse }">
         <div class="brand">
-          <img src="/icon.png" class="brand-icon" alt="中育ToolBox" />
+          <img v-if="isWindowsEdition" :src="`${baseUrl}icon.svg`" class="edition-app-icon" alt="中育工具箱 aoki" />
+          <img v-else :src="`${baseUrl}icon.png`" class="brand-icon" alt="中育ToolBox" />
+          <div v-if="isWindowsEdition" class="edition-brand-text" :aria-hidden="collapsed"><strong>中育工具箱</strong><small>学习工作空间</small></div>
         </div>
-        <SideMenu :collapse="collapsed" />
+        <SideMenu :collapse="collapsed" :light="isWindowsEdition" />
+        <div v-if="isWindowsEdition" class="edition-sidebar-footer" :aria-hidden="collapsed">原作者 {{ EDITION.originalAuthor }}<br>Co-author · {{ EDITION.coAuthor }}</div>
       </el-aside>
 
       <!-- 主区域 -->
       <el-container>
         <!-- 桌面端顶栏（二级页面隐藏） -->
         <el-header v-if="!isMobile && !hideHeader" class="header">
-          <el-icon class="collapse-btn" @click="collapsed = !collapsed">
+          <el-button text class="collapse-btn" aria-label="展开或收起侧栏" :aria-expanded="!collapsed" @click="toggleSidebar"><el-icon>
             <Expand v-if="collapsed" />
             <Fold v-else />
-          </el-icon>
-          <span class="header-title">{{ currentTitle }}</span>
+          </el-icon></el-button>
+          <span class="header-title">中育工具箱</span>
           <div class="header-right">
+            <el-select v-if="isWindowsEdition" v-model="themeMode" aria-label="外观模式" class="theme-select" @change="setThemeMode">
+              <el-option label="浅色" value="light" />
+              <el-option label="深色" value="dark" />
+              <el-option label="跟随系统" value="system" />
+            </el-select>
             <el-tag v-if="proxyLocal" type="success" size="small" effect="dark">本地加速已启用</el-tag>
             <el-button text :icon="User" @click="goLogin">
               {{ auth.isLoggedIn ? auth.userName : '未登录' }}
@@ -49,14 +57,19 @@
         </el-header>
 
         <el-main class="content" :class="{ flush: hideHeader }" ref="mainRef">
+          <div v-if="isWindowsEdition && !hideHeader" class="edition-page-heading">
+            <div><div class="edition-breadcrumb">工作空间 <span>/</span> {{ currentTitle }}</div><h1>{{ currentTitle }}</h1><p>{{ currentDescription }}</p></div>
+            <el-tag :type="auth.isLoggedIn ? 'success' : 'info'" round effect="plain">{{ auth.isLoggedIn ? '账号已登录' : '账号未登录' }}</el-tag>
+          </div>
           <router-view v-slot="{ Component, route }">
             <transition name="fade" mode="out-in">
               <keep-alive v-if="route.meta.keepAlive">
-                <component :is="Component" />
+                <component :is="Component" :key="String(route.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
               </keep-alive>
-              <component :is="Component" v-else />
+              <component :is="Component" v-else :key="String(route.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
             </transition>
           </router-view>
+          <footer v-if="isWindowsEdition && !hideHeader" class="edition-footer"><span>原作者 {{ EDITION.originalAuthor }} · Co-author {{ EDITION.coAuthor }}</span><el-button text @click="router.push('/about')">关于与致谢</el-button></footer>
         </el-main>
       </el-container>
     </el-container>
@@ -103,16 +116,31 @@ import SideMenu from './SideMenu.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'
-import { checkVersion } from '@/utils/track'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { PLATFORM, IS_WINDOWS } from '@/config'
+import { EDITION } from '@/config/edition'
+import { themeMode, setThemeMode } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const proxy = useProxyStore()
 const { isMobile } = useIsMobile()
+const isWindowsEdition = IS_WINDOWS
+const baseUrl = import.meta.env.BASE_URL
+const descriptions: Record<string, string> = {
+  '/login': '管理账号，快速进入你的学习资源。', '/note': '浏览笔记与文件夹，将 PDF 整理到云端。',
+  '/exam': '查看测评任务、题目与分析。', '/donate': '支持原作者，帮助工具箱持续维护。',
+  '/about': '使用说明、项目致谢与本版本的贡献者。'
+}
+const currentDescription = computed(() => descriptions[route.path] || '在一个工作空间中管理你的学习资源。')
 
 const collapsed = ref(false)
+const instantCollapse = ref(false)
+function toggleSidebar(event: MouseEvent) {
+  instantCollapse.value = event.detail === 0
+  collapsed.value = !collapsed.value
+}
 const drawer = ref(false)
 const bgUrl = ref(`${import.meta.env.BASE_URL}bg3.jpg`)
 
@@ -156,7 +184,6 @@ function onProxyStatusChange(localOk: boolean, isWindows: boolean) {
 }
 
 // 更新分发：启动即检测一次，并每 10 分钟复检（仅 electron / uniapp 实际生效）
-let versionTimer: number | null = null
 
 onMounted(() => {
   startProxyPolling(onProxyStatusChange)
@@ -165,18 +192,13 @@ onMounted(() => {
   // 让接管顶栏的二级页面（如在线专栏）也能唤起移动端侧栏抽屉
   window.addEventListener('app:open-drawer', onOpenDrawer)
   // 更新分发检测
-  checkVersion()
-  versionTimer = window.setInterval(checkVersion, 10 * 60 * 1000)
 })
 onUnmounted(() => {
   stopProxyPolling()
   const content = document.querySelector('.content')
   content?.removeEventListener('scroll', onScroll)
   window.removeEventListener('app:open-drawer', onOpenDrawer)
-  if (versionTimer !== null) {
-    clearInterval(versionTimer)
-    versionTimer = null
-  }
+
 })
 
 function onOpenDrawer() {

@@ -41,7 +41,7 @@ export function setOssBaseUrl(url: string): void {
 }
 
 function apiBase(): string {
-  return localStorage.getItem('apiBaseUrl') || 'https://zyapi.loshop.com.cn'
+  return localStorage.getItem('apiBaseUrl') || 'http://sxz.api.zykj.org'
 }
 
 /** MD5 大写（复刻 index.js md5） */
@@ -143,7 +143,8 @@ export async function uploadFile(
   })
 
   const remoteFile = `${fc}/${FR}/${userId}/${dateStr}/${nonce}/${remoteFileName}`
-  await client.put(remoteFile, file as any)
+  const uploaded = await client.put(remoteFile, file as any)
+  if (uploaded.url) return uploaded.url
 
   const endpoint = result.endpoint || `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com`
   return endpoint.replace(/\/+$/, '') + '/' + remoteFile

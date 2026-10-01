@@ -1,5 +1,10 @@
 <template>
   <div class="note-view">
+    <div v-if="['dir','all','search'].includes(activeTab)" class="selection-bar">
+      <el-checkbox :model-value="allVisibleSelected" :indeterminate="someVisibleSelected && !allVisibleSelected" :disabled="moving || !visibleNotes.length" @change="selectVisible">选择当前页</el-checkbox>
+      <span>已选 {{ selected.size }} 条</span><el-button link :disabled="moving || !selected.size" @click="selected.clear()">清空选择</el-button>
+      <NoteBatchMove :ids="[...selected]" @busy="moving = $event" @moved="afterMove" />
+    </div>
     <el-tabs v-model="activeTab" class="note-tabs" @tab-change="handleTabChange">
       <!-- 文件夹 -->
       <el-tab-pane label="文件夹" name="dir">
@@ -23,6 +28,7 @@
             @click="handleDirItemClick(note)"
           >
             <div class="row-left">
+              <el-checkbox v-if="[1,12].includes(note.type)" :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
               <el-icon class="row-icon" :class="note.type === 0 ? 'folder' : 'file'">
                 <Folder v-if="note.type === 0" />
                 <Document v-else />
@@ -32,9 +38,10 @@
                 <small>创建时间: {{ note.createTime || '-' }}</small>
               </div>
             </div>
-            <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">
-              {{ note.type === 0 ? '文件夹' : '笔记' }}
-            </el-tag>
+            <div class="row-end">
+              <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">{{ note.type === 0 ? '文件夹' : '笔记' }}</el-tag>
+              <NoteActions :note="note" @changed="refreshLists" />
+            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -56,10 +63,12 @@
             @click="openPreview(note)"
           >
             <div class="row-left">
+              <el-checkbox :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
               <el-icon class="row-icon file"><Document /></el-icon>
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
+            <NoteActions :note="note" @changed="refreshLists" />
           </div>
         </div>
         <el-pagination
@@ -103,10 +112,12 @@
             @click="openPreview(note)"
           >
             <div class="row-left">
+              <el-checkbox :model-value="selected.has(note.fileId)" :disabled="moving" :aria-label="'选择笔记 ' + note.fileName" @click.stop @change="toggle(note.fileId)" />
               <el-icon class="row-icon file"><Document /></el-icon>
               <strong>{{ note.fileName }}</strong>
             </div>
             <small class="time">{{ note.updateTime || note.createTime }}</small>
+            <NoteActions :note="note" @changed="refreshLists" />
           </div>
         </div>
         <el-pagination
@@ -125,12 +136,16 @@
       <el-tab-pane label="PDF上传" name="pdf">
         <PdfUploadPanel />
       </el-tab-pane>
+      <el-tab-pane label="图片上传" name="images" lazy><PdfUploadPanel source="images" /></el-tab-pane>
+      <el-tab-pane label="回收站" name="recycle"><NoteRecycleBin v-if="activeTab === 'recycle'" @changed="allLoaded = false" /></el-tab-pane>
     </el-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import NoteBatchMove from '@/components/NoteBatchMove.vue'
+import NoteRecycleBin from '@/components/NoteRecycleBin.vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Folder, Document, Search, Refresh } from '@element-plus/icons-vue'
@@ -141,8 +156,22 @@ import {
   type NoteItem
 } from '@/api/note'
 import PdfUploadPanel from './PdfUploadPanel.vue'
+import NoteActions from '@/components/NoteActions.vue'
 
 const router = useRouter()
+const selected = ref(new Set<string>()), moving = ref(false)
+const visibleNotes = computed(() => (activeTab.value === 'dir' ? dirNotes.value : activeTab.value === 'all' ? pagedAllNotes.value : pagedSearchResults.value).filter(n => [1,12].includes(n.type)))
+const allVisibleSelected = computed(() => !!visibleNotes.value.length && visibleNotes.value.every(n => selected.value.has(n.fileId)))
+const someVisibleSelected = computed(() => visibleNotes.value.some(n => selected.value.has(n.fileId)))
+function toggle(id:string) { if (selected.value.has(id)) selected.value.delete(id); else selected.value.add(id) }
+function selectVisible(value:unknown) { for (const note of visibleNotes.value) { if (value) selected.value.add(note.fileId); else selected.value.delete(note.fileId) } }
+async function afterMove(ids:string[]) { for (const id of ids) selected.value.delete(id); await refreshLists() }
+async function refreshLists() {
+  allLoaded.value = false
+  await loadNotes(breadcrumb.value.at(-1)?.id || '0')
+  if (activeTab.value === 'all') await loadAllNotes(true)
+  if (activeTab.value === 'search' && searched.value) await doSearch()
+}
 
 const pageSize = 20
 
@@ -171,7 +200,9 @@ async function loadNotes(parentId = '0') {
 }
 
 function handleDirItemClick(note: NoteItem) {
+  if (moving.value) return
   if (note.type === 0) {
+    selected.value.clear()
     breadcrumb.value.push({ id: note.fileId, name: note.fileName })
     loadNotes(note.fileId)
   } else {
@@ -180,8 +211,10 @@ function handleDirItemClick(note: NoteItem) {
 }
 
 function jumpBreadcrumb(index: number) {
+  if (moving.value) return
   if (index === breadcrumb.value.length - 1) return
   const target = breadcrumb.value[index]
+  selected.value.clear()
   breadcrumb.value = breadcrumb.value.slice(0, index + 1)
   loadNotes(target.id)
 }
@@ -256,6 +289,7 @@ function openPreview(note: NoteItem) {
 }
 
 function handleTabChange(name: string | number) {
+  if (!moving.value) selected.value.clear()
   if (name === 'all') loadAllNotes()
 }
 
@@ -266,8 +300,9 @@ onMounted(() => loadNotes('0'))
 .note-view {
   padding: 16px;
 }
+.selection-bar { display:flex; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:16px; font-size:14px; color:var(--el-text-color-secondary); }
 .note-tabs {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 12px 16px;
 }
@@ -304,11 +339,14 @@ onMounted(() => loadNotes('0'))
   background: var(--el-fill-color-light);
 }
 .row-left {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
+.row-end { display:flex; align-items:center; gap:12px; }
+.note-row { gap:12px; flex-wrap:wrap; }
 .row-icon {
   font-size: 20px;
 }

@@ -156,8 +156,14 @@ export function linspirerProxyUrl(url?: string): string {
     .replace('https://cloud.linspirer.com:883', LINSPIRER.API_BASE)
 }
 
+/** 密码计算使用小写设备号，同时清理复制时带入的首尾空白。 */
+function normalizePasswordSwdid(swdid: string): string {
+  return String(swdid || '').trim().toLowerCase()
+}
+
 /** 计算管理员密码（adminCode 算法，复刻 linspirer.js） */
 export function calcAdminCode(swdid: string, studentId?: string | null): string {
+  swdid = normalizePasswordSwdid(swdid)
   if (!swdid || swdid === 'unknown') return 'unknown'
   const now = new Date()
   const dateStr =
@@ -180,6 +186,8 @@ export async function calcPassword(
   model: string,
   studentId?: string | null
 ): Promise<string> {
+  swdid = normalizePasswordSwdid(swdid)
+  if (!swdid || swdid === 'unknown') return 'unknown'
   let sid = studentId
   if (!sid) {
     try {

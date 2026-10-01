@@ -52,6 +52,7 @@
 
       <!-- 回收站 -->
       <el-tab-pane label="回收站" name="recycle">
+        <p class="muted">图库回收站目前支持查看。官方永久删除接口尚未核实，此版本不提供删除操作。</p>
         <el-empty v-if="!loading.recycle && !recycle.loadingMore && recycle.items.length === 0" description="回收站为空" />
         <div v-else class="grid-scroll">
           <div class="pic-grid">

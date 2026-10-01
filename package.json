@@ -1,16 +1,25 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.0.0",
+  "version": "1.1.5-aoki",
   "private": true,
+  "author": "Loshop; co-author: aoki",
+  "description": "ZhongYuToolBox Windows WebView2 shell, themes, local image/PDF conversion",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
+    "test:pdf": "node scripts/test-pdf.mjs",
+    "test:linspirer": "node scripts/test-linspirer.mjs",
     "dev:electron": "node scripts/dev-electron.mjs",
     "build": "vue-tsc -b && vite build",
     "build:electron": "vue-tsc -b && vite build --mode electron && electron-builder --config electron-builder.config.cjs",
     "build:plus": "vue-tsc -b && vite build --mode plus",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:windows": "node scripts/build-windows.mjs",
+    "build:ww2": "node scripts/build-windows.mjs",
+    "dev:ww2": "node scripts/dev-windows.mjs",
+    "test:windows": "node scripts/build-windows.mjs --qa",
+    "build:installer": "node scripts/build-installer.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -20,8 +29,10 @@
     "dplayer": "^1.27.1",
     "element-plus": "^2.7.6",
     "fabric": "^5.3.1",
+    "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.4.168",
     "pinia": "^2.1.7",
     "vue": "^3.4.31",

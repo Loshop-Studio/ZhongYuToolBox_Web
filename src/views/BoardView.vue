@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
   flex: 1 1 auto;
   width: 100%;
   overflow: auto;
-  background: #f0f0f0;
+  background: var(--el-fill-color-light);
   display: flex;
   align-items: center;
   justify-content: center;
