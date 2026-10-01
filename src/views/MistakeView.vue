@@ -1,6 +1,6 @@
 <template>
   <div class="mistake-page">
-    <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers">附答案与解析</el-checkbox><el-button :disabled="!activeBookId || removing" :loading="exporting" @click="exportSubject">导出当前科目 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
+    <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers" :disabled="exporting">在题目后附答案与解析</el-checkbox><el-button :disabled="!activeBookId || removing || booksLoading" :loading="exporting" @click="exportSubject('all')">导出本科全部 PDF</el-button><el-button :disabled="!selectedIds.length || removing || exporting || loading" @click="exportSubject('selected')">导出选中 {{ selectedIds.length }} 题 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
     <div v-if="activeBookId" class="export-bar">
       <el-checkbox :model-value="allSelected" :indeterminate="selectedIds.length > 0 && !allSelected" :disabled="loading || removing || exporting || !list.length" @change="selectAll">选择当前科目列表</el-checkbox>
       <span>已选 {{ selectedIds.length }} 题</span>
@@ -9,7 +9,7 @@
     <el-empty v-if="!booksLoading && books.length === 0" description="暂无错题本" />
 
     <el-tabs v-else v-model="activeBookId" class="mistake-tabs" @tab-change="onTabChange">
-      <el-tab-pane v-for="b in books" :key="b.id" :label="b.topic.content" :name="String(b.id)" :disabled="removing">
+      <el-tab-pane v-for="b in books" :key="b.id" :label="b.topic.content" :name="String(b.id)" :disabled="removing || exporting">
         <div v-loading="loading" class="mistake-list">
           <el-empty v-if="!loading && list.length === 0" :description="`「${b.topic.content}」暂无错题`" />
           <div
@@ -87,17 +87,20 @@ async function removeSelected(selection: string[]) {
   } finally { if (removeAbort === current) removing.value = false }
 }
 let exportAbort: AbortController | undefined
-async function exportSubject() {
+async function exportSubject(mode: 'all' | 'selected') {
   if (exporting.value || removing.value) return
   const id = activeBookId.value, subject = books.value.find(b => String(b.id) === id)?.topic.content || '错题'
-  const key = accountKey()
-  exporting.value = true; exportAbort = new AbortController()
-  const assertActive = () => { if (exportAbort?.signal.aborted || accountKey() !== key) throw new Error('导出已取消或账号已切换') }
+  const key = accountKey(), selection = new Set(selectedIds.value), withAnswers = includeAnswers.value
+  if (!id || (mode === 'selected' && !selection.size)) return
+  exporting.value = true; const current = exportAbort = new AbortController()
+  const assertActive = () => { if (current.signal.aborted || accountKey() !== key || activeBookId.value !== id) throw new Error('导出已取消或账号已切换') }
   try {
     const items: MistakeItem[] = [], seen = new Set<string>()
-    for (;;) {
+    if (mode === 'selected') items.push(...list.value.filter(item => selection.has(String(item.id))))
+    else for (;;) {
       assertActive()
-      const res = await searchMistakes(id, items.length, 200)
+      const res = await searchMistakes(id, items.length, 200, current.signal)
+      assertActive()
       if (!res.items?.length) break
       for (const item of res.items) { if (seen.has(String(item.id))) throw new Error('官方分页重复，请刷新后重试'); seen.add(String(item.id)); items.push(item) }
       if (items.length >= res.totalCount) break
@@ -106,9 +109,10 @@ async function exportSubject() {
     const questions: ExportQuestion[] = []
     for (const [index,item] of items.entries()) {
       assertActive(); exportProgress.value = '读取题目 ' + (index + 1) + '/' + items.length
-      const detail = await getMistakeDetail(item.id)
+      const detail = await getMistakeDetail(item.id, current.signal)
+      assertActive()
       if (!detail) throw new Error('题目已删除：' + item.id)
-      const parsed = detail.qstPath ? parseQuestionHtml(await fetchQstHtml(detail.qstPath)) : {stem:'', answer:'', analysis:''}
+      const parsed = detail.qstPath ? parseQuestionHtml(await fetchQstHtml(detail.qstPath, current.signal)) : {stem:'', answer:'', analysis:''}
       const picture = detail.stemShoot || item.stemShoot
       if (!parsed.stem && picture) {
         const image = document.createElement('img'); image.src = picture; parsed.stem = image.outerHTML
@@ -117,9 +121,9 @@ async function exportSubject() {
       questions.push({title: item.source || '错题', ...parsed})
     }
     assertActive()
-    const pdf = await createMistakePdf(subject, questions, includeAnswers.value, (n,total) => exportProgress.value = '排版 ' + n + '/' + total, exportAbort.signal)
-    assertActive(); await saveBlobFile(pdf, subject.replace(/[<>:"/\\|?*]/g,'_') + '-错题本.pdf')
-    ElMessage.success('科目错题 PDF 已保存')
+    const pdf = await createMistakePdf(subject, questions, withAnswers, (n,total) => exportProgress.value = '排版 ' + n + '/' + total, current.signal)
+    assertActive(); await saveBlobFile(pdf, subject.replace(/[<>:"/\\|?*]/g,'_') + (mode === 'selected' ? '-选中' + items.length + '题' : '-全部错题') + '.pdf')
+    ElMessage.success(`已导出 ${items.length} 题 PDF`)
   } catch (e) { ElMessage.error((e as Error).message) }
   finally { exporting.value = false; exportProgress.value = '' }
 }
