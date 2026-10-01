@@ -6,6 +6,11 @@ import { request, unwrapResult } from '@/utils/request'
 
 const PAGE_SIZE = 20
 
+function validId(id: number): number {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('无效的测评或题目编号')
+  return id
+}
+
 /** 测评任务列表项 */
 export interface ExamTask {
   examId?: number
@@ -38,14 +43,14 @@ export async function getExamTasks(page: number, signal?: AbortSignal, taskListT
 
 /** 测评任务详情（含题目分组）（复刻 fetchExamTask） */
 export async function getExamTask(examId: number, signal?: AbortSignal): Promise<any> {
-  const resp = await request<any>(`/api/services/app/Task/GetExamTaskAsync?id=${examId}`, {signal})
+  const resp = await request<any>(`/api/services/app/Task/GetExamTaskAsync?id=${validId(examId)}`, {signal})
   return unwrapResult<any>(resp)
 }
 
 /** 单题 HTML（含解析）（复刻 fetchQstAnswerView） */
-export async function getQstAnswerView(qstId: number): Promise<string> {
-  const resp = await request<Response>(`/Question/View/${qstId}?showAnalysis=true`, {
-    raw: true
+export async function getQstAnswerView(qstId: number, signal?: AbortSignal): Promise<string> {
+  const resp = await request<Response>(`/Question/View/${validId(qstId)}?showAnalysis=true`, {
+    raw: true, signal
   })
   // raw 模式下 request 返回原始 Response，需自行读取文本
   if (resp instanceof Response) {
@@ -57,7 +62,7 @@ export async function getQstAnswerView(qstId: number): Promise<string> {
 /** 考试概览（复刻 fetchExamOverview） */
 export async function getExamOverview(examId: number, signal?: AbortSignal): Promise<any> {
   const resp = await request<any>(
-    `/api/services/app/LearningSituations/GetExamOverviewAsync?examId=${examId}`,
+    `/api/services/app/LearningSituations/GetExamOverviewAsync?examId=${validId(examId)}`,
     {
       signal, headers: {
         AppName: 'WebClient',
@@ -71,7 +76,7 @@ export async function getExamOverview(examId: number, signal?: AbortSignal): Pro
 /** 题目分析（复刻 fetchQuestionAnalysis） */
 export async function getQuestionAnalysis(examId: number, signal?: AbortSignal): Promise<any> {
   const resp = await request<any>(
-    `/api/services/app/LearningSituations/GetQuestionAnalysisAsync?examId=${examId}`,
+    `/api/services/app/LearningSituations/GetQuestionAnalysisAsync?examId=${validId(examId)}`,
     {
       signal, headers: {
         AppName: 'WebClient',
@@ -85,7 +90,7 @@ export async function getQuestionAnalysis(examId: number, signal?: AbortSignal):
 /** 导出客观题答案 xlsx（复刻 exportObjectiveAnswers），返回 Blob */
 export async function exportObjectiveAnswers(examId: number): Promise<Blob> {
   const resp = await request<Response>(
-    `/api/services/app/Exam/ExportObjectiveAnswersAsync?examId=${examId}`,
+    `/api/services/app/Exam/ExportObjectiveAnswersAsync?examId=${validId(examId)}`,
     {
       headers: {
         AppName: 'WebClient',
@@ -108,7 +113,8 @@ export interface ParsedQuestion {
 
 export async function parseExamQuestions(
   exam: any,
-  getHtml: (qstId: number) => Promise<string>
+  getHtml: (qstId: number) => Promise<string>,
+  signal?: AbortSignal
 ): Promise<ParsedQuestion[]> {
   const questions: ParsedQuestion[] = []
   let idx = 1
@@ -116,7 +122,9 @@ export async function parseExamQuestions(
   const groups = exam?.groups || exam?.result?.groups || []
   for (const group of groups) {
     for (const q of group.questions || []) {
+      if (signal?.aborted) throw new DOMException('已取消题目加载', 'AbortError')
       const content = await getHtml(q.id)
+      if (signal?.aborted) throw new DOMException('已取消题目加载', 'AbortError')
       const parser = new DOMParser()
       const doc = parser.parseFromString(content, 'text/html')
       doc.querySelectorAll('.toolBar').forEach((el) => el.remove())
