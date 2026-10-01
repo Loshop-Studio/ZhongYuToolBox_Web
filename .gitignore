@@ -12,6 +12,8 @@ node_modules/
 dist/
 dist-ssr/
 release/
+.test-output/
+.local/
 
 # TypeScript build info
 *.tsbuildinfo
@@ -32,3 +34,5 @@ release/
 
 # CodeBuddy
 .codebuddy/
+
+!.env.webview2

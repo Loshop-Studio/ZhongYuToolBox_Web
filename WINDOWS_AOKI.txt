@@ -1,0 +1,76 @@
+中育 ToolBox Windows WebView2 改造版
+
+原项目：https://github.com/Loshop-Studio/ZhongYuToolBox_Web
+基于提交：ca807d0
+原作者：Loshop；Co-author：aoki
+
+启动：解压便携包，在完整目录中双击“中育工具箱-aoki.exe”。
+分享或移动时需保留 dist、DLL、bridge.js 等所有文件，不能只复制 exe。
+适用：Windows 10/11 x64，.NET Framework 4.8，Microsoft Edge WebView2 Runtime。
+此机器已安装所需运行时。本构建未进行代码签名。
+WebView2 Runtime 官方说明：https://learn.microsoft.com/microsoft-edge/webview2/concepts/distribution
+
+架构：C# WPF 原生窗口 + 系统 WebView2，发布包不包含 Electron、Node 或 node_modules。
+浏览器渲染引擎仍然存在，由系统 WebView2 Runtime 提供。
+新版使用独立的用户数据目录，需要重新登录；不自动迁移旧 Electron 账号缓存。
+用户数据：%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2
+本地界面从 https://toolbox.local 加载，这个域名由宿主映射到随包 dist，不请求外部网页。
+选课/专栏使用独立的远端 WebView2，退出页面时释放；远端页面没有原生文件读写桥。
+HTTPS 保持证书校验。官方返回 HTTP 地址时沿用已经授权的 HTTP 连接。
+原作者支持入口和捐赠对象保留。作者版本检查、统计和风控依赖移除。
+Windows 发布包不包含 Everything 扫描程序，不执行风险扫描。
+
+界面：
+右上角选择“浅色 / 深色 / 跟随系统”，记住选择，跟随系统时实时响应系统变化。
+灰紫暖白配色是 Quiet Violet / Cloud Dancer 的屏幕近似值，深色模式使用对应暗色变量。
+得意黑 Smiley Sans v2.0.1 本地打包，授权见 dist/fonts/OFL.txt。
+保留原作者 Loshop 和支持作者入口，新增 co-author aoki。
+侧栏作为唯一功能导航，用户中心使用单一账号表单。
+应用 Emil Design Engineering 的交互规则，参考 Wise Design 的层级、留白与圆角。
+
+云笔记：
+“PDF上传”：本机检查 CropBox 与已有旋转，只把可见竖版页逆时针旋转 90°。
+内容随之旋转，横版/方形页不动，原文件不覆盖，矢量内容保留。
+整页等比例适配 2880×1800 横版画布，居中留白，不裁切。
+“图片上传”：多选 PNG、JPG、WebP，可上移/下移/移除，每张图片一页。
+点击开始上传会先在本地 Worker 中生成 PDF，再进入笔记上传流程；预览不是必选步骤。
+处理 EXIF 方向，透明区域铺白底，长边超过 4096 像素时等比例缩小。
+自动模式下竖版图片逆时针旋转 90°；可逐张手动循环切换 0/逆时针90/180/270，手动方向不再被自动旋转覆盖。原图片不修改。
+预览前 5 页，可以先保存生成的 PDF。上传完成可下载页面图片 ZIP。
+上传资源使用实际 WebP 格式、MD5、SHA-256 引用及 OSS 返回地址。
+本地保存由系统对话框选择路径，分块传输、临时文件写完后原子替换，取消不报成功。
+固定模板通过受限桥读取，只允许 8 个模板路径。
+
+验证：
+npm run test:pdf：混合页方向、原文件不变、无效 PDF、模板重试、重复上传、
+资源摘要/引用链、OSS URL、单调进度、固定模板路径限制通过。
+真实 PDF.js 渲染：8 页混合方向、A4、方形、超宽/超长页的四角全部保留。
+真实 WebView2 回归：主题、图片格式/顺序/方向、三页四角完整、损坏图片拒绝、
+Worker 取消、监听收敛、桥权限限制、超过 2 MB 文件保存且逐字节验证、
+已知服务跨域读取、远端视图加载/无原生桥/尺寸更新/退出释放通过。
+UI 离线上传测试：未预览直接开始，自动生成 PDF，进度结束到 100%，没有真实远端写入。
+生产包排除 tests 页面。
+未用真实账号提交笔记；最终平板导入效果仍需真实设备验证。
+没有量化旧版和新版的整体速度，不能据此宣称具体加速倍数。
+
+构建：
+npm ci
+npm run test:pdf
+npm run build:windows
+需要 Windows 内置 .NET Framework C# 编译器，不需要 .NET SDK。
+构建脚本缺少缓存时从官方 NuGet 下载固定版本 WebView2 SDK 1.0.4258.31。
+产物：release/windows-webview2-时间戳/中育工具箱-aoki.exe
+每次构建生成新目录，不覆盖正在使用的旧程序。
+
+原生回归包：npm run test:windows
+再运行回归包的 exe --qa；报告写到同目录 qa-result.json。
+原生自检：exe --self-test，报告写到同目录 self-test.json。
+源代码仍保留旧 Electron 构建用于对照，新发布程序采用 WebView2。
+
+新增功能（1.1.0-aoki）：
+云笔记列表提供重命名及移至官方回收站。
+新测评页面自动收集当前页本人已评分错题，也可点击“批量收集全部测评错题”。
+同一题先检查官方加入状态；失败保留本地题干，显示待同步，再次核对重试。
+错题本页面可分别从本地测评错题及官方科目错题本导出 A4 PDF，选择附答案与解析。
+官方错题同步、笔记修改及平板实际导入尚未用真实账号/设备验证，本版预发布。
+后端依赖及离线分享变化详见 SERVER_DEPENDENCIES.md。

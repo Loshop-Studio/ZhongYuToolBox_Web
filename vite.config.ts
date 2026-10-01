@@ -25,5 +25,12 @@ export default defineConfig(({ mode }) => ({
   },
   worker: {
     format: 'es'
+  },
+  build: {
+    rollupOptions: {
+      input: process.env.ZYTB_BUILD_QA === '1'
+        ? { app: fileURLToPath(new URL('./index.html', import.meta.url)), qa: fileURLToPath(new URL('./tests/native-qa.html', import.meta.url)) }
+        : fileURLToPath(new URL('./index.html', import.meta.url))
+    }
   }
 }))

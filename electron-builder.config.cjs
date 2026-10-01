@@ -4,15 +4,15 @@
  *   如需生成安装包，可将 win.target 改为 ['nsis']。
  */
 module.exports = {
-  appId: 'com.zhongyu.toolbox',
-  productName: '中育ToolBox',
+  appId: 'com.zhongyu.toolbox.aoki',
+  productName: '中育ToolBox-aoki',
   copyright: 'Copyright © 2024 ZhongYuToolBox',
   // 复用工程内已安装的 electron 运行包，避免 electron-builder 联网下载
   electronDist: 'node_modules/electron/dist',
   // 使用网页图标（public/icon.png 封装的 .ico）
   icon: 'public/icon.ico',
   directories: {
-    output: 'release',
+    output: 'release/aoki-ui-v2',
     buildResources: 'electron/resources'
   },
   files: ['dist/**/*', 'electron/**/*', 'package.json'],
@@ -23,6 +23,9 @@ module.exports = {
   npmRebuild: false,
   asar: true,
   win: {
+    // Independent local build, without a signing certificate. Avoid the code-sign
+    // tool archive's macOS symlinks, which Windows cannot extract without privileges.
+    signAndEditExecutable: false,
     target: ['dir']
   }
 }
