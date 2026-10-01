@@ -26,7 +26,7 @@
       <!-- 侧边栏（桌面端常驻） -->
       <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed }">
         <div class="brand">
-          <span v-if="isWindowsEdition" class="edition-monogram">Z</span>
+          <img v-if="isWindowsEdition" :src="`${baseUrl}icon.svg`" class="edition-app-icon" alt="中育工具箱 aoki" />
           <img v-else :src="`${baseUrl}icon.png`" class="brand-icon" alt="中育ToolBox" />
           <div v-if="isWindowsEdition && !collapsed" class="edition-brand-text"><strong>中育工具箱</strong><small>学习工作空间</small></div>
         </div>
