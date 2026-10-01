@@ -9,7 +9,8 @@
 - POST /CloudNotes/api/Notes/MoveToRecycleBin：加密的 fileId 字符串数组。
 - POST /CloudNotes/api/Notes/Update：从当前服务端笔记对象保留 fileId、fileUrl、parentId、type、version、shared、isRecycleBin、expirationTimeStamp 等字段；重命名只改变 fileName，移动只改变 parentId。不传 noteList/createTime/updateTime。服务端 code=0 才记录操作成功。
 - 批量移动前 GET /CloudNotes/api/Notes/GetAll 重新读取最新节点及版本；确认目标是有效文件夹或根目录，依次 Update，分别反馈成功、跳过和失败。没有使用未经验证的 Move 接口，也没有假定整批是原子事务。
-- 不调用 Notes/Delete，不实现永久删除。回收站恢复使用官方客户端。
+- GET /CloudNotes/api/Notes/GetAll 包含 isRecycleBin 节点；回收站列表筛选 isRecycleBin=true 且 type=1/12。
+- POST /CloudNotes/api/Notes/Delete：AES 加密的 fileId 字符串数组。依据官方云笔记 1.9.38 APK 的接口注解及 List<String> 参数，与官方 SelfStudy 网页调用交叉核对。提交前重新读取回收站，拒绝已恢复或不存在的笔记，账号切换 / 取消不提交，code 非 0 不记录成功。支持单条与多选永久删除，确认后提交；恢复仍使用官方客户端。
 
 ## 本人测评错题
 
@@ -33,4 +34,10 @@
 - GET /api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync?itemId={id}。
 - POST /api/services/app/MistakeBook/MultiRemoveMistakeItemsAsync：JSON 正文 `{ "bookId": 科目错题本编号, "itemIds": [错题条目编号] }`。依据错题本 APK 的 MistakeApi `retrofit2/http/POST` 注解和 MultiRemoveMistakeReq 的 `bookId: int`、`itemIds: ArrayList` 字段，并与已取得的 API schema 交叉核对。不是题目 questionId，也不是测评 examId。单题删除同样传单元素数组，提交前确认；空选择和无效 ID 不发送请求，官方 success=false 不记录成功。
 
-题干和图片读取后在本机生成 A4 PDF，支持长题续页。读取非学校 origin 资源不携带账号 Bearer Token。同步新增、错题删除和云笔记修改已做模拟合约回归，未使用真实账号执行破坏性删除测试。
+题干和图片读取后在本机生成 A4 PDF，支持长题续页。选中导出只读取所选条目；本科全部导出遍历该科目分页。全部题目连续编号，答案与解析在题目部分结束后新开一页，沿用题号。读取非学校 origin 资源不携带账号 Bearer Token。同步新增、错题删除和云笔记修改已做模拟合约回归，未使用真实账号执行破坏性删除测试。
+
+## 图库回收站限制
+
+现有来源只核实了 PictureLibrary/GetAllPicturesFromLibrary 与 AddPictureAsync。用户提供的 APK 不包含图库客户端，公开资料未提供可验证的永久删除请求。本版本不猜测删除路径和参数，不发送图库永久删除请求。
+
+PDF 排版使用 随包思源宋体，标准页宽下正文约 12 磅，1.5 倍行距，紧凑段落间距；长题优先利用当前页余量，空白行附近续页，答案部分仍另起一页。
