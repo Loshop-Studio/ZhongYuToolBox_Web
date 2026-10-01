@@ -42,6 +42,7 @@
     openEmbedded: args => call('openEmbedded', args),
     resizeEmbedded: args => call('resizeEmbedded', args),
     closeEmbedded: args => call('closeEmbedded', args),
+    getEmbeddedState: args => call('getEmbeddedState', args),
     setThemeDark: dark => call('setThemeDark', { dark })
   };
   Object.defineProperty(window, 'nativeHost', { value: Object.freeze(host) });

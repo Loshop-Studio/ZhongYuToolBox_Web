@@ -36,6 +36,7 @@ internal sealed class ToolboxWindow : Window {
     WebView2 guest;
     string guestId;
     bool guestLoaded;
+    string guestError;
     bool closing;
     readonly bool qa;
     readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = 4 * 1024 * 1024 };
@@ -50,6 +51,8 @@ internal sealed class ToolboxWindow : Window {
     public ToolboxWindow(bool qaMode) {
         qa = qaMode;
         Title = "中育工具箱 · aoki";
+        var iconPath = Path.Combine(root, "dist", "icon.png");
+        if (File.Exists(iconPath)) Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
         Width = 1280; Height = 820; MinWidth = 800; MinHeight = 600;
         Background = new SolidColorBrush(Color.FromRgb(240, 238, 233));
         grid.Children.Add(main); grid.Children.Add(guestLayer); Content = grid;
@@ -177,6 +180,7 @@ internal sealed class ToolboxWindow : Window {
                 case "openEmbedded": await OpenGuest(args); result = true; break;
                 case "resizeEmbedded": ResizeGuest(args); result = true; break;
                 case "closeEmbedded": if (Text(args, "id") == guestId) CloseGuest(); result = true; break;
+                case "getEmbeddedState": result = new { loaded = guestId == Text(args, "id") && guestLoaded, error = guestId == Text(args, "id") ? guestError : "" }; break;
                 case "setThemeDark": {
                     int dark = args.ContainsKey("dark") && Convert.ToBoolean(args["dark"]) ? 1 : 0;
                     DwmSetWindowAttribute(new System.Windows.Interop.WindowInteropHelper(this).Handle, 20, ref dark, 4); result = true; break;
@@ -241,7 +245,11 @@ internal sealed class ToolboxWindow : Window {
         view.CoreWebView2.Settings.IsPasswordAutosaveEnabled = false;
         view.CoreWebView2.Settings.AreDevToolsEnabled = false;
         ConfigureExternal(view.CoreWebView2);
-        view.CoreWebView2.NavigationCompleted += (s, e) => { if (guest == view) guestLoaded = e.IsSuccess; };
+        view.CoreWebView2.NavigationCompleted += (s, e) => {
+            if (guest != view) return;
+            guestLoaded = e.IsSuccess && e.HttpStatusCode < 400;
+            guestError = !e.IsSuccess ? "官方页面加载失败（" + e.WebErrorStatus + "），请重试" : e.HttpStatusCode >= 400 ? "官方页面返回 HTTP " + e.HttpStatusCode + "，请重试" : "";
+        };
         view.CoreWebView2.NavigationStarting += (s, e) => { if (!IsRemote(e.Uri) && e.Uri != "about:blank") { e.Cancel = true; OpenExternal(e.Uri); } };
         var script = Text(args, "script"); if (script.Length > 16000) throw new Exception("嵌入脚本过长");
         if (script.Length > 0) await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(script);
@@ -254,7 +262,7 @@ internal sealed class ToolboxWindow : Window {
         guest.Width = Math.Max(1, Number(args, "width") * scale); guest.Height = Math.Max(1, Number(args, "height") * scale);
     }
     void CloseGuest() {
-        guestId = null; guestLoaded = false; if (guest == null) return;
+        guestId = null; guestLoaded = false; guestError = ""; if (guest == null) return;
         guestLayer.Children.Remove(guest); guest.Dispose(); guest = null; guestLayer.IsHitTestVisible = false;
     }
     void WriteQa(object result) { File.WriteAllText(Path.Combine(root, "qa-result.json"), json.Serialize(result), Encoding.UTF8); }
