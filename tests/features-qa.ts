@@ -17,6 +17,8 @@ import { useAuthStore } from '../src/stores/auth'
 import { examNavigationQa } from './exam-navigation-qa'
 import { examAutomationQa } from './exam-automation-qa'
 import { recycleExportQa } from './recycle-export-qa'
+import { appDownloadsQa } from './app-downloads-qa'
+import { mistakeMathQa, mathPrintQuestion } from './mistake-math-qa'
 import '../src/styles/windows.css'
 
 export async function featureQa(check: (ok: boolean, message: string) => void, originals: File[]) {
@@ -32,6 +34,7 @@ export async function featureQa(check: (ok: boolean, message: string) => void, o
     await examNavigationQa(check)
     await examAutomationQa(check, user)
     await recycleExportQa(check)
+    await appDownloadsQa(check)
     let payload: any, fail = false
     window.fetch = async (_url, opts) => { payload = JSON.parse(aesDecrypt(String(opts?.body))); return response(fail ? {code:1,msg:'TEST rejected'} : {code:0,data:aesEncrypt(JSON.stringify({version:5}))}) }
     const note = {fileId:'TEST_ID',fileName:'旧名称',type:1,fileUrl:'https://fixture.invalid/note',parentId:'',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,createTime:'old',noteList:[]}
@@ -143,12 +146,13 @@ export async function featureQa(check: (ok: boolean, message: string) => void, o
     const manualDoc=await PDFDocument.load(await manual.arrayBuffer())
     check(manualDoc.getPages().map(p=>p.getRotation().angle).join(',') === '0,270,180,90', '手动角度 0/逆时针90/180/270 保留，不二次自动旋转')
     window.fetch=realFetch
+    await mistakeMathQa(check)
     const fontCanvas=document.createElement('canvas'), fontContext=fontCanvas.getContext('2d')!
     await loadMistakePrintFont()
     fontContext.font='16.28px "Aoki PDF Song"'; const songWidth=fontContext.measureText('数学 WWWiii 0123456789').width
     fontContext.font='16.28px sans-serif'; const sansWidth=fontContext.measureText('数学 WWWiii 0123456789').width
     check(Math.abs(songWidth-sansWidth) > .5, '随包思源宋体实际载入，PDF 不退回默认黑体')
-    const pdf=await createMistakePdf('数学',[{title:'分式与图形',stem:'<p>解答：x² + y² = 1，请写出完整过程。</p><table><tr><td>条件</td><td>结果</td></tr><tr><td>x = 0</td><td>y = 1</td></tr></table>',answer:'<p>答案：圆。</p>'},{title:'长题分页完整性',stem:Array.from({length:70},(_,i)=>`<p>第 ${i+1} 行：数学题干与推导，不能遗漏。</p>`).join('')+'<p>END_MARKER_70</p>'}])
+    const pdf=await createMistakePdf('数学',[mathPrintQuestion,{title:'分式与图形',stem:'<p>解答：x² + y² = 1，请写出完整过程。</p><table><tr><td>条件</td><td>结果</td></tr><tr><td>x = 0</td><td>y = 1</td></tr></table>',answer:'<p>答案：圆。</p>'},{title:'长题分页完整性',stem:Array.from({length:70},(_,i)=>`<p>第 ${i+1} 行：数学题干与推导，不能遗漏。</p>`).join('')+'<p>END_MARKER_70</p>'}])
     const pdfDoc=await PDFDocument.load(await pdf.arrayBuffer())
     check(pdfDoc.getPageCount() >= 3 && pdfDoc.getPages().every(p=>Math.abs(p.getWidth()-595.28)<.01), '中文题干、表格和超长题导出 A4 多页 PDF')
     const host=(window as any).nativeHost
