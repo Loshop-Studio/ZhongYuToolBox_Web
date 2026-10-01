@@ -14,6 +14,7 @@ import { safeQuestionHtml } from '../src/utils/questionHtml'
 import { importShare, accessShare, createShare } from '../src/api/share'
 import { imagesToPdf } from '../src/utils/imagesToPdf'
 import { useAuthStore } from '../src/stores/auth'
+import { examNavigationQa } from './exam-navigation-qa'
 import '../src/styles/windows.css'
 
 export async function featureQa(check: (ok: boolean, message: string) => void, originals: File[]) {
@@ -26,6 +27,7 @@ export async function featureQa(check: (ok: boolean, message: string) => void, o
   setActivePinia(createPinia()); const auth = useAuthStore(); auth.apiBaseUrl = base; auth.userId = user
   const key = accountKey()
   try {
+    await examNavigationQa(check)
     let payload: any, fail = false
     window.fetch = async (_url, opts) => { payload = JSON.parse(aesDecrypt(String(opts?.body))); return response(fail ? {code:1,msg:'TEST rejected'} : {code:0,data:aesEncrypt(JSON.stringify({version:5}))}) }
     const note = {fileId:'TEST_ID',fileName:'旧名称',type:1,fileUrl:'https://fixture.invalid/note',parentId:'',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,createTime:'old',noteList:[]}

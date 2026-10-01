@@ -15,6 +15,10 @@ const json=(data:any)=>new Response(JSON.stringify(data),{headers:{'Content-Type
 const originalFetch=window.fetch.bind(window)
 window.fetch=async(url,options)=>{
   const address=String(url)
+  if (/GetExamTaskAsync|GetExamOverviewAsync|GetQuestionAnalysisAsync/.test(address)) {
+    const params = new URL(address).searchParams, id = Number(params.get('id') ?? params.get('examId'))
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('无效的测评编号：'+String(id))
+  }
   if(address.startsWith('data:')||address.startsWith('blob:')||address.startsWith('/')||address.startsWith('http://127.0.0.1:5175/'))return originalFetch(url,options)
   if(address.includes('/CloudNotes/api/Notes/Update')){const payload=JSON.parse(aesDecrypt(String(options?.body)));const note=notes.find(n=>n.fileId===payload.fileId)!;Object.assign(note,payload);note.version++;return json({code:0,data:aesEncrypt(JSON.stringify({version:note.version}))})}
   if(address.includes('/CloudNotes/api/Notes/MoveToRecycleBin')){notes[0].isRecycleBin=true;return json({code:0})}
