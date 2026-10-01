@@ -1,0 +1,21 @@
+<!doctype html><html><head><meta charset="utf-8"><title>PDF 整页适配验证</title><style>body{font:16px sans-serif;background:#eee;margin:24px}#gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}img{width:100%;border:1px solid #bbb;background:white}h2{font-size:18px}pre{white-space:pre-wrap;max-height:90px;overflow:auto}</style></head><body><h1>逆时针旋转与四角完整性检查</h1><pre id="status">处理中</pre><div id="gallery"></div><script type="module">
+import {convertPdfToImages} from '/src/utils/pdf.ts';
+import {prepareLandscapePdf} from '/src/utils/pdfLandscape.ts';
+import {NOTE_CANVAS} from '/src/utils/noteCanvas.ts';
+try {
+ const data=await(await fetch('/.test-output/mixed.pdf')).arrayBuffer();
+ const {file}=await prepareLandscapePdf(new File([data],'mixed.pdf',{type:'application/pdf'}));
+ const pages=await convertPdfToImages(file,undefined,{type:'image/webp',canvasSize:NOTE_CANVAS});
+ const checks=[];
+ for(const page of pages){
+  const image=await createImageBitmap(page.blob);const canvas=document.createElement('canvas');canvas.width=image.width;canvas.height=image.height;
+  const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0);const pixels=ctx.getImageData(0,0,image.width,image.height).data;
+  const corners=[0,0,0,0];let green=0;
+  for(let y=0;y<image.height;y++)for(let x=0;x<image.width;x++){const i=(y*image.width+x)*4;if(pixels[i]<60&&pixels[i+1]>100&&pixels[i+2]<110){green++;corners[(y<image.height/2?0:2)+(x<image.width/2?0:1)]++;}}
+  if(image.width!==2880||image.height!==1800||corners.some(n=>n<100))throw Error('第'+page.pageNum+'页尺寸或四角丢失 '+corners);
+  checks.push({page:page.pageNum,size:[image.width,image.height],fourCorners:corners});
+  const card=document.createElement('div'),title=document.createElement('h2'),img=document.createElement('img');title.textContent='第 '+page.pageNum+' 页 · 四角完整';img.src=URL.createObjectURL(page.blob);card.append(title,img);document.querySelector('#gallery').append(card);image.close();
+ }
+ document.querySelector('#status').textContent='PASS '+JSON.stringify(checks,null,2);
+} catch(e){document.querySelector('#status').textContent='FAIL '+e.stack;}
+</script></body></html>

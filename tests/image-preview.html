@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-cn"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>图片本地预览测试</title></head><body><div id="app"></div><script type="module">
+import {createApp, h} from 'vue'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
+import '../src/styles/windows.css'
+import {initializeTheme} from '../src/composables/useTheme'
+import Panel from '../src/views/note/PdfUploadPanel.vue'
+initializeTheme()
+createApp({render:()=>h('main',{class:'windows-ui',style:'padding:24px;max-width:900px;margin:auto'},[h(Panel,{source:'images'})])}).use(ElementPlus).mount('#app')
+</script></body></html>
