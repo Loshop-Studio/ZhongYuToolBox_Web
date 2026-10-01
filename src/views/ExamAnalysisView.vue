@@ -68,7 +68,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onDeactivated, onBeforeUnmount, onActivated, watch } from 'vue'
+import { ref, computed } from 'vue'
+import { useExamDetailLoad } from '@/composables/useExamDetailLoad'
 import { saveExamReview, type ExamReview } from '@/utils/examReview'
 import { accountKey } from '@/utils/localData'
 import { useRoute, useRouter } from 'vue-router'
@@ -84,32 +85,28 @@ const taskId = computed(() => Number(route.params.taskId))
 const name = ref(String(route.query.name || ''))
 const examId = ref<number | null>(null)
 
-const loading = ref(false)
 const analysisGroups = ref<any[]>([])
 const studentMap = ref<Record<string, string>>({})
 const review = ref<ExamReview>()
-let controller: AbortController | undefined
-let active = true
 
 function mapStudent(sid: string | number): string {
   return studentMap.value[String(sid)] || String(sid)
 }
 
-async function load() {
-  controller?.abort(); const current = controller = new AbortController(), key = accountKey(), id = taskId.value
-  loading.value = true
+const loading = useExamDetailLoad('exam-analysis', async ({ id, name: title, signal, isCurrent }) => {
+  const key = accountKey()
   analysisGroups.value = []
+  examId.value = null
   review.value = undefined
-  try {
-    const exam = await getExamTask(id, current.signal)
-    if (current.signal.aborted || accountKey() !== key) return
+    const exam = await getExamTask(id, signal)
+    if (!isCurrent()) return
     examId.value = Number(exam?.examId)
     if (!Number.isSafeInteger(examId.value) || examId.value <= 0) throw new Error('测评缺少有效 examId')
     // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
-    name.value = String(route.query.name || '') || exam?.examName || name.value
+    name.value = title || exam?.examName || ''
 
-    const [ov, data] = await Promise.all([getExamOverview(examId.value, current.signal).catch(() => null), getQuestionAnalysis(examId.value, current.signal)])
-    if (current.signal.aborted || accountKey() !== key) return
+    const [ov, data] = await Promise.all([getExamOverview(examId.value, signal).catch(() => null), getQuestionAnalysis(examId.value, signal)])
+    if (!isCurrent()) return
     const map: Record<string, string> = {}
     ;(ov?.studentGrades || []).forEach((s: any) => {
       map[String(s.studentId)] = s.studentName || s.studentId
@@ -117,13 +114,9 @@ async function load() {
     studentMap.value = map
 
     analysisGroups.value = data?.testGroupAnalysis || []
-    review.value = await saveExamReview(id, exam, data, key, current.signal)
-  } catch (e: any) {
-    if (!current.signal.aborted) ElMessage.error('加载题目分析失败：' + (e.message || e))
-  } finally {
-    if (controller === current) loading.value = false
-  }
-}
+    const saved = await saveExamReview(id, exam, data, key, signal)
+    if (isCurrent()) review.value = saved
+}, e => ElMessage.error('加载题目分析失败：' + (e.message || e)))
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -143,14 +136,6 @@ function sheetCommand(cmd: string) {
   else if (cmd === 'overview') goOverview()
 }
 
-onMounted(load)
-onActivated(() => { active = true; if (controller?.signal.aborted) load() })
-onDeactivated(() => { active = false; controller?.abort() }); onBeforeUnmount(() => controller?.abort())
-// keep-alive 会复用同一组件实例，切换不同考试任务时需重新加载
-watch(
-  () => [route.params.taskId, route.query.name],
-  () => { if (active && route.name === 'exam-analysis') load() }
-)
 </script>
 
 <style scoped>
