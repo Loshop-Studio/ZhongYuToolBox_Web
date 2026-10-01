@@ -4,6 +4,8 @@
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
 import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
+import { reportLogin } from '@/utils/track'
+import { setBlock } from '@/stores/block'
 
 function parseJwt(token: string): any {
   try {
@@ -90,6 +92,19 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('loginSchoolCode', schoolCode)
       }
       this.startRefresh()
+      // 接入登录上报 + 被动封禁查询（命中封禁则全屏阻断；上报失败不影响主流程）
+      let deviceId: string | undefined
+      if (!IS_BROWSER && typeof window !== 'undefined') {
+        const api = (window as any).electronAPI
+        if (api?.getDeviceId) {
+          try { deviceId = await api.getDeviceId() } catch {}
+        }
+      }
+      const ban = await reportLogin(effectiveSchool, account, deviceId)
+      if (ban?.banned) {
+        const extra = `\n\n设备号：${deviceId || '（未知）'}\n请加QQ群 1067807011`
+        setBlock('账号已被封禁', (ban.message || '该账号已被管理员封禁，无法继续使用。') + extra, 'ban')
+      }
       // Authentication is exclusively enforced by the school's official API.
       return userInfo
     },

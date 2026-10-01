@@ -1,0 +1,2602 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "中育工具箱 API",
+    "version": "1.2.0-aoki",
+    "description": "从中育工具箱前端源码汇总的 REST 接口（含返回结构说明与请求/响应样例）。\n\n主 API 基地址（学校 discover 返回的 server）默认 http://sxz.spi.zykj.org；嵌入页 webServer 基地址（navPage.html / index.html）默认 http://sxz.school.zykj.org（与 REST 不同域，不在本规范内）。领创 Linspirer 为第三方域 https://cloud.linspirer.com:883。\n\n**返回包装约定**：中育 ABP 接口包 {success,result,error,unAuthorizedRequest,__abp}；优客畅学包 {data}；云笔记包 {code,data,msg}（data 为 AES-ECB 密文）；领创包 {code,data,msg}（params 为 AES-CBC 密文）。"
+  },
+  "servers": [
+    {
+      "url": "http://sxz.spi.zykj.org",
+      "description": "中育学校 API（discover 返回的 server）"
+    }
+  ],
+  "securitySchemes": {
+    "bearerAuth": {
+      "type": "http",
+      "scheme": "bearer"
+    }
+  },
+  "tags": [
+    {
+      "name": "认证与账户",
+      "description": "登录、令牌刷新、用户信息、学校发现。返回为 ABP 包装 {success,result,error,unAuthorizedRequest,__abp}。"
+    },
+    {
+      "name": "在线专栏",
+      "description": "专栏/文章/收藏夹/消息。ABP 包装。"
+    },
+    {
+      "name": "测评",
+      "description": "测评任务、题目 HTML、考试概览/分析、答案 xlsx 导出。ABP 包装。"
+    },
+    {
+      "name": "优客畅学",
+      "description": "在学课程、章节目录、章节内容。注意返回包装为 {data}（非 ABP）。"
+    },
+    {
+      "name": "错题本",
+      "description": "错题本与错题的查询/删除/详情。ABP 包装。"
+    },
+    {
+      "name": "云笔记",
+      "description": "**云笔记（CloudNotes）**：所有请求 query/body 与响应 data 均为 AES-ECB 密文，密钥每日动态生成（见 genAesKey）。\n\n在 Apifox 对本分组配置「前置脚本」自动加密、「后置脚本」自动解密（CryptoJS 为 Apifox 内置全局变量）：\n\n```js\n// 前置脚本：加密请求（GET 加密整个 query 串；POST 加密 body 明文字符串）\nfunction genAesKey(){\n  const e = \":F0wKU!Qg3}UkbW+w[:9|D3-5h=:T;7t#_GZ4#G;~ZNSq{8;}QIP>'{q.lje\";\n  const t = new Date(), n = t.getFullYear(), r = t.getMonth()+1, o = t.getDate();\n  const i = 33 + o*r*33, a = String.fromCharCode((i%94)+33), s = e[o+r];\n  const c = (n*r*o) % e.length, u = e.substring(c), l = e.substring(0,c);\n  return a + (u+l).substring(0,14) + s;\n}\nfunction enc(plain){\n  return CryptoJS.AES.encrypt(plain, CryptoJS.enc.Utf8.parse(genAesKey()),\n    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString();\n}\nif (pm.request.method === 'GET') {\n  const raw = pm.request.url.query.map(q => q.key + '=' + q.value).join('&');\n  pm.request.url = pm.request.url.toString().split('?')[0] + '?' + encodeURIComponent(enc(raw));\n} else if (typeof (pm.request.body && pm.request.body.raw) === 'string') {\n  pm.request.body.raw = enc(pm.request.body.raw);\n}\n```\n\n```js\n// 后置脚本：解密响应 data（data 为密文，解密后替换回响应体）\nfunction genAesKey(){ /* 同前置脚本 */ }\nfunction dec(b64){\n  return CryptoJS.AES.decrypt(b64, CryptoJS.enc.Utf8.parse(genAesKey()),\n    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);\n}\ntry {\n  const j = JSON.parse(pm.response.text());\n  if (j && j.data) { j.data = JSON.parse(dec(j.data)); pm.response.setBodyText(JSON.stringify(j)); }\n} catch (e) {}\n```"
+    },
+    {
+      "name": "图库",
+      "description": "图库图片列表与上传登记。ABP 包装。"
+    },
+    {
+      "name": "随身答",
+      "description": "问答领域/会话/消息。ABP 包装。"
+    },
+    {
+      "name": "领创 Linspirer（第三方）",
+      "description": "**领创 Linspirer（第三方）**：请求 params 为 AES-CBC 密文（固定 KEY/IV），响应 data 可能加密或明文。\n\nKEY = 1191ADF18489D8DA，IV = 5E9B755A8B674394。\n\n```js\n// 前置脚本：加密 body.params（约定调试时明文以 PLAIN: 开头，脚本自动加密）\nfunction enc(plain){\n  return CryptoJS.AES.encrypt(plain, CryptoJS.enc.Utf8.parse(\"1191ADF18489D8DA\"),\n    { iv: CryptoJS.enc.Utf8.parse(\"5E9B755A8B674394\"), mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString();\n}\nconst body = JSON.parse(pm.request.body.raw);\nif (typeof body.params === 'string' && body.params.startsWith('PLAIN:')) {\n  body.params = enc(body.params.slice(6));\n  pm.request.body.raw = JSON.stringify(body);\n}\n```\n\n```js\n// 后置脚本：解密响应 data\nfunction dec(b64){\n  return CryptoJS.AES.decrypt(b64, CryptoJS.enc.Utf8.parse(\"1191ADF18489D8DA\"),\n    { iv: CryptoJS.enc.Utf8.parse(\"5E9B755A8B674394\"), mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);\n}\ntry {\n  const j = JSON.parse(pm.response.text());\n  if (j && j.data) { j.data = dec(j.data); pm.response.setBodyText(JSON.stringify(j)); }\n} catch (e) {}\n```"
+    }
+  ],
+  "paths": {
+    "https://hagateway.zykj.org/api/discovery/{code}": {
+      "get": {
+        "tags": [
+          "认证与账户"
+        ],
+        "summary": "学校发现",
+        "description": "根据学校代码（如 sxz）发现该学校的服务地址。\n\n**返回字段**：\n- name：学校名称\n- server：REST API 基地址（后续所有 /api 请求都发往此处）\n- webServer：网页/嵌入页基地址（navPage.html、index.html 等走此域，与 REST 不同域）\n- lcid：区域/语言标识（可选）\n\n内嵌 App 登录后，server 与 webServer 会被写入 localStorage（apiBaseUrl / iframeBase）。",
+        "operationId": "get_https___hagateway_zykj_org_api_discovery__code_",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "description": "学校代码",
+            "schema": {
+              "type": "string"
+            },
+            "example": "sxz"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "name": "省锡中",
+                  "server": "http://sxz.api.zykj.org",
+                  "webServer": "http://sxz.school.zykj.org",
+                  "lcid": "zh-CN"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/TokenAuth/Login": {
+      "post": {
+        "tags": [
+          "认证与账户"
+        ],
+        "summary": "登录获取令牌",
+        "description": "用户名 + 密码登录，换取 accessToken / refreshToken。\n\n**请求体**：userName、password 必填；clientType 默认 1。\n**返回 result**：accessToken（鉴权用，后续请求 Authorization: Bearer <token>）、refreshToken（刷新用）、expireInSeconds、refreshExpireInSeconds。",
+        "operationId": "post__api_TokenAuth_Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "userName",
+                  "password"
+                ],
+                "properties": {
+                  "userName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "clientType": {
+                    "type": "integer",
+                    "default": 1
+                  }
+                }
+              },
+              "examples": {
+                "登录": {
+                  "summary": "学生账号登录",
+                  "value": {
+                    "userName": "2024001",
+                    "password": "******",
+                    "clientType": 1
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refreshToken": "...",
+                    "expireInSeconds": 86400,
+                    "refreshExpireInSeconds": 604800
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/User/GetInfoAsync": {
+      "get": {
+        "tags": [
+          "认证与账户"
+        ],
+        "summary": "获取用户信息（含加密学生信息）",
+        "description": "获取当前登录用户的基本信息（realName、photo、schoolCode 等）。\n\n该接口同时用于选课嵌入页预热：返回的学生信息会被注入到官方页面，用于生成 userInfo 脚本。\n**返回 result**：realName 姓名、photo 头像、schoolCode 学校代码，其余字段因业务而异（any）。",
+        "operationId": "get__api_services_app_User_GetInfoAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "realName": "张三",
+                    "photo": "http://.../avatar.png",
+                    "schoolCode": "sxz",
+                    "id": 10001,
+                    "userName": "2024001"
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/TokenAuth/RefreshToken": {
+      "post": {
+        "tags": [
+          "认证与账户"
+        ],
+        "summary": "刷新令牌",
+        "description": "用 refreshToken 换取新的 accessToken。\n\n**请求头**：refreshtoken（必填，值为旧 refreshToken）；Authorization 仍带旧 accessToken。\n**返回 result**：同登录（新的 accessToken / refreshToken 及过期时间）。\n\n**自定义请求头**：`refreshtoken`",
+        "operationId": "post__api_TokenAuth_RefreshToken",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              },
+              "examples": {
+                "刷新": {
+                  "summary": "携 refreshtoken 头刷新",
+                  "value": {}
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "accessToken": "eyJ...",
+                    "refreshToken": "...",
+                    "expireInSeconds": 86400,
+                    "refreshExpireInSeconds": 604800
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/appWebSite/GetTopicSpecialAsync": {
+      "get": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "获取专栏列表与学科",
+        "description": "获取「学科 + 专栏」树：每个学科下挂若干专栏（cols）。\n\n**返回 result**：TopicSpecial[]，每项含 topicId、topicName、cols[{id,name,sort}]。",
+        "operationId": "get__api_services_app_appWebSite_GetTopicSpecialAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "topicId": 4,
+                      "topicName": "语文",
+                      "cols": [
+                        {
+                          "id": 101,
+                          "name": "语文专栏",
+                          "sort": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/appWebSite/SearchMyPagesByColIdAsync": {
+      "post": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "查看/搜索专栏文章",
+        "description": "分页拉取某个专栏下的文章；传入 pageTitle 即视为「标题模糊搜索」。\n\n**返回 result**：分页对象 { totalCount, items: ColumnPageItem[] }。item 含 id、title、hits、comments、stars、collects、publishTime、isRead 等。",
+        "operationId": "post__api_services_app_appWebSite_SearchMyPagesByColIdAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "colId"
+                ],
+                "properties": {
+                  "colId": {
+                    "type": "integer",
+                    "example": 101
+                  },
+                  "skipCount": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "maxResultCount": {
+                    "type": "integer",
+                    "default": 20
+                  },
+                  "orderBy": {
+                    "type": "string",
+                    "default": "PublishTime"
+                  },
+                  "pageTitle": {
+                    "type": "string",
+                    "description": "传入即视为标题模糊搜索"
+                  }
+                }
+              },
+              "examples": {
+                "按专栏浏览": {
+                  "summary": "分页拉取专栏文章",
+                  "value": {
+                    "colId": 101,
+                    "skipCount": 0,
+                    "maxResultCount": 20,
+                    "orderBy": "PublishTime"
+                  }
+                },
+                "标题搜索": {
+                  "summary": "按标题模糊搜",
+                  "value": {
+                    "colId": 101,
+                    "pageTitle": "期中",
+                    "maxResultCount": 20
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "totalCount": 35,
+                    "items": [
+                      {
+                        "id": 9001,
+                        "specialColId": 101,
+                        "title": "文言文阅读技巧",
+                        "hits": 120,
+                        "comments": 3,
+                        "stars": 8,
+                        "collects": 2,
+                        "state": 1,
+                        "publishTime": "2026-09-01 10:00:00",
+                        "isTop": false,
+                        "isRead": false,
+                        "publisher": "语文组"
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/appWebSite/GetPageAsync": {
+      "get": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "获取文章详情",
+        "description": "根据文章 id 获取专栏文章详情（含正文 HTML）。\n\n**返回 result**：ColumnPageDetail，含 title、content(HTML)、hits、stars、collects、creatorUser、publishTime 等。content 中的附件/PDF 链接可用 extractFileUrl 解析后由原生层打开。",
+        "operationId": "get__api_services_app_appWebSite_GetPageAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "文章 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 9001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "id": 9001,
+                    "specialColId": 101,
+                    "title": "文言文阅读技巧",
+                    "content": "<p>正文 HTML...</p>",
+                    "hits": 120,
+                    "comments": 3,
+                    "stars": 8,
+                    "collects": 2,
+                    "state": 1,
+                    "isTop": false,
+                    "publishTime": "2026-09-01 10:00:00",
+                    "creatorUser": {
+                      "id": 1,
+                      "userName": "teacher",
+                      "fullName": "语文组",
+                      "gender": 1,
+                      "picture": null,
+                      "roleType": 2
+                    }
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/AppWebSite/HitAsync": {
+      "post": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "标记文章已读（命中）",
+        "description": "标记某篇文章已读（Hit 统计/已读状态）。\n\n**请求参数**：pageId（query，文章 id）。**返回 result**：通常为 null。",
+        "operationId": "post__api_services_app_AppWebSite_HitAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pageId",
+            "in": "query",
+            "required": true,
+            "description": "文章 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 9001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/AppWebSite/GetSpecialCatalogAsync": {
+      "get": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "查看我的收藏夹",
+        "description": "获取当前用户的收藏夹（catalog）列表。\n\n**返回 result**：Catalog[]，每项含 id、name、collectCount。",
+        "operationId": "get__api_services_app_AppWebSite_GetSpecialCatalogAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 5001,
+                      "name": "我的收藏",
+                      "collectCount": 12
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/AppWebSite/GetMyCatalogPagesAsync": {
+      "get": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "查看收藏夹里的文章",
+        "description": "分页拉取某收藏夹内的文章。\n\n**返回 result**：分页对象 { totalCount, items: CatalogPageItem[] }。",
+        "operationId": "get__api_services_app_AppWebSite_GetMyCatalogPagesAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "query",
+            "required": true,
+            "description": "收藏夹 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 5001
+          },
+          {
+            "name": "maxResultCount",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "skipCount",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "totalCount": 12,
+                    "items": [
+                      {
+                        "id": 9001,
+                        "specialPageId": 9001,
+                        "title": "文言文阅读技巧",
+                        "hits": 120,
+                        "comments": 3,
+                        "stars": 8,
+                        "collects": 2,
+                        "isActive": true,
+                        "collectTime": "2026-09-02 08:00:00"
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Message/SetMessageReadAsync": {
+      "post": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "标记单条消息已读",
+        "description": "标记一条文章更新消息为已读。\n\n**请求参数**：messageId（query）。**返回 result**：null。",
+        "operationId": "post__api_services_app_Message_SetMessageReadAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "messageId",
+            "in": "query",
+            "required": true,
+            "description": "消息 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 7001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Message/GetMyMessageListAsync": {
+      "post": {
+        "tags": [
+          "在线专栏"
+        ],
+        "summary": "查看文章更新消息",
+        "description": "分页拉取「文章发布/更新」类消息。\n\n**请求体**：Type 默认 2（专栏/文章发布更新）；skipCount、MaxResultCount 分页。\n**返回 result**：分页对象 { totalCount, items: AppMessage[] }。",
+        "operationId": "post__api_services_app_Message_GetMyMessageListAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Type": {
+                    "type": "integer",
+                    "default": 2,
+                    "description": "消息类型（默认 2：专栏/文章发布更新）"
+                  },
+                  "skipCount": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "MaxResultCount": {
+                    "type": "integer",
+                    "default": 20
+                  }
+                }
+              },
+              "examples": {
+                "消息列表": {
+                  "summary": "拉取更新消息",
+                  "value": {
+                    "Type": 2,
+                    "skipCount": 0,
+                    "MaxResultCount": 20
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "totalCount": 5,
+                    "items": [
+                      {
+                        "isRead": false,
+                        "parameter": {
+                          "id": 9001
+                        },
+                        "senderInfo": {
+                          "id": 1,
+                          "userName": "teacher",
+                          "fullName": "语文组",
+                          "gender": 1,
+                          "picture": null,
+                          "roleType": 2
+                        },
+                        "id": "7001",
+                        "title": "新文章：文言文阅读技巧",
+                        "type": 2,
+                        "creationTime": "2026-09-01 10:05:00"
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Task/GetStudentTaskListAsync": {
+      "post": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "分页拉取学生测评任务列表",
+        "description": "分页获取当前学生的测评任务。\n\n**请求体**：maxResultCount（页大小，默认 20）、skipCount（偏移）、taskListType（列表类型，默认 4）。\n**返回 result**：分页对象 { totalCount, items: ExamTask[] }。item 含 examId、testPagerId、examTaskId、examName、examState 等。",
+        "operationId": "post__api_services_app_Task_GetStudentTaskListAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxResultCount": {
+                    "type": "integer",
+                    "default": 20
+                  },
+                  "skipCount": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "taskListType": {
+                    "type": "integer",
+                    "default": 4
+                  }
+                }
+              },
+              "examples": {
+                "第一页": {
+                  "summary": "拉取测评列表",
+                  "value": {
+                    "maxResultCount": 20,
+                    "skipCount": 0,
+                    "taskListType": 4
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "totalCount": 60,
+                    "items": [
+                      {
+                        "examId": 3001,
+                        "testPagerId": 2001,
+                        "examTaskId": 1001,
+                        "examName": "高三一模数学",
+                        "examState": 1
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Task/GetExamTaskAsync": {
+      "get": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "测评任务详情（含题目分组）",
+        "description": "获取某测评任务的详情，含题目分组结构（groups → questions）。\n\n**请求参数**：id（query，examTaskId）。\n**返回 result**：结构较复杂（含 groups 分组、questions 题目），此处给出示例骨架；题目 HTML 需再调 /Question/View/{qstId} 获取。",
+        "operationId": "get__api_services_app_Task_GetExamTaskAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "测评任务 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 1001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "examName": "高三一模数学",
+                    "groups": [
+                      {
+                        "groupName": "选择题",
+                        "questions": [
+                          {
+                            "id": 50001,
+                            "type": 1,
+                            "score": 5
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/Question/View/{qstId}": {
+      "get": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "单题 HTML（含解析）",
+        "description": "获取单道题目的完整 HTML（题干 + 答案 + 解析 + 知识点），showAnalysis=true 含解析。\n\n**返回**：text/html 纯文本（非 JSON），需 DOMParser 解析提取 .stem/.answers/.analysis。",
+        "operationId": "get__Question_View__qstId_",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "qstId",
+            "in": "path",
+            "required": true,
+            "description": "题目 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 50001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "题目 HTML 文本（text/html）",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "<div class=\"stem\">题干...</div><div class=\"answers\"><h3>答案</h3>...</div><div class=\"analysis\"><h3>解析</h3>...</div>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/LearningSituations/GetExamOverviewAsync": {
+      "get": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "考试概览",
+        "description": "获取考试整体概览数据。\n\n**请求头**：AppName=WebClient、AppVersion=0。\n**请求参数**：examId（query）。\n**返回 result**：考试概览（得分/排名/正确率等，结构为 any，此处给示例骨架）。\n\n**自定义请求头**：`AppName`、`AppVersion`",
+        "operationId": "get__api_services_app_LearningSituations_GetExamOverviewAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "query",
+            "required": true,
+            "description": "考试 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 3001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "examId": 3001,
+                    "totalScore": 150,
+                    "avgScore": 92.5,
+                    "rank": 12,
+                    "correctRate": 0.83
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/LearningSituations/GetQuestionAnalysisAsync": {
+      "get": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "题目分析",
+        "description": "获取某考试下题目的逐题分析。\n\n**请求头**：AppName=WebClient、AppVersion=0。\n**请求参数**：examId（query）。\n**返回 result**：题目分析列表（any，示例骨架）。\n\n**自定义请求头**：`AppName`、`AppVersion`",
+        "operationId": "get__api_services_app_LearningSituations_GetQuestionAnalysisAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "query",
+            "required": true,
+            "description": "考试 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 3001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "qstId": 50001,
+                      "rightCount": 30,
+                      "wrongCount": 5,
+                      "difficulty": 0.6
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Exam/ExportObjectiveAnswersAsync": {
+      "get": {
+        "tags": [
+          "测评"
+        ],
+        "summary": "导出客观题答案 xlsx（返回 Blob）",
+        "description": "导出某考试客观题答案为 xlsx 文件。\n\n**请求参数**：examId（query）。\n**返回**：application/octet-stream 二进制文件流（xlsx），需用 Blob 接收下载。",
+        "operationId": "get__api_services_app_Exam_ExportObjectiveAnswersAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "examId",
+            "in": "query",
+            "required": true,
+            "description": "考试 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 3001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "xlsx 文件流（application/octet-stream）",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SelfStudy/api/Learn/LearningCourses": {
+      "get": {
+        "tags": [
+          "优客畅学"
+        ],
+        "summary": "分页拉取全部在学课程",
+        "description": "分页拉取当前学生的全部在学课程（前端会逐页 while 拉全）。\n\n**请求参数**：page（从 1 开始）。\n**返回约定**：包装为 { data: LessonCourse[] }（注意：非 ABP 包装）。item 含 id、title、status(0=已下架)、cover、progress、userName、subjectName。",
+        "operationId": "get__SelfStudy_api_Learn_LearningCourses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": true,
+            "description": "页码，从 1 开始",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 8001,
+                      "title": "高中数学同步课",
+                      "status": 1,
+                      "cover": "http://.../cover.png",
+                      "progress": 45,
+                      "userName": "王老师",
+                      "subjectName": "数学"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SelfStudy/api/Learn/CourseDetail": {
+      "get": {
+        "tags": [
+          "优客畅学"
+        ],
+        "summary": "课程章节目录",
+        "description": "获取某课程的章节目录树。\n\n**请求参数**：id（query，课程 id）。\n**返回约定**：{ data: { catalogs: LessonCatalog[] } }。catalog 为树形（id、title、isLeaf、children）。",
+        "operationId": "get__SelfStudy_api_Learn_CourseDetail",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "description": "课程 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 8001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "data": {
+                    "catalogs": [
+                      {
+                        "id": "c1",
+                        "title": "第一章",
+                        "isLeaf": false,
+                        "children": [
+                          {
+                            "id": "c1-1",
+                            "title": "1.1 函数",
+                            "isLeaf": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/SelfStudy/api/learn/readContent": {
+      "get": {
+        "tags": [
+          "优客畅学"
+        ],
+        "summary": "读取章节内容（HTML）",
+        "description": "读取某个章节节点的内容（HTML 字符串）。\n\n**请求参数**：catalogId（章节 id，字符串）、courseId（课程 id）。\n**返回约定**：{ data: { content: '<html>...</html>' } }。",
+        "operationId": "get__SelfStudy_api_learn_readContent",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "catalogId",
+            "in": "query",
+            "required": true,
+            "description": "章节节点 id",
+            "schema": {
+              "type": "string"
+            },
+            "example": "c1-1"
+          },
+          {
+            "name": "courseId",
+            "in": "query",
+            "required": true,
+            "description": "课程 id",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 8001
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "data": {
+                    "content": "<h1>1.1 函数</h1><p>章节正文 HTML...</p>"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/MistakeBook/GetMyMistakeBooksAsync": {
+      "get": {
+        "tags": [
+          "错题本"
+        ],
+        "summary": "获取我的错题本列表",
+        "description": "获取当前用户的所有错题本。\n\n**返回 result**：MistakeBook[]，每项含 id、topic{content} 等。",
+        "operationId": "get__api_services_app_MistakeBook_GetMyMistakeBooksAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": "mb_001",
+                      "topic": {
+                        "content": "数学错题本"
+                      }
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/MistakeBook/SearchMistakeQstItemsAsync": {
+      "post": {
+        "tags": [
+          "错题本"
+        ],
+        "summary": "搜索错题列表",
+        "description": "按错题本筛选错题（支持难度/错误原因/标签等过滤）。\n\n**请求体**：bookId 必填；attainedLevel/diff/errorReason/tagIdList 为筛选数组（默认空）；haveNoTag 默认 false；分页 maxResultCount(默认200)/skipCount。\n**返回 result**：{ totalCount, items: MistakeItem[] }。item 含 id、source、stemShoot(题干截图)、creationTime。",
+        "operationId": "post__api_services_app_MistakeBook_SearchMistakeQstItemsAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bookId"
+                ],
+                "properties": {
+                  "attainedLevel": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "bookId": {
+                    "type": "string",
+                    "example": "mb_001"
+                  },
+                  "diff": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "errorReason": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "haveNoTag": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "maxResultCount": {
+                    "type": "integer",
+                    "default": 200
+                  },
+                  "skipCount": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "tagIdList": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "查全部": {
+                  "summary": "拉取错题本全部错题",
+                  "value": {
+                    "bookId": "mb_001",
+                    "attainedLevel": [],
+                    "diff": [],
+                    "errorReason": [],
+                    "haveNoTag": false,
+                    "maxResultCount": 200,
+                    "skipCount": 0,
+                    "tagIdList": []
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "totalCount": 18,
+                    "items": [
+                      {
+                        "id": "mi_001",
+                        "source": "数学",
+                        "stemShoot": "http://.../stem.png",
+                        "creationTime": "2026-09-10 14:00:00"
+                      }
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/MistakeBook/MultiRemoveMistakeItemsAsync": {
+      "post": {
+        "tags": [
+          "错题本"
+        ],
+        "summary": "批量移除错题",
+        "description": "从错题本批量删除错题（移至回收站，非永久删除）。\n\n**请求头**：AppName=WebClient、AppVersion=0。\n**请求体**：bookId、itemIds[]（错题条目 id，非题目 id）。\n**返回 result**：null。\n\n**自定义请求头**：`AppName`、`AppVersion`",
+        "operationId": "post__api_services_app_MistakeBook_MultiRemoveMistakeItemsAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bookId",
+                  "itemIds"
+                ],
+                "properties": {
+                  "bookId": {
+                    "type": "integer",
+                    "example": 1001
+                  },
+                  "itemIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "example": [
+                      2001,
+                      2002
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "批量删": {
+                  "summary": "删除两条错题",
+                  "value": {
+                    "bookId": 1001,
+                    "itemIds": [
+                      2001,
+                      2002
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/MistakeBook/GetMistakeQstItemDetailInfoAsync": {
+      "get": {
+        "tags": [
+          "错题本"
+        ],
+        "summary": "获取错题详情",
+        "description": "获取单条错题的详情。\n\n**请求参数**：itemId（query）。\n**返回 result**：MistakeDetail（含 qstPath 题目路径、note 笔记、pictureNote 图片笔记数组），无数据时返回 null。",
+        "operationId": "get__api_services_app_MistakeBook_GetMistakeQstItemDetailInfoAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "query",
+            "required": true,
+            "description": "错题条目 id",
+            "schema": {
+              "type": "string"
+            },
+            "example": "mi_001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "qstPath": "/Question/View/50001",
+                    "note": "http://.../note",
+                    "pictureNote": [
+                      "http://.../p1.png"
+                    ]
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/GetByParentId": {
+      "get": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "按父目录获取笔记/子目录",
+        "description": "获取某父目录下的笔记与子目录列表。\n\n⚠️ **参数加密**：query 整体经 AES-ECB（当日动态密钥）加密后以密文透传，形如 `?=<密文>`。解密后原串：`parentid=0&isNoteNode=true`。\n**返回约定**：{ code, data, msg }，data 为 AES 密文，解密后为 { noteList: NoteItem[] }。NoteItem 含 fileId、fileName、type(0=文件夹,1/12=笔记)、createTime。**云笔记（CloudNotes）**：所有请求 query/body 与响应 data 均为 AES-ECB 密文，密钥每日动态生成（见 genAesKey）。\n\n在 Apifox 对本分组配置「前置脚本」自动加密、「后置脚本」自动解密（CryptoJS 为 Apifox 内置全局变量）：\n\n```js\n// 前置脚本：加密请求（GET 加密整个 query 串；POST 加密 body 明文字符串）\nfunction genAesKey(){\n  const e = \":F0wKU!Qg3}UkbW+w[:9|D3-5h=:T;7t#_GZ4#G;~ZNSq{8;}QIP>'{q.lje\";\n  const t = new Date(), n = t.getFullYear(), r = t.getMonth()+1, o = t.getDate();\n  const i = 33 + o*r*33, a = String.fromCharCode((i%94)+33), s = e[o+r];\n  const c = (n*r*o) % e.length, u = e.substring(c), l = e.substring(0,c);\n  return a + (u+l).substring(0,14) + s;\n}\nfunction enc(plain){\n  return CryptoJS.AES.encrypt(plain, CryptoJS.enc.Utf8.parse(genAesKey()),\n    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString();\n}\nif (pm.request.method === 'GET') {\n  const raw = pm.request.url.query.map(q => q.key + '=' + q.value).join('&');\n  pm.request.url = pm.request.url.toString().split('?')[0] + '?' + encodeURIComponent(enc(raw));\n} else if (typeof (pm.request.body && pm.request.body.raw) === 'string') {\n  pm.request.body.raw = enc(pm.request.body.raw);\n}\n```\n\n```js\n// 后置脚本：解密响应 data（data 为密文，解密后替换回响应体）\nfunction genAesKey(){ /* 同前置脚本 */ }\nfunction dec(b64){\n  return CryptoJS.AES.decrypt(b64, CryptoJS.enc.Utf8.parse(genAesKey()),\n    { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);\n}\ntry {\n  const j = JSON.parse(pm.response.text());\n  if (j && j.data) { j.data = JSON.parse(dec(j.data)); pm.response.setBodyText(JSON.stringify(j)); }\n} catch (e) {}\n```",
+        "operationId": "get__CloudNotes_api_Notes_GetByParentId",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "parentid",
+            "in": "query",
+            "required": true,
+            "description": "父目录 id（默认 0=根），实际为 AES 密文",
+            "schema": {
+              "type": "string"
+            },
+            "example": "<AES-ECB密文>"
+          },
+          {
+            "name": "isNoteNode",
+            "in": "query",
+            "required": true,
+            "description": "是否为笔记节点查询（实际随密文透传）",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            },
+            "example": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/GetAll": {
+      "get": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "获取全部笔记节点",
+        "description": "获取当前用户全部笔记节点（含文件夹与笔记）。\n\n**返回约定**：{ code, data, msg }，data 为 AES 密文，解密后为 { noteList: NoteItem[] }。前端据此过滤 type（1/12 为笔记，0 为文件夹，isRecycleBin 区分回收站）。",
+        "operationId": "get__CloudNotes_api_Notes_GetAll",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/Delete": {
+      "post": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "删除回收站笔记",
+        "description": "永久删除回收站中的笔记（注意：与 MoveToRecycleBin 不同，此为永久删除）。\n\n⚠️ **请求体加密**：body 为 AES-ECB 加密后的文件 ID 数组（List<String>），形如 [\"f001\",\"f002\"] 加密后的密文。\n**返回约定**：{ code, data, msg }。",
+        "operationId": "post__CloudNotes_api_Notes_Delete",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "description": "AES-ECB 加密后的文件 ID 数组密文（明文为 JSON 字符串 [\"f001\"]）"
+              },
+              "examples": {
+                "删除密文": {
+                  "summary": "body 为加密密文",
+                  "value": "<AES-ECB密文>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/MoveToRecycleBin": {
+      "post": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "移动笔记到回收站",
+        "description": "将笔记移入回收站（可恢复）。\n\n⚠️ **请求体加密**：body 为 AES-ECB 加密后的文件 ID 数组密文。\n**返回约定**：{ code, data, msg }。",
+        "operationId": "post__CloudNotes_api_Notes_MoveToRecycleBin",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "description": "AES-ECB 加密后的文件 ID 数组密文"
+              },
+              "examples": {
+                "移入回收站": {
+                  "summary": "body 为加密密文",
+                  "value": "<AES-ECB密文>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/Update": {
+      "post": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "更新/重命名/移动笔记节点",
+        "description": "更新笔记节点（重命名、移动 parentId、修改属性）。\n\n⚠️ **请求体加密**：body 为 AES-ECB 加密后的笔记节点对象。对象至少含 fileId、fileUrl、parentId、type、version、shared、isRecycleBin、expirationTimeStamp；重命名时只改 fileName。\n**返回约定**：{ code, data, msg }，解密后含更新后的 version。",
+        "operationId": "post__CloudNotes_api_Notes_Update",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "description": "AES-ECB 加密后的笔记节点对象密文（明文为 JSON 对象）"
+              },
+              "examples": {
+                "更新节点": {
+                  "summary": "body 为加密密文",
+                  "value": "<AES-ECB密文>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/Search": {
+      "get": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "关键词搜索笔记",
+        "description": "按文件名关键词搜索笔记。\n\n⚠️ **参数加密**：query 整体 AES-ECB 加密，解密后原串 `fileName=数学`。\n**返回约定**：{ code, data, msg }，data 密文解密后为 { noteList: NoteItem[] }（仅 type 1/12 且非回收站）。",
+        "operationId": "get__CloudNotes_api_Notes_Search",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "query",
+            "required": true,
+            "description": "AES 加密后的关键词",
+            "schema": {
+              "type": "string"
+            },
+            "example": "<AES-ECB密文>"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Resources/GetByFileId": {
+      "get": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "按 fileId 获取图片资源列表",
+        "description": "获取某笔记文件的图片资源列表（每页 9 张固定结构）。\n\n⚠️ **参数加密**：query 整体 AES-ECB 加密，解密后原串 `fileId=<fileId>`。\n**返回约定**：{ code, data, msg }，data 密文解密后为 { resourceList: NoteResource[] }。NoteResource 含 ossImageUrl、pageIndex、resourceType(0=图片,1/2=模板)。",
+        "operationId": "get__CloudNotes_api_Resources_GetByFileId",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "fileId",
+            "in": "query",
+            "required": true,
+            "description": "AES 加密后的 fileId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "<AES-ECB密文>"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Resources/AddOrUpdate": {
+      "post": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "保存笔记资源列表",
+        "description": "保存某笔记的全部图片/模板资源清单（PDF 上传流程的收尾步骤）。\n\n⚠️ **请求体加密**：body 为 AES-ECB 加密后的资源数组密文。每个资源含 id、fileId、pageName、pageIndex、md5、resourceType、ossImageUrl 等。\n**返回约定**：{ code, data, msg }。",
+        "operationId": "post__CloudNotes_api_Resources_AddOrUpdate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "description": "AES-ECB 加密后的资源数组密文（明文为 JSON 数组）"
+              },
+              "examples": {
+                "保存资源": {
+                  "summary": "body 为加密密文",
+                  "value": "<AES-ECB密文>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CloudNotes/api/Notes/AddOrUpdate": {
+      "post": {
+        "tags": [
+          "云笔记"
+        ],
+        "summary": "保存笔记",
+        "description": "登记/创建笔记节点（PDF 上传后调用）。\n\n⚠️ **请求体加密**：body 为 AES-ECB 加密后的笔记对象密文，明文形如 { fileId, fileName, parentId:\"0\", type:\"12\", fileUrl }。\n**返回约定**：{ code, data, msg }。",
+        "operationId": "post__CloudNotes_api_Notes_AddOrUpdate",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "description": "AES-ECB 加密后的笔记对象密文"
+              },
+              "examples": {
+                "保存笔记": {
+                  "summary": "body 为加密密文",
+                  "value": "<AES-ECB密文>"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": "<AES-ECB(Base64) 密文，需用当日密钥解密后才是 JSON>",
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/PictureLibrary/GetAllPicturesFromLibrary": {
+      "get": {
+        "tags": [
+          "图库"
+        ],
+        "summary": "分页拉取图库",
+        "description": "分页获取图库图片（isRecycleBin=false 正常，true 回收站）。\n\n**请求参数**：SkipCount、MaxResultCount、IsRecycleBin。\n**返回 result**：{ items: PictureItem[], totalCount }。item 含 picture(图片URL)、name、size、createTime。",
+        "operationId": "get__api_services_app_PictureLibrary_GetAllPicturesFromLibrary",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "SkipCount",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            },
+            "example": 0
+          },
+          {
+            "name": "MaxResultCount",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            },
+            "example": 20
+          },
+          {
+            "name": "IsRecycleBin",
+            "in": "query",
+            "required": true,
+            "description": "",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "example": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": {
+                    "items": [
+                      {
+                        "picture": "http://.../p.png",
+                        "name": "笔记1.png",
+                        "size": "12345",
+                        "createTime": "2026-09-01 10:00:00"
+                      }
+                    ],
+                    "totalCount": 50
+                  },
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/PictureLibrary/AddPictureAsync": {
+      "post": {
+        "tags": [
+          "图库"
+        ],
+        "summary": "上传后登记图片到图库",
+        "description": "上传图片后，向图库登记记录。\n\n**请求头**：AppName=com.zykj.manage、AppVersion=32。\n**请求体**：picture(图片URL)、name、size。\n**返回 result**：通常为 null（登记成功即可）。\n\n**自定义请求头**：`AppName`、`AppVersion`",
+        "operationId": "post__api_services_app_PictureLibrary_AddPictureAsync",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "picture",
+                  "name",
+                  "size"
+                ],
+                "properties": {
+                  "picture": {
+                    "type": "string",
+                    "example": "http://.../p.png"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "笔记1.png"
+                  },
+                  "size": {
+                    "type": "string",
+                    "example": "12345"
+                  }
+                }
+              },
+              "examples": {
+                "登记图片": {
+                  "summary": "登记一条图库记录",
+                  "value": {
+                    "picture": "http://.../p.png",
+                    "name": "笔记1.png",
+                    "size": "12345"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Quora/GetCatalogs": {
+      "get": {
+        "tags": [
+          "随身答"
+        ],
+        "summary": "获取领域（catalog）列表",
+        "description": "获取问答领域（catalog）列表，用于筛选会话。\n\n**返回 result**：QuoraCatalog[]，每项含 id、name。",
+        "operationId": "get__api_services_app_Quora_GetCatalogs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": 1,
+                      "name": "数学答疑"
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Quora/GetSessions": {
+      "post": {
+        "tags": [
+          "随身答"
+        ],
+        "summary": "获取会话列表（懒加载）",
+        "description": "按条件懒加载问答会话列表。\n\n**请求体**：keyword、catalogId、topicId、orderBy、skip、take、updateTime{start,end}、joinTime{start,end}、justWatch[]。\n**返回 result**：QuoraSession[]，含 id、askUserName、summary、snapshot、topicName、unRead 等。",
+        "operationId": "post__api_services_app_Quora_GetSessions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "keyword",
+                  "catalogId",
+                  "topicId",
+                  "orderBy",
+                  "skip",
+                  "take",
+                  "updateTime",
+                  "joinTime",
+                  "justWatch"
+                ],
+                "properties": {
+                  "keyword": {
+                    "type": "string",
+                    "example": ""
+                  },
+                  "catalogId": {
+                    "type": "integer",
+                    "example": 1
+                  },
+                  "topicId": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "orderBy": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "skip": {
+                    "type": "integer",
+                    "example": 0
+                  },
+                  "take": {
+                    "type": "integer",
+                    "example": 20
+                  },
+                  "updateTime": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string"
+                      },
+                      "end": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "joinTime": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string"
+                      },
+                      "end": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "justWatch": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "examples": {
+                "拉取会话": {
+                  "summary": "默认条件",
+                  "value": {
+                    "keyword": "",
+                    "catalogId": 1,
+                    "topicId": 0,
+                    "orderBy": 0,
+                    "skip": 0,
+                    "take": 20,
+                    "updateTime": {
+                      "start": "",
+                      "end": ""
+                    },
+                    "joinTime": {
+                      "start": "",
+                      "end": ""
+                    },
+                    "justWatch": []
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": "s_001",
+                      "askUserName": "张三",
+                      "summary": "函数定义域问题",
+                      "snapshot": "http://.../snap.png",
+                      "topicName": "数学答疑",
+                      "unRead": true
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Quora/GetMessages": {
+      "post": {
+        "tags": [
+          "随身答"
+        ],
+        "summary": "获取某会话的消息",
+        "description": "获取某会话的全部消息（画板内容）。\n\n**请求体**：SessionId、Skip(默认0)、Take(默认1000)。\n**返回 result**：QuoraMessage[]，含 id、sessionId、userName、sendTime、snapShot、content、isPrimary。",
+        "operationId": "post__api_services_app_Quora_GetMessages",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "SessionId"
+                ],
+                "properties": {
+                  "SessionId": {
+                    "type": "string",
+                    "example": "s_001"
+                  },
+                  "Skip": {
+                    "type": "integer",
+                    "default": 0
+                  },
+                  "Take": {
+                    "type": "integer",
+                    "default": 1000
+                  }
+                }
+              },
+              "examples": {
+                "拉消息": {
+                  "summary": "取会话消息",
+                  "value": {
+                    "SessionId": "s_001",
+                    "Skip": 0,
+                    "Take": 1000
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": [
+                    {
+                      "id": "m_001",
+                      "sessionId": "s_001",
+                      "userName": "张三",
+                      "sendTime": "2026-09-01 11:00:00",
+                      "snapShot": "http://.../s.png",
+                      "content": "<canvas-data>",
+                      "isPrimary": true
+                    }
+                  ],
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Quora/ResetReadState": {
+      "get": {
+        "tags": [
+          "随身答"
+        ],
+        "summary": "重置已读状态",
+        "description": "进入会话后重置其未读状态。\n\n**请求参数**：sessionId（query）。\n**返回 result**：null。",
+        "operationId": "get__api_services_app_Quora_ResetReadState",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "query",
+            "required": true,
+            "description": "会话 id",
+            "schema": {
+              "type": "string"
+            },
+            "example": "s_001"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/app/Quora/AddMessage": {
+      "post": {
+        "tags": [
+          "随身答"
+        ],
+        "summary": "发送画板回复",
+        "description": "向会话发送一条画板回复。\n\n**请求体**：content（画板内容）、sessionId、snapshot（缩略图）。\n**返回 result**：null。",
+        "operationId": "post__api_services_app_Quora_AddMessage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "content",
+                  "sessionId",
+                  "snapshot"
+                ],
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "example": "<canvas-data>"
+                  },
+                  "sessionId": {
+                    "type": "string",
+                    "example": "s_001"
+                  },
+                  "snapshot": {
+                    "type": "string",
+                    "example": "http://.../s.png"
+                  }
+                }
+              },
+              "examples": {
+                "发回复": {
+                  "summary": "发送画板消息",
+                  "value": {
+                    "content": "<canvas-data>",
+                    "sessionId": "s_001",
+                    "snapshot": "http://.../s.png"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "success": true,
+                  "result": null,
+                  "error": null,
+                  "unAuthorizedRequest": false,
+                  "__abp": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "https://cloud.linspirer.com:883/public-interface.php": {
+      "post": {
+        "tags": [
+          "领创 Linspirer（第三方）"
+        ],
+        "summary": "领创·统一 JSON-RPC 接口",
+        "description": "领创（Linspirer）第三方接口，所有业务共用同一个 URL 与 POST 方法，靠请求体中的 `method` 字段区分。\n\n**请求体（JSON-RPC 信封）**：\n- id：固定 1\n- !version：6\n- jsonrpc：\"2.0\"\n- is_encrypt：true\n- client_version：zhongyukejiao_hem_6.10.004.6\n- method：业务方法名（见下方 4 个示例）\n- params：业务参数 JSON **经 AES-CBC（固定密钥/IV）加密后的密文**\n\n**4 个业务方法**（下方请求示例分别对应）：\n1. `com.linspirer.device.setdevice` 绑定设备\n2. `com.linspirer.tactics.gettactics` 获取全部应用（策略+兴趣）\n3. `com.linspirer.app.getdetail` 获取应用详情\n4. `com.linspirer.user.getuserinfo` 获取用户信息（用于密码计算）\n\n**返回约定**：{ code, data, msg }；data 可能加密或明文（code=0 成功）。\n⚠️ 调试时需在 Apifox 配置 AES-CBC 前置脚本对 params 加密、对 data 解密：**领创 Linspirer（第三方）**：请求 params 为 AES-CBC 密文（固定 KEY/IV），响应 data 可能加密或明文。\n\nKEY = 1191ADF18489D8DA，IV = 5E9B755A8B674394。\n\n```js\n// 前置脚本：加密 body.params（约定调试时明文以 PLAIN: 开头，脚本自动加密）\nfunction enc(plain){\n  return CryptoJS.AES.encrypt(plain, CryptoJS.enc.Utf8.parse(\"1191ADF18489D8DA\"),\n    { iv: CryptoJS.enc.Utf8.parse(\"5E9B755A8B674394\"), mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString();\n}\nconst body = JSON.parse(pm.request.body.raw);\nif (typeof body.params === 'string' && body.params.startsWith('PLAIN:')) {\n  body.params = enc(body.params.slice(6));\n  pm.request.body.raw = JSON.stringify(body);\n}\n```\n\n```js\n// 后置脚本：解密响应 data\nfunction dec(b64){\n  return CryptoJS.AES.decrypt(b64, CryptoJS.enc.Utf8.parse(\"1191ADF18489D8DA\"),\n    { iv: CryptoJS.enc.Utf8.parse(\"5E9B755A8B674394\"), mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8);\n}\ntry {\n  const j = JSON.parse(pm.response.text());\n  if (j && j.data) { j.data = dec(j.data); pm.response.setBodyText(JSON.stringify(j)); }\n} catch (e) {}\n```",
+        "operationId": "post_https___cloud_linspirer_com_883_public_interface_php",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "JSON-RPC 信封（id/!version/jsonrpc/is_encrypt/client_version/method/params）。params 为 AES-CBC 密文。"
+              },
+              "examples": {
+                "绑定设备": {
+                  "summary": "method=com.linspirer.device.setdevice",
+                  "value": {
+                    "id": 1,
+                    "!version": 6,
+                    "jsonrpc": "2.0",
+                    "is_encrypt": true,
+                    "client_version": "zhongyukejiao_hem_6.10.004.6",
+                    "method": "com.linspirer.device.setdevice",
+                    "params": "<AES-CBC密文，明文: {brand:\"\",deviceid:\"\",email:\"user@x.com\",isrooted:false,model:\"\",...}>"
+                  }
+                },
+                "获取全部应用": {
+                  "summary": "method=com.linspirer.tactics.gettactics",
+                  "value": {
+                    "id": 1,
+                    "!version": 6,
+                    "jsonrpc": "2.0",
+                    "is_encrypt": true,
+                    "client_version": "zhongyukejiao_hem_6.10.004.6",
+                    "method": "com.linspirer.tactics.gettactics",
+                    "params": "<AES-CBC密文，明文: {swdid,email,model,launcher_version}>"
+                  }
+                },
+                "获取应用详情": {
+                  "summary": "method=com.linspirer.app.getdetail",
+                  "value": {
+                    "id": 1,
+                    "!version": 6,
+                    "jsonrpc": "2.0",
+                    "is_encrypt": true,
+                    "client_version": "zhongyukejiao_hem_6.10.004.6",
+                    "method": "com.linspirer.app.getdetail",
+                    "params": "<AES-CBC密文，明文: {swdid,email,model,launcher_version,appid}>"
+                  }
+                },
+                "获取用户信息": {
+                  "summary": "method=com.linspirer.user.getuserinfo",
+                  "value": {
+                    "id": 1,
+                    "!version": 6,
+                    "jsonrpc": "2.0",
+                    "is_encrypt": true,
+                    "client_version": "zhongyukejiao_hem_6.10.004.6",
+                    "method": "com.linspirer.user.getuserinfo",
+                    "params": "<AES-CBC密文，明文: {swdid,email,model,launcher_version}>"
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "成功响应示例（按真实返回包装约定）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                },
+                "example": {
+                  "code": 0,
+                  "data": {
+                    "app_tactics": {
+                      "applist": []
+                    },
+                    "interest_applist": []
+                  },
+                  "msg": "ok"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

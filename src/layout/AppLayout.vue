@@ -15,7 +15,16 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item :icon="User" command="user">个人中心</el-dropdown-item>
-              <el-dropdown-item :icon="SwitchButton" command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item divided disabled>主题</el-dropdown-item>
+              <el-dropdown-item
+                v-for="t in THEME_OPTIONS"
+                :key="t.value"
+                :command="t.value"
+              >
+                <el-icon :style="{ visibility: currentTheme === t.value ? 'visible' : 'hidden' }"><Check /></el-icon>
+                <span>{{ t.label }}</span>
+              </el-dropdown-item>
+              <el-dropdown-item divided :icon="SwitchButton" command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -113,16 +122,18 @@ import {
   CaretTop,
   User,
   More,
-  SwitchButton
+  SwitchButton,
+  Check
 } from '@element-plus/icons-vue'
 import SideMenu from './SideMenu.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { checkVersion } from '@/utils/track'
 import { PLATFORM, IS_WINDOWS } from '@/config'
 import { EDITION } from '@/config/edition'
-import { currentTheme, currentSkin, setTheme } from '@/composables/useTheme'
+import { currentTheme, currentSkin, setTheme, THEME_OPTIONS, type ThemeId } from '@/composables/useTheme'
 
 const route = useRoute()
 const router = useRouter()
@@ -177,6 +188,8 @@ function onMobileCommand(cmd: string) {
   } else if (cmd === 'logout') {
     auth.logout()
     router.push('/login')
+  } else if (THEME_OPTIONS.some(o => o.value === cmd)) {
+    setTheme(cmd as ThemeId)
   }
 }
 
@@ -189,7 +202,8 @@ function onProxyStatusChange(localOk: boolean, isWindows: boolean) {
   }
 }
 
-// 更新分发：启动即检测一次，并每 10 分钟复检（仅 electron / uniapp 实际生效）
+// 更新分发：启动即检测一次，并每 10 分钟复检（仅 electron / webview2 / uniapp 实际生效）
+let versionTimer: number | null = null
 
 onMounted(() => {
   startProxyPolling(onProxyStatusChange)
@@ -198,13 +212,18 @@ onMounted(() => {
   // 让接管顶栏的二级页面（如在线专栏）也能唤起移动端侧栏抽屉
   window.addEventListener('app:open-drawer', onOpenDrawer)
   // 更新分发检测
+  checkVersion()
+  versionTimer = window.setInterval(checkVersion, 10 * 60 * 1000)
 })
 onUnmounted(() => {
   stopProxyPolling()
   const content = document.querySelector('.content')
   content?.removeEventListener('scroll', onScroll)
   window.removeEventListener('app:open-drawer', onOpenDrawer)
-
+  if (versionTimer !== null) {
+    clearInterval(versionTimer)
+    versionTimer = null
+  }
 })
 
 function onOpenDrawer() {

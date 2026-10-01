@@ -9,6 +9,15 @@ export type ThemeId =
   | 'aero-light'
   | 'aero-dark'
 
+export const THEME_OPTIONS: { label: string; value: ThemeId }[] = [
+  { label: 'Loshop 亮色', value: 'loshop-light' },
+  { label: 'Loshop 深色', value: 'loshop-dark' },
+  { label: 'aoki 亮色', value: 'aoki-light' },
+  { label: 'aoki 深色', value: 'aoki-dark' },
+  { label: 'Aero 亮色', value: 'aero-light' },
+  { label: 'Aero 深色', value: 'aero-dark' }
+]
+
 const STORAGE_KEY = 'aoki-theme'
 
 const THEME_MAP: Record<ThemeId, { skin: Skin; dark: boolean }> = {

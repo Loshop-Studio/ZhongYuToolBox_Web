@@ -23,9 +23,11 @@ module.exports = {
   npmRebuild: false,
   asar: true,
   win: {
-    // Independent local build, without a signing certificate. Avoid the code-sign
-    // tool archive's macOS symlinks, which Windows cannot extract without privileges.
-    signAndEditExecutable: false,
+    // 无签名证书：用 no-op 签名函数跳过签名（避免下载/解压 winCodeSign 工具包，
+    // 其归档含 macOS 符号链接，Windows 无特权时无法解压）。
+    // 注意：必须保留 signAndEditExecutable 默认开启，否则 rcedit 不会把 icon.ico
+    // 写进 exe，任务栏会回退到 Electron 默认图标（图标“消失”）。
+    sign: async () => undefined,
     target: ['dir']
   }
 }

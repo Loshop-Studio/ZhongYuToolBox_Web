@@ -84,9 +84,14 @@ const MAX_HISTORY = 50
 
 function applyZoom() {
   if (!fc) return
-  fc.setZoom(zoomLevel.value)
-  innerStyle.width = Math.round(CANVAS_W * zoomLevel.value) + 'px'
-  innerStyle.height = Math.round(CANVAS_H * zoomLevel.value) + 'px'
+  const z = zoomLevel.value
+  fc.setZoom(z)
+  // 仅缩放 canvas 的“显示尺寸”（cssOnly），逻辑坐标系仍保持 2200×1395，
+  // 否则 canvas 元素始终以原始 2200×1395 像素显示，会比阴影框大一圈、能画到框外。
+  // 注意 cssOnly 模式下不会自动补 px，必须传带单位的字符串。
+  fc.setDimensions({ width: CANVAS_W * z + 'px', height: CANVAS_H * z + 'px' }, { cssOnly: true })
+  innerStyle.width = CANVAS_W * z + 'px'
+  innerStyle.height = CANVAS_H * z + 'px'
 }
 function fitZoom() {
   const wrap = wrapRef.value

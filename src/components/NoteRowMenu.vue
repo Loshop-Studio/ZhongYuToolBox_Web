@@ -1,6 +1,6 @@
 <template>
   <teleport to="body">
-    <div class="nmask" :class="{ mobile }" @click="emit('close')" @contextmenu.prevent />
+    <div class="nmask" :class="{ mobile }" @click="onMaskClick" @contextmenu.prevent />
     <div v-if="!mobile" class="nmenu" :style="menuStyle">
       <button type="button" :disabled="busy" @click="rename">重命名</button>
       <button type="button" class="danger" :disabled="busy" @click="recycle">移至回收站</button>
@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { renameNote, moveNotesToRecycleBin, type NoteItem } from '@/api/note'
 import { accountKey } from '@/utils/localData'
@@ -22,6 +22,13 @@ import { accountKey } from '@/utils/localData'
 const props = defineProps<{ note: NoteItem; x?: number; y?: number; mobile?: boolean }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const busy = ref(false)
+let openedAt = 0
+watch(() => props.mobile, (v) => { if (v) openedAt = Date.now() }, { immediate: true })
+function onMaskClick() {
+  // 屏蔽菜单弹出瞬间由长按手势合成的一次性 click，避免底部菜单闪退。
+  if (Date.now() - openedAt < 400) return
+  emit('close')
+}
 
 const menuStyle = computed(() => {
   let left = props.x ?? 0
@@ -84,7 +91,7 @@ async function recycle() {
   z-index: 2000;
 }
 .nmask.mobile {
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.45);
 }
 .nmenu {
   position: fixed;
@@ -98,8 +105,7 @@ async function recycle() {
   display: flex;
   flex-direction: column;
 }
-.nmenu button,
-.nsheet button {
+.nmenu button {
   display: block;
   width: 100%;
   text-align: left;
@@ -111,8 +117,23 @@ async function recycle() {
   font-size: 14px;
   color: var(--el-text-color-primary);
 }
+.nsheet button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 15px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--el-text-color-primary);
+}
 .nmenu button:hover,
-.nsheet button:hover {
+.nsheet button:hover,
+.nmenu button:active,
+.nsheet button:active {
   background: var(--el-fill-color-light);
 }
 .nmenu button:disabled,
@@ -131,19 +152,19 @@ async function recycle() {
   bottom: 0;
   z-index: 2001;
   background: var(--el-bg-color);
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 .nsheet button.cancel {
   color: var(--el-text-color-secondary);
-  border-top: 1px solid var(--el-border-color);
-  margin-top: 4px;
-  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin-top: 6px;
+  padding: 15px 20px;
+  text-align: center;
 }
 </style>

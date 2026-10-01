@@ -41,7 +41,7 @@
     </el-tabs>
 
     <teleport to="body">
-      <div v-if="menuItem" class="mmask" :class="{ mobile: menuMobile }" @click="closeMenu" @contextmenu.prevent="closeMenu" />
+      <div v-if="menuItem" class="mmask" :class="{ mobile: menuMobile }" @click="onMaskClick" @contextmenu.prevent />
       <div v-if="menuItem && !menuMobile" class="mmenu" :style="menuStyle">
         <button type="button" class="danger" :disabled="removing || exporting" @click="menuRemove">删除</button>
       </div>
@@ -100,16 +100,18 @@ const menuStyle = computed(() => {
 })
 let pressTimer: number | undefined
 let pressConsumed = false
+let menuOpenedAt = 0
 function onContextMenu(item: MistakeItem, ev: MouseEvent) {
   ev.preventDefault()
   menuItem.value = item
-  if (isMobile.value) { menuMobile.value = true; pressConsumed = true }
+  if (isMobile.value) { menuMobile.value = true; pressConsumed = true; menuOpenedAt = Date.now() }
   else { menuMobile.value = false; menuX.value = ev.clientX; menuY.value = ev.clientY }
 }
 function openMobileMenu(item: MistakeItem) {
   menuItem.value = item
   menuMobile.value = true
   pressConsumed = true
+  menuOpenedAt = Date.now()
 }
 function startPress(item: MistakeItem) {
   if (!isMobile.value) return
@@ -124,6 +126,11 @@ function onCardClick(item: MistakeItem) {
   openDetail(item)
 }
 function closeMenu() { menuItem.value = null }
+function onMaskClick() {
+  // 屏蔽菜单弹出瞬间由长按手势合成的一次性 click，避免底部菜单闪退。
+  if (Date.now() - menuOpenedAt < 400) return
+  closeMenu()
+}
 async function menuRemove() {
   const item = menuItem.value
   closeMenu()
@@ -331,14 +338,14 @@ function openDetail(item: MistakeItem) {
   color: var(--el-text-color-secondary);
 }
 
-/* 右键菜单 / 移动端底部菜单（与 NoteRowMenu 一致） */
+/* 右键菜单 / 移动端底部菜单（与 NoteRowMenu、新测评详情一致） */
 .mmask {
   position: fixed;
   inset: 0;
   z-index: 2000;
 }
 .mmask.mobile {
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.45);
 }
 .mmenu {
   position: fixed;
@@ -352,8 +359,7 @@ function openDetail(item: MistakeItem) {
   display: flex;
   flex-direction: column;
 }
-.mmenu button,
-.msheet button {
+.mmenu button {
   display: block;
   width: 100%;
   text-align: left;
@@ -365,8 +371,23 @@ function openDetail(item: MistakeItem) {
   font-size: 14px;
   color: var(--el-text-color-primary);
 }
+.msheet button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 15px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--el-text-color-primary);
+}
 .mmenu button:hover,
-.msheet button:hover {
+.msheet button:hover,
+.mmenu button:active,
+.msheet button:active {
   background: var(--el-fill-color-light);
 }
 .mmenu button:disabled,
@@ -385,20 +406,20 @@ function openDetail(item: MistakeItem) {
   bottom: 0;
   z-index: 2001;
   background: var(--el-bg-color);
-  border-top-left-radius: 16px;
-  border-top-right-radius: 16px;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
-  padding: 8px;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+  padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 .msheet button.cancel {
   color: var(--el-text-color-secondary);
-  border-top: 1px solid var(--el-border-color);
-  margin-top: 4px;
-  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color-lighter);
+  margin-top: 6px;
+  padding: 15px 20px;
+  text-align: center;
 }
 
 @media (max-width: 767px) {

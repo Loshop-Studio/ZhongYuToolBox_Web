@@ -1,15 +1,63 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import { safeQuestionHtml } from './questionHtml'
 import { resourceFetchUrl } from './proxy'
+import { isPlus } from '@/utils/plusPicker'
 
 export interface ExportQuestion { title: string; stem: string; answer?: string; analysis?: string }
 let printFont: Promise<void> | undefined
+const PRINT_FONT_FILE = 'fonts/SourceHanSerifCN-Regular.otf'
+
+/**
+ * 解析打包字体（SourceHanSerifCN）的可访问地址。
+ * - 5+（HBuilder）正式包以 file:// 加载页面，location.origin 不可用，
+ *   通过 plus.io 读取打包进 _www 的字体文件并生成 Blob URL（规避 file:// 跨域/读取限制）。
+ * - 浏览器 / Electron：相对当前文档目录解析，兼容 file:// 与子路径部署。
+ */
+async function resolvePrintFontUrl(): Promise<string> {
+  const plus: any = (window as any).plus
+  if (isPlus && plus?.io) {
+    const entry: any = await new Promise((resolve, reject) =>
+      plus.io.resolveLocalFileSystemURL(
+        '_www/' + PRINT_FONT_FILE,
+        resolve,
+        (e: any) => reject(new Error('字体定位失败：' + (e?.message || e)))
+      )
+    )
+    const file: any = await new Promise((resolve, reject) =>
+      entry.file(resolve, (e: any) => reject(new Error('字体读取失败：' + (e?.message || e))))
+    )
+    const ab: ArrayBuffer = await new Promise((resolve, reject) => {
+      // plus.io.File 不是标准 Blob，标准 FileReader 会报“parameter 1 is not of type 'Blob'”，
+      // 必须用 5+ 的 plus.io.FileReader（仓库内 pdfNote.ts 同源写法）。
+      const reader = new plus.io.FileReader()
+      reader.onloadend = () => {
+        try {
+          const dataUrl = String(reader.result || '')
+          const b64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+          const bin = atob(b64)
+          const bytes = new Uint8Array(bin.length)
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+          resolve(bytes.buffer)
+        } catch (e) {
+          reject(new Error('字体解码失败：' + (e as Error).message))
+        }
+      }
+      reader.onerror = () => reject(new Error('字体读取失败'))
+      reader.readAsDataURL(file)
+    })
+    return URL.createObjectURL(new Blob([ab], { type: 'font/otf' }))
+  }
+  const base = document.baseURI || location.href
+  const dir = base.slice(0, base.lastIndexOf('/') + 1)
+  return new URL(PRINT_FONT_FILE, dir).href
+}
+
 /** Load the bundled OFL Song typeface lazily, avoiding WebView2 system-font fallback. */
 export function loadMistakePrintFont(): Promise<void> {
   return printFont ||= (async () => {
-    const url = new URL(import.meta.env.BASE_URL + 'fonts/SourceHanSerifCN-Regular.otf', location.origin + '/')
+    const url = await resolvePrintFontUrl()
     const style = document.createElement('style')
-    style.textContent = `@font-face{font-family:"Aoki PDF Song";src:url("${url.href}") format("opentype");font-weight:400;font-style:normal;font-display:block}`
+    style.textContent = `@font-face{font-family:"Aoki PDF Song";src:url("${url}") format("opentype");font-weight:400;font-style:normal;font-display:block}`
     document.head.append(style)
     try { if (!(await document.fonts.load('16.28px "Aoki PDF Song"')).length) throw new Error('字体未载入') }
     catch (error) {style.remove(); throw error}
