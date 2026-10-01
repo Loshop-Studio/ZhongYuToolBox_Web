@@ -15,6 +15,12 @@
 
         </ul>
 
+        <h3>中育应用下载</h3>
+        <ul>
+          <li>从当前学校的官方学生端更新接口查询应用，可下载优课畅学等常用应用，也可输入完整 Android 包名查询。</li>
+          <li>下载后在本地检查 APK 结构与大小并显示 SHA-256；安装及课程访问仍由平板设置和账号权限决定。</li>
+        </ul>
+
         <h3>在线专栏</h3>
         <p class="muted">浏览中育课程章节内容。</p>
         <ul>
@@ -90,6 +96,7 @@
 
       <p>界面字体：<a href="https://github.com/atelier-anchor/smiley-sans" target="_blank" rel="noopener noreferrer">得意黑 Smiley Sans · atelierAnchor</a>，按 SIL Open Font License 1.1 分发。</p>
       <p>PDF 正文字体：<a href="https://github.com/adobe-fonts/source-han-serif" target="_blank" rel="noopener noreferrer">思源宋体 · Adobe / Google</a>，按 SIL Open Font License 1.1 分发。</p>
+      <p>PDF 数学排版：<a href="https://katex.org/" target="_blank" rel="noopener noreferrer">KaTeX</a>，按 MIT License 分发。数学字体随包提供，导出时在本地渲染。</p>
       <p>设计参考：<a href="https://github.com/emilkowalski/skills" target="_blank" rel="noopener noreferrer">Emil Kowalski 的 Design Engineering</a> 与 <a href="https://wise.design/" target="_blank" rel="noopener noreferrer">Wise Design</a>。界面为本版本独立实现。</p>
       <p><a :href="EDITION.sourceUrl" target="_blank" rel="noopener noreferrer">查看原始项目</a></p>
     </el-card>
