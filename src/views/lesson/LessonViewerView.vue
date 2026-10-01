@@ -49,6 +49,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { loadPdfjs } from '@/utils/pdfWorker'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -56,7 +57,6 @@ import DPlayer from 'dplayer'
 import VueOfficePptx from '@vue-office/pptx'
 import { proxyUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
-import { loadPdfjs } from '@/utils/pdfWorker'
 
 const route = useRoute()
 const router = useRouter()
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   min-height: 300px;
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 12px;
 }

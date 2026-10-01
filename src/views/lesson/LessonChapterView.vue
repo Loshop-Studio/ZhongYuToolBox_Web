@@ -269,7 +269,7 @@ watch(
   cursor: pointer;
 }
 .content-card {
-  background: #fff;
+  background: var(--el-bg-color);
   border-radius: 8px;
   padding: 16px;
   min-height: 200px;
