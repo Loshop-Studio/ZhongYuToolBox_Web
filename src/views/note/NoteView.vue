@@ -137,6 +137,7 @@
         <PdfUploadPanel />
       </el-tab-pane>
       <el-tab-pane label="图片上传" name="images" lazy><PdfUploadPanel source="images" /></el-tab-pane>
+      <el-tab-pane label="回收站" name="recycle"><NoteRecycleBin v-if="activeTab === 'recycle'" @changed="allLoaded = false" /></el-tab-pane>
     </el-tabs>
   </div>
 </template>
@@ -144,6 +145,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import NoteBatchMove from '@/components/NoteBatchMove.vue'
+import NoteRecycleBin from '@/components/NoteRecycleBin.vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Folder, Document, Search, Refresh } from '@element-plus/icons-vue'
