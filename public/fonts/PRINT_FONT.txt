@@ -1,0 +1,8 @@
+PDF print font: Source Han Serif CN Regular
+Copyright: Adobe / Google contributors; SIL Open Font License 1.1
+Unmodified upstream OTF, no glyph subsetting or format conversion by this fork.
+Upstream: https://github.com/adobe-fonts/source-han-serif
+Commit: 7889f11bf31170b5d092a083b357c8c8130f89e0
+Path: SubsetOTF/CN/SourceHanSerifCN-Regular.otf
+SHA256: 3754EA669C530E2473354F8F6D9F79680A44D7E26EC7D00EEABEE4A7E0753C5D
+License: SourceHanSerif-LICENSE.txt
