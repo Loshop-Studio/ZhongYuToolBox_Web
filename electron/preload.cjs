@@ -7,6 +7,8 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  /** Read a whitelisted bundled note template in packaged file:// mode. */
+  readNoteTemplate: relative => ipcRenderer.invoke('read-note-template', relative),
   /**
    * 保存文件到用户指定路径。
    * @param {ArrayBuffer} arrayBuffer 文件二进制内容
