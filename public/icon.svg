@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="aoki edition notebook">
-  <rect width="64" height="64" rx="18" fill="#A693AC"/>
-  <rect x="15" y="18" width="30" height="35" rx="5" fill="#6B5175"/>
-  <path d="M23 11H40L49 20V45Q49 49 45 49H23Q19 49 19 45V15Q19 11 23 11Z" fill="#F0EEE9"/>
-  <path d="M40 11V20H49Z" fill="#D7CFDA"/>
-  <path d="M27 28H40M27 35H37" fill="none" stroke="#806488" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="28" cy="42" r="2" fill="#A693AC"/>
-</svg>
