@@ -37,6 +37,7 @@ export function useIframeInject(options: IframeInjectOptions) {
 
   let intervalHandle: number | null = null
   let observerInstalled = false
+  let installedObserver: MutationObserver | null = null
 
   function applyOnce(doc: Document): boolean {
     let changed = false
@@ -69,10 +70,12 @@ export function useIframeInject(options: IframeInjectOptions) {
     if (targetId) {
       const act = doc.getElementById(targetId)
       if (act) {
-        act.style.setProperty('height', '71vh', 'important')
-        act.style.setProperty('max-height', '71vh', 'important')
-        act.style.setProperty('min-height', '71vh', 'important')
-        changed = true
+        for (const property of ['height', 'max-height', 'min-height']) {
+          if (act.style.getPropertyValue(property) !== '71vh' || act.style.getPropertyPriority(property) !== 'important') {
+            act.style.setProperty(property, '71vh', 'important')
+            changed = true
+          }
+        }
       }
     }
     return changed
@@ -109,73 +112,56 @@ export function useIframeInject(options: IframeInjectOptions) {
         attributes: true,
         attributeFilter: ['class', 'id', 'style']
       })
-      ;(doc as any)._injectedMutationObserver = mo
+      installedObserver?.disconnect()
+      installedObserver = mo
       observerInstalled = true
     } catch (e) {
       console.warn('[useIframeInject] 安装 MutationObserver 失败:', e)
     }
   }
 
-  function start() {
-    const tick = () => {
-      try {
-        const node = document.getElementById(iframeId) as HTMLIFrameElement | null
-        if (!node) return
-        const doc = node.contentDocument || (node.contentWindow && node.contentWindow.document)
-        if (!doc) return
-        const ready = doc.readyState
-        if (ready !== 'complete' && ready !== 'interactive') return
-
-        applyOnce(doc)
-        installObserver(doc)
-
-        if (!(node as any)._listenerAttached) {
-          node.addEventListener('load', () => {
-            try {
-              const d = node.contentDocument
-              if (d) {
-                applyOnce(d)
-                if ((d as any)._injectedMutationObserver) {
-                  try {
-                    ;(d as any)._injectedMutationObserver.disconnect()
-                  } catch (e) {
-                    /* noop */
-                  }
-                }
-                observerInstalled = false
-                installObserver(d)
-              }
-            } catch (e) {
-              console.warn('[useIframeInject] iframe load 处理失败:', e)
-            }
-          })
-          ;(node as any)._listenerAttached = true
-        }
-      } catch (err) {
-        console.error('[useIframeInject] 访问/修改 iframe 出错:', err)
-      }
-    }
-    intervalHandle = window.setInterval(tick, intervalMs)
+  let attachedNode: HTMLIFrameElement | null = null
+  let retries = 0
+  const onLoad = () => {
+    observerInstalled = false
+    stopPolling()
+    tick()
   }
-
-  function stop() {
-    if (intervalHandle !== null) {
-      clearInterval(intervalHandle)
-      intervalHandle = null
+  function stopPolling() {
+    if (intervalHandle !== null) { clearInterval(intervalHandle); intervalHandle = null }
+  }
+  function tick() {
+    const node = document.getElementById(iframeId) as HTMLIFrameElement | null
+    if (node && node !== attachedNode) {
+      attachedNode?.removeEventListener('load', onLoad)
+      attachedNode = node
+      node.addEventListener('load', onLoad)
     }
     try {
-      const node = document.getElementById(iframeId) as HTMLIFrameElement | null
-      const doc = node && (node.contentDocument || (node.contentWindow && node.contentWindow.document))
-      if (doc && (doc as any)._injectedMutationObserver) {
-        try {
-          ;(doc as any)._injectedMutationObserver.disconnect()
-        } catch (e) {
-          /* noop */
-        }
+      const doc = node?.contentDocument || node?.contentWindow?.document
+      if (doc && ['interactive', 'complete'].includes(doc.readyState)) {
+        applyOnce(doc)
+        installObserver(doc)
+        if (observerInstalled) stopPolling()
       }
-    } catch (e) {
-      /* noop */
+    } catch {
+      // Cross-origin pages are inaccessible. No repeated polling or console spam.
+      stopPolling()
     }
+    if (++retries >= 100) stopPolling()
+  }
+  function start() {
+    stopPolling()
+    retries = 0
+    intervalHandle = window.setInterval(tick, intervalMs)
+    tick()
+  }
+  function stop() {
+    stopPolling()
+    attachedNode?.removeEventListener('load', onLoad)
+    attachedNode = null
+    installedObserver?.disconnect()
+    installedObserver = null
     observerInstalled = false
   }
 
