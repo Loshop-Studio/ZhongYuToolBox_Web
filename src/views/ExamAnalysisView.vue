@@ -92,7 +92,7 @@ async function load() {
   analysisGroups.value = []
   try {
     const exam = await getExamTask(taskId.value)
-    examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId)
+    examId.value = Number(exam?.examId ?? exam?.examTaskId ?? taskId.value)
     // 切换考试（keep-alive 复用实例）时必须重算标题，否则残留上一个考试的标题
     name.value = String(route.query.name || '') || exam?.examName || name.value
 
@@ -143,7 +143,7 @@ watch(
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .appbar {
   display: flex;

@@ -1,5 +1,6 @@
 <template>
   <div class="share-page">
+    <el-alert title="本地文件分享：内容在本机打包，不发送账号 Token 给分享服务器。收件人导入 .zytbshare 文件即可查看；文件副本无法限制查看次数。" type="info" :closable="false" class="block" />
     <el-tabs v-model="activeTab" class="share-tabs">
       <!-- ===== 创建分享 ===== -->
       <el-tab-pane label="创建分享" name="create">
@@ -36,10 +37,7 @@
               </el-form-item>
             </el-col>
           </el-row>
-          <el-form-item label="最大查看次数（0 为不限）">
-            <el-input-number v-model="form.maxViews" :min="0" :max="100000" style="width: 100%" />
-          </el-form-item>
-          <el-button type="primary" :loading="creating" @click="doCreate">生成分享链接</el-button>
+          <el-button type="primary" :loading="creating" @click="doCreate">生成本地分享文件</el-button>
 
           <el-alert
             v-if="createdUrl"
@@ -48,11 +46,11 @@
             show-icon
             class="create-result"
           >
-            <template #title>分享链接已生成</template>
+            <template #title>本地分享文件已生成</template>
             <div class="result-box">
               <el-input :model-value="createdUrl" readonly />
-              <el-button type="primary" :icon="CopyDocument" @click="copyText(createdUrl)">复制</el-button>
-              <el-button :icon="TopRight" @click="openRaw(createdUrl)">打开</el-button>
+              <el-button type="primary" @click="saveShareFile(createdUrl)">保存分享文件</el-button>
+              <el-button @click="startViewById(createdUrl)">预览</el-button>
             </div>
           </el-alert>
         </el-form>
@@ -61,7 +59,7 @@
       <!-- ===== 我的分享 ===== -->
       <el-tab-pane label="我的分享" name="mine">
         <div class="mine-header">
-          <span class="muted">使用当前登录账号的 token 管理分享</span>
+          <span class="muted">分享内容仅保存在本机</span>
           <el-button text :icon="Refresh" :loading="loadingMine" @click="loadMine">刷新</el-button>
         </div>
         <div v-loading="loadingMine" class="mine-list">
@@ -80,11 +78,11 @@
                   <span v-if="item.has_password" class="pwd-flag">
                     <el-icon><Lock /></el-icon> 加密
                   </span>
-                  <span class="muted">查看 {{ item.view_count }}/{{ item.max_views || '∞' }}</span>
                 </div>
                 <div class="mine-sub muted">{{ item.created_at }}</div>
               </div>
               <div class="mine-actions">
+                <el-button size="small" @click="saveShareFile(item.share_id)">保存文件</el-button>
                 <el-button size="small" :icon="Link" @click="openShareView(item.share_id)">查看</el-button>
                 <el-button size="small" type="danger" plain :icon="Delete" @click="removeShare(item)">删除</el-button>
               </div>
@@ -96,7 +94,8 @@
       <!-- ===== 查看分享 ===== -->
       <el-tab-pane label="查看分享" name="view">
         <div class="view-hint muted">
-          在地址栏附加 <code>#share=分享ID</code> 或直接粘贴分享链接即可自动加载；也可手动输入分享 ID。
+          导入分享文件，或输入本机已有分享 ID。旧服务器上的分享 ID 不能离线恢复。
+          <input type="file" accept=".zytbshare" aria-label="导入分享文件" @change="loadShareFile" />
         </div>
         <div class="view-input">
           <el-input v-model="manualId" placeholder="输入分享 ID" clearable @keyup.enter="startViewById(manualId)">
@@ -214,7 +213,13 @@
             </el-card>
           </template>
 
-          <!-- 新测评 / 其它 -->
+          <template v-else-if="isType('evaluation')">
+            <el-card v-for="(question, index) in content.questions || []" :key="index" class="block" :header="`第 ${index + 1} 题`">
+              <div class="html" v-html="question.stem" />
+              <h4>答案与解析</h4><div class="html" v-html="question.answer + question.explanation" />
+            </el-card>
+          </template>
+          <!-- 其它 -->
           <template v-else>
             <el-card class="block">
               <pre class="json">{{ JSON.stringify(content, null, 2) }}</pre>
@@ -249,7 +254,7 @@ import {
   getShareInfo,
   accessShare,
   listMyShares,
-  deleteShare,
+  deleteShare, exportShare, importShare,
   type ShareResourceType,
   type ShareContent,
   type MyShareItem
@@ -294,7 +299,7 @@ async function doCreate() {
       expires_hours: form.expiresHours,
       max_views: form.maxViews
     })
-    createdUrl.value = `${location.origin}${location.pathname.replace(/[^/]+$/, '')}#share=${res.share_id}`
+    createdUrl.value = res.share_id
     ElMessage.success('分享创建成功')
   } catch (e: any) {
     ElMessage.error('创建失败：' + (e.message || e))
@@ -304,6 +309,14 @@ async function doCreate() {
 }
 
 /* ===== 我的分享 ===== */
+async function saveShareFile(id: string) {
+  try { await exportShare(id); ElMessage.success('分享文件已保存') } catch (e) { ElMessage.error((e as Error).message) }
+}
+async function loadShareFile(event: Event) {
+  const input = event.target as HTMLInputElement, file = input.files?.[0]
+  input.value = ''; if (!file) return
+  try { const id = await importShare(file); await startViewById(id) } catch (e) { ElMessage.error((e as Error).message) }
+}
 const mine = ref<MyShareItem[]>([])
 const loadingMine = ref(false)
 

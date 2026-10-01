@@ -107,7 +107,7 @@ watch(
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .appbar {
   display: flex;

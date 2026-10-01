@@ -53,6 +53,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
 import { proxyUrl } from '@/utils/proxy'
+import { listLocalMistakes } from '@/utils/examMistakes'
 import {
   getMistakeDetail,
   fetchQstHtml,

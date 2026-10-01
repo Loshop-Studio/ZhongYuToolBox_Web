@@ -376,7 +376,7 @@ function goMessage(m: AppMessage) {
 }
 
 /* --------------------------- 在新页面打开（复刻旧 iframe URL） --------------------------- */
-const apiHost = computed(() => auth.apiBaseUrl || 'https://zyapi.loshop.com.cn')
+const apiHost = computed(() => auth.apiBaseUrl || 'http://sxz.api.zykj.org')
 const token = computed(() => auth.token || '')
 const newTabUrl = computed(
   () =>
@@ -428,7 +428,7 @@ onMounted(async () => {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--el-bg-color);
 }
 
 /* ---------- 顶部 header ---------- */
@@ -439,14 +439,14 @@ onMounted(async () => {
 .col-tabs {
   display: flex;
   gap: 28px;
-  border-bottom: 2px solid #f0f0f0;
+  border-bottom: 2px solid var(--el-fill-color-light);
   margin-bottom: 12px;
 }
 .col-tab {
   position: relative;
   padding-bottom: 10px;
   font-size: 15px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   cursor: pointer;
   user-select: none;
 }
@@ -510,17 +510,17 @@ onMounted(async () => {
   justify-content: space-between;
   padding: 10px 14px;
   font-size: 13px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   cursor: pointer;
   user-select: none;
 }
 .col-topic-name:hover {
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .col-topic-arrow {
   transition: transform 0.2s;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 .col-topic-name.expanded .col-topic-arrow {
   transform: rotate(180deg);
@@ -531,7 +531,7 @@ onMounted(async () => {
 .col-col-item {
   padding: 7px 14px 7px 28px;
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
@@ -539,7 +539,7 @@ onMounted(async () => {
 }
 .col-col-item:hover {
   color: var(--el-color-primary);
-  background: #ecf5ff;
+  background: var(--el-color-primary-light-9);
 }
 .col-col-item.active {
   color: var(--el-color-primary);
@@ -579,22 +579,22 @@ onMounted(async () => {
   transition: background 0.15s;
 }
 .col-page-item:hover {
-  background: #fafbfc;
+  background: var(--el-fill-color-lighter);
 }
 .col-page-title {
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   line-height: 1.5;
 }
 .col-page-sub {
   margin-top: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 .col-page-time {
   margin-top: 4px;
   font-size: 12px;
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder);
 }
 
 /* 收藏夹 */
@@ -607,7 +607,7 @@ onMounted(async () => {
   font-size: 13px;
 }
 .col-catalog-item:hover {
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .col-catalog-item.active {
   color: var(--el-color-primary);
@@ -625,11 +625,11 @@ onMounted(async () => {
   cursor: pointer;
 }
 .col-msg-item:hover {
-  background: #fafbfc;
+  background: var(--el-fill-color-lighter);
 }
 .col-msg-title {
   font-size: 14px;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .col-msg-item.unread .col-msg-title {
   font-weight: 600;
@@ -637,12 +637,12 @@ onMounted(async () => {
 .col-msg-meta {
   margin-top: 4px;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   display: flex;
   gap: 4px;
 }
 .col-dot {
-  color: #dcdfe6;
+  color: var(--el-border-color);
 }
 
 /* 分页 */
@@ -651,7 +651,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   padding: 12px 0 16px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--el-fill-color-light);
 }
 
 /* 移动端专属顶栏：桌面隐藏；对齐 AppLayout 的移动端顶栏样式 */
@@ -670,7 +670,7 @@ onMounted(async () => {
     height: 50px;
     flex-shrink: 0;
     padding: 0 8px;
-    background: rgba(255, 255, 255, 0.96);
+    background: var(--el-bg-color);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid #ebeef5;
   }
@@ -682,7 +682,7 @@ onMounted(async () => {
     text-align: center;
     font-size: 16px;
     font-weight: 600;
-    color: #303133;
+    color: var(--el-text-color-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

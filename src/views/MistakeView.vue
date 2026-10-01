@@ -1,5 +1,7 @@
 <template>
   <div class="mistake-page">
+    <PersonalMistakes />
+    <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers">附答案与解析</el-checkbox><el-button :disabled="!activeBookId" :loading="exporting" @click="exportSubject">导出当前科目 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
     <el-empty v-if="!booksLoading && books.length === 0" description="暂无错题本" />
 
     <el-tabs v-else v-model="activeBookId" class="mistake-tabs" @tab-change="onTabChange">
@@ -30,7 +32,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
+import PersonalMistakes from '@/components/PersonalMistakes.vue'
+import { createMistakePdf, type ExportQuestion } from '@/utils/mistakePdf'
+import { parseQuestionHtml } from '@/utils/questionHtml'
+import { getMistakeDetail, fetchQstHtml } from '@/api/mistake'
+import { saveBlobFile } from '@/utils/saveFile'
+import { accountKey } from '@/utils/localData'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
@@ -43,6 +51,47 @@ import {
 } from '@/api/mistake'
 
 const router = useRouter()
+const includeAnswers = ref(true), exporting = ref(false), exportProgress = ref('')
+let exportAbort: AbortController | undefined
+async function exportSubject() {
+  if (exporting.value) return
+  const id = activeBookId.value, subject = books.value.find(b => String(b.id) === id)?.topic.content || '错题'
+  const key = accountKey()
+  exporting.value = true; exportAbort = new AbortController()
+  const assertActive = () => { if (exportAbort?.signal.aborted || accountKey() !== key) throw new Error('导出已取消或账号已切换') }
+  try {
+    const items: MistakeItem[] = [], seen = new Set<string>()
+    for (;;) {
+      assertActive()
+      const res = await searchMistakes(id, items.length, 200)
+      if (!res.items?.length) break
+      for (const item of res.items) { if (seen.has(String(item.id))) throw new Error('官方分页重复，请刷新后重试'); seen.add(String(item.id)); items.push(item) }
+      if (items.length >= res.totalCount) break
+    }
+    if (!items.length) throw new Error('当前科目暂无错题')
+    const questions: ExportQuestion[] = []
+    for (const [index,item] of items.entries()) {
+      assertActive(); exportProgress.value = '读取题目 ' + (index + 1) + '/' + items.length
+      const detail = await getMistakeDetail(item.id)
+      if (!detail) throw new Error('题目已删除：' + item.id)
+      const parsed = detail.qstPath ? parseQuestionHtml(await fetchQstHtml(detail.qstPath)) : {stem:'', answer:'', analysis:''}
+      const picture = detail.stemShoot || item.stemShoot
+      if (!parsed.stem && picture) {
+        const image = document.createElement('img'); image.src = picture; parsed.stem = image.outerHTML
+      }
+      if (!parsed.stem) throw new Error('题干为空，停止导出：' + item.id)
+      questions.push({title: item.source || '错题', ...parsed})
+    }
+    assertActive()
+    const pdf = await createMistakePdf(subject, questions, includeAnswers.value, (n,total) => exportProgress.value = '排版 ' + n + '/' + total, exportAbort.signal)
+    assertActive(); await saveBlobFile(pdf, subject.replace(/[<>:"/\\|?*]/g,'_') + '-错题本.pdf')
+    ElMessage.success('科目错题 PDF 已保存')
+  } catch (e) { ElMessage.error((e as Error).message) }
+  finally { exporting.value = false; exportProgress.value = '' }
+}
+onDeactivated(() => exportAbort?.abort())
+onBeforeUnmount(() => exportAbort?.abort())
+onActivated(() => { bookCache.value.clear(); initBooks() })
 const booksLoading = ref(false)
 const books = ref<MistakeBook[]>([])
 const activeBookId = ref<string>('')
@@ -73,7 +122,7 @@ async function loadBook(id: string) {
   }
   loading.value = true
   try {
-    const res = await searchMistakes(id)
+    const res = await searchMistakes(id, 0, 1000)
     const items = res.items || []
     bookCache.value.set(id, items)
     list.value = items
@@ -97,10 +146,11 @@ function openDetail(item: MistakeItem) {
   })
 }
 
-onMounted(initBooks)
+
 </script>
 
 <style scoped>
+.export-bar { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
 .mistake-page {
   max-width: 1100px;
   margin: 0 auto;

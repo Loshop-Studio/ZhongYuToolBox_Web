@@ -13,7 +13,7 @@
     </div>
     <!-- 非 Electron：普通 iframe + useIframeInject（仅同源生效） -->
     <iframe
-      v-if="!isElectronEnv"
+      v-if="!isElectronEnv && !isNativeEnv"
       :id="iframeId"
       :src="url"
       class="nested-iframe"
@@ -36,6 +36,7 @@ import { getIframeBase } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useIframeInject } from '@/composables/useIframeInject'
 import { isElectron, useWebviewInject } from '@/composables/useWebviewInject'
+import { isWebView2, useNativeEmbedded } from '@/composables/useNativeEmbedded'
 
 const props = defineProps<{ kind: 'column' | 'course' }>()
 const auth = useAuthStore()
@@ -48,9 +49,10 @@ const iframeId = computed(() => `${props.kind}_iframe`)
 
 // Electron 渲染进程内走 <webview> + executeJavaScript 注入（无视同源）
 const isElectronEnv = isElectron()
+const isNativeEnv = isWebView2()
 const webviewHost = ref<HTMLElement | null>(null)
 
-const apiHost = computed(() => auth.apiBaseUrl || 'https://zyapi.loshop.com.cn')
+const apiHost = computed(() => auth.apiBaseUrl || 'http://sxz.api.zykj.org')
 const token = computed(() => auth.token || '')
 
 // 复刻旧 index.js zxzl_set_url / ck_set_url
@@ -89,7 +91,9 @@ function openInNewTab() {
 //    跨域自动跳过，移动端 plus 不注入）。
 //  - Electron：useWebviewInject（动态创建 <webview>，dom-ready 后用 executeJavaScript 注入，
 //    无视同源，跨域 webServer 也能生效）。
-if (isElectronEnv) {
+if (isNativeEnv) {
+  useNativeEmbedded({ hostRef: webviewHost, url, inject: injectOpts })
+} else if (isElectronEnv) {
   useWebviewInject({ hostRef: webviewHost, url, inject: injectOpts })
 } else {
   useIframeInject({ iframeId: iframeId.value, ...injectOpts, intervalMs: 100 })
@@ -102,7 +106,7 @@ if (isElectronEnv) {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--el-bg-color);
 }
 .iframe-bar {
   height: 40px;
@@ -112,12 +116,12 @@ if (isElectronEnv) {
   justify-content: space-between;
   padding: 0 12px;
   border-bottom: 1px solid #ebeef5;
-  background: #fafafa;
+  background: var(--el-fill-color-lighter);
 }
 .iframe-bar-title {
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .iframe-bar-right {
   display: flex;

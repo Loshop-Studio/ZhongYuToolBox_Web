@@ -7,13 +7,10 @@
     <el-card class="block" header="服务器地址">
       <el-form label-position="top">
         <el-form-item label="API 基地址 (apiBaseUrl)">
-          <el-input v-model="apiBaseUrl" placeholder="https://zyapi.loshop.com.cn" />
+          <el-input v-model="apiBaseUrl" placeholder="http://sxz.api.zykj.org" />
         </el-form-item>
-        <el-form-item label="分享服务地址 (shareServer)">
-          <el-input v-model="shareServer" placeholder="https://zytbshareapi.loshop.com.cn" />
-        </el-form-item>
-        <el-form-item label="嵌套 iframe 基地址 (iframeBase)">
-          <el-input v-model="iframeBase" placeholder="https://zyapi.loshop.com.cn" />
+        <el-form-item label="学校网页地址 (iframeBase)">
+          <el-input v-model="iframeBase" placeholder="http://sxz.school.zykj.org" />
         </el-form-item>
         <div class="actions">
           <el-button type="primary" :loading="saving" @click="save">保存配置</el-button>
@@ -24,14 +21,14 @@
 
     <el-card class="block" header="资源代理状态">
       <div class="proxy-row">
-        <span class="muted">当前生效代理：</span>
-        <code>{{ proxyBase }}</code>
+        <span class="muted">资源连接：</span>
+        <code>{{ IS_WINDOWS ? 'Windows 本地网络适配 → 官方资源' : proxyBase }}</code>
         <el-tag :type="proxyIsLocal ? 'success' : 'info'" size="small">
-          {{ proxyIsLocal ? '本地加速' : '远端代理' }}
+          {{ IS_WINDOWS ? '官方直连' : '本地代理' }}
         </el-tag>
       </div>
       <div class="proxy-row">
-        <el-button size="small" :icon="Refresh" :loading="detecting" @click="detect">重新探测本地加速插件</el-button>
+        <el-button v-if="!IS_WINDOWS" size="small" :icon="Refresh" :loading="detecting" @click="detect">重新探测本机资源代理</el-button>
       </div>
     </el-card>
 
@@ -53,7 +50,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Delete } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { getProxyBaseUrl, detectLocalProxy } from '@/utils/proxy'
-import { API_BASE_URL, SHARE_SERVER, getIframeBase, PROXY_LOCAL, PROXY_REMOTE } from '@/config'
+import { API_BASE_URL, SHARE_SERVER, IS_WINDOWS, getIframeBase, PROXY_LOCAL, PROXY_REMOTE } from '@/config'
 
 const auth = useAuthStore()
 

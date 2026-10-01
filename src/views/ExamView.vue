@@ -1,5 +1,6 @@
 <template>
   <div class="exam-page">
+    <PersonalMistakes :tasks="exams" />
     <!-- 列表卡片 -->
     <el-card class="list-card" shadow="never">
       <div class="list-head">
@@ -39,6 +40,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import PersonalMistakes from '@/components/PersonalMistakes.vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, ArrowRight } from '@element-plus/icons-vue'
@@ -86,8 +88,8 @@ onMounted(() => load(1))
 <style scoped>
 .exam-page {
   width: 100%;
-  margin: 0 -20px;
-  padding: 0 10px;
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 .list-card {

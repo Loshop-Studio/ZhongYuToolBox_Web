@@ -9,6 +9,10 @@
           <li>支持文件夹视图浏览和分页加载</li>
           <li>点击笔记即可下载原始图片压缩包</li>
           <li>支持 <strong>PDF 上传</strong> 转存到云笔记</li>
+          <li>Windows 版支持多张 PNG、JPG、WebP 图片在本机合成 PDF 后上传，可调整页面顺序。</li>
+          <li>每张图片可手动逆时针旋转 90°，连续点击循环切换方向；也可恢复自动方向。</li>
+          <li>笔记列表支持重命名和移至中育官方回收站，可在官方客户端恢复。</li>
+          <li>竖版页面逆时针旋转 90°，整页等比例放入横版画布，原文件不被修改。</li>
         </ul>
 
         <h3>在线专栏</h3>
@@ -26,6 +30,7 @@
           <li>按学科和分类筛选错题合集</li>
           <li>点击错题可预览笔记图片和原始文件</li>
           <li>支持下载错题笔记压缩包</li>
+          <li>可选择科目导出 A4 PDF，选择是否附答案与解析，长题自动分页。</li>
         </ul>
 
         <h3>随身答</h3>
@@ -73,6 +78,8 @@
         <p class="muted">查看测评任务和数据。</p>
         <ul>
           <li>浏览测评列表和详情</li>
+          <li>自动收集当前页已公布分数的本人失分题，可批量核对全部测评并加入中育官方错题本。</li>
+          <li>本地记录按学校服务器和账号隔离；失败显示待同步，再次核对会先检查官方状态以避免重复。</li>
         </ul>
       </section>
     </el-card>
@@ -80,6 +87,11 @@
     <el-card class="block" header="致谢">
       <p>感谢各位的使用，我们有缘再会。</p>
       <p>开发：Loshop</p>
+      <p>Co-author：{{ EDITION.coAuthor }}（Windows 界面、WebView2 原生壳、三种主题模式、图片转 PDF、PDF 转横版及上传资源校验）</p>
+      <p>本版本基于原项目独立改造，感谢 Loshop 与项目贡献者。原作者的署名及“支持作者”入口保留。</p>
+      <p>界面字体：<a href="https://github.com/atelier-anchor/smiley-sans" target="_blank" rel="noopener noreferrer">得意黑 Smiley Sans · atelierAnchor</a>，按 SIL Open Font License 1.1 分发。</p>
+      <p>设计参考：<a href="https://github.com/emilkowalski/skills" target="_blank" rel="noopener noreferrer">Emil Kowalski 的 Design Engineering</a> 与 <a href="https://wise.design/" target="_blank" rel="noopener noreferrer">Wise Design</a>。界面为本版本独立实现。</p>
+      <p><a :href="EDITION.sourceUrl" target="_blank" rel="noopener noreferrer">查看原始项目</a></p>
     </el-card>
 
     <el-card class="block" header="更新日志">
@@ -100,6 +112,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { EDITION } from '@/config/edition'
 
 interface UpdateEntry {
   date: string
