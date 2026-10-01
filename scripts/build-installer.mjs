@@ -10,7 +10,7 @@ if (process.platform !== 'win32') throw new Error('Windows is required to build 
 const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
 if (!/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$/.test(version)) throw new Error('Invalid version')
 const latest = JSON.parse(fs.readFileSync('.local/latest-windows-build.json', 'utf8'))
-if (latest.qa) throw new Error('Refusing to package a QA build')
+if (latest.qa || latest.dev) throw new Error('Refusing to package a QA or development build')
 const source = fs.realpathSync(latest.output)
 if (!source.startsWith(path.join(root, 'release', 'windows-webview2-'))) throw new Error('Unexpected production directory')
 const tools = path.join(root, '.local', 'installer-tools')

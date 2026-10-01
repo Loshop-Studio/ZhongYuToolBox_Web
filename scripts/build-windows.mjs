@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url'
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 process.chdir(root)
 const qa = process.argv.includes('--qa')
+const dev = process.argv.includes('--dev')
+if (process.platform !== 'win32') throw new Error('Windows is required to build the WebView2 shell')
 const sdk = path.join(root, '.local/webview2')
 if (!fs.existsSync(path.join(sdk, 'lib/net462/Microsoft.Web.WebView2.Wpf.dll'))) {
   fs.mkdirSync(path.join(root, '.local'), { recursive: true })
@@ -16,7 +18,7 @@ if (!fs.existsSync(path.join(sdk, 'lib/net462/Microsoft.Web.WebView2.Wpf.dll')))
   const quote = value => "'" + value.replaceAll("'", "''") + "'"
   execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `Expand-Archive -LiteralPath ${quote(archive)} -DestinationPath ${quote(sdk)} -Force`], { stdio: 'inherit', windowsHide: true })
 }
-if (!process.argv.includes('--skip-frontend')) {
+if (!dev && !process.argv.includes('--skip-frontend')) {
   execFileSync(process.execPath, ['node_modules/vue-tsc/bin/vue-tsc.js', '-b'], { stdio: 'inherit' })
   execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build', '--config', 'vite.config.ts', '--mode', 'webview2'], {
     stdio: 'inherit', env: { ...process.env, ZYTB_BUILD_QA: qa ? '1' : '' }
@@ -24,7 +26,7 @@ if (!process.argv.includes('--skip-frontend')) {
 }
 // Fresh output per build; no deleting or overwriting a running client's files.
 const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
-const output = path.join(root, 'release', `${qa ? 'webview2-qa' : 'windows-webview2'}-${stamp}`)
+const output = path.join(root, 'release', `${dev ? 'webview2-dev' : qa ? 'webview2-qa' : 'windows-webview2'}-${stamp}`)
 fs.mkdirSync(output, { recursive: true })
 const framework = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319')
 const exe = path.join(output, '中育工具箱-aoki.exe')
@@ -47,7 +49,7 @@ function copyDirectory(source, destination) {
     else fs.copyFileSync(original, target)
   }
 }
-copyDirectory('dist', path.join(output, 'dist'))
+copyDirectory(dev ? 'public' : 'dist', path.join(output, 'dist'))
 if (qa && !fs.existsSync(path.join(output, 'dist/tests/native-qa.html'))) throw new Error('QA entry missing from build')
 if (!qa && fs.existsSync(path.join(output, 'dist/tests'))) throw new Error('QA pages leaked into production build')
 fs.mkdirSync(path.join(output, 'LICENSES'))
@@ -61,5 +63,5 @@ for (const name of ['vue', 'pinia', 'element-plus', 'pdf-lib', 'pdfjs-dist', 'ht
 }
 fs.copyFileSync('WINDOWS_AOKI.txt', path.join(output, 'WINDOWS_AOKI.txt'))
 execFileSync(exe, ['--self-test'], { windowsHide: true })
-fs.writeFileSync('.local/latest-windows-build.json', JSON.stringify({ exe, output, qa }, null, 2))
+fs.writeFileSync(dev ? '.local/latest-dev-windows-build.json' : '.local/latest-windows-build.json', JSON.stringify({ exe, output, qa, dev }, null, 2))
 console.log(`Windows WebView2 build: ${exe}`)

@@ -1,4 +1,5 @@
 # Tests a first installation in an isolated workspace directory. Never replaces an existing installation.
+param([switch]$SkipDesktopShortcut)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
 $taskBuild = Get-Content -LiteralPath (Join-Path $taskRoot '.local/latest-installer-build.json') -Raw | ConvertFrom-Json
@@ -10,7 +11,8 @@ $taskVerification = Join-Path $taskRoot ('.local/installer-verification-' + $tas
 $taskInstallDir = Join-Path $taskVerification '安装验证 app'
 $taskGroup = '中育工具箱 安装验证 ' + $taskId
 $taskDesktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) '中育工具箱 · aoki.lnk'
-if (Test-Path -LiteralPath $taskDesktopLink) { throw 'Desktop shortcut already exists; refusing to replace it during verification' }
+if ((Test-Path -LiteralPath $taskDesktopLink) -and !$SkipDesktopShortcut) { throw 'Desktop shortcut already exists; use -SkipDesktopShortcut to preserve it during verification' }
+$taskDesktopHash = if (Test-Path -LiteralPath $taskDesktopLink) { (Get-FileHash -LiteralPath $taskDesktopLink -Algorithm SHA256).Hash } else { $null }
 $taskCacheDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'ZhongYuToolbox-aoki-WebView2'
 $taskCanary = Join-Path $taskCacheDir ('installer-preservation-' + $taskId + '.txt')
 New-Item -ItemType Directory -Path $taskVerification -Force | Out-Null
@@ -19,7 +21,7 @@ Set-Content -LiteralPath $taskCanary -Value $taskId
 $taskChecks = [System.Collections.Generic.List[string]]::new()
 function Invoke-TaskSetup([string]$LogName) {
     $taskArguments = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-','/NOCLOSEAPPLICATIONS','/NORESTARTAPPLICATIONS',
-        ('/DIR="' + $taskInstallDir + '"'), ('/GROUP="' + $taskGroup + '"'), '/TASKS=desktopicon',
+        ('/DIR="' + $taskInstallDir + '"'), ('/GROUP="' + $taskGroup + '"'), $(if ($SkipDesktopShortcut) { '/TASKS=' } else { '/TASKS=desktopicon' }),
         ('/LOG="' + (Join-Path $taskVerification $LogName) + '"'))
     $taskProcess = Start-Process -FilePath $taskBuild.installer -ArgumentList $taskArguments -WindowStyle Hidden -Wait -PassThru
     if ($taskProcess.ExitCode -ne 0) { throw ('Installer failed: ' + $taskProcess.ExitCode) }
@@ -40,12 +42,14 @@ try {
     if ($taskRegistration.DisplayVersion -ne $taskBuild.version -or $taskRegistration.InstallLocation.TrimEnd('\') -ne $taskInstallDir) { throw 'Uninstall registration mismatch' }
     $taskChecks.Add('Current-user uninstall registration and version')
     $taskShell = New-Object -ComObject WScript.Shell
-    $taskLink = $taskShell.CreateShortcut($taskDesktopLink)
     $taskExe = Join-Path $taskInstallDir '中育工具箱-aoki.exe'
-    if ($taskLink.TargetPath -ne $taskExe -or $taskLink.WorkingDirectory -ne $taskInstallDir) { throw 'Desktop shortcut mismatch' }
+    if (!$SkipDesktopShortcut) {
+        $taskLink = $taskShell.CreateShortcut($taskDesktopLink)
+        if ($taskLink.TargetPath -ne $taskExe -or $taskLink.WorkingDirectory -ne $taskInstallDir) { throw 'Desktop shortcut mismatch' }
+    }
     $taskMenuLink = Join-Path ([Environment]::GetFolderPath('StartMenu')) ('Programs\' + $taskGroup + '\中育工具箱 · aoki.lnk')
     if (!(Test-Path -LiteralPath $taskMenuLink) -or $taskShell.CreateShortcut($taskMenuLink).TargetPath -ne $taskExe) { throw 'Start menu shortcut mismatch' }
-    $taskChecks.Add('Desktop and Start menu shortcut targets')
+    $taskChecks.Add($(if ($SkipDesktopShortcut) { 'Start menu shortcut target; desktop shortcut preserved' } else { 'Desktop and Start menu shortcut targets' }))
     $taskProcess = Start-Process -FilePath $taskExe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru
     if ($taskProcess.ExitCode -ne 0 -or !(Get-Content -LiteralPath (Join-Path $taskInstallDir 'self-test.json') -Raw | ConvertFrom-Json).passed) { throw 'Installed native executable self-test failed' }
     $taskChecks.Add('Installed native executable self-test')
@@ -83,7 +87,8 @@ try {
     Remove-Item -LiteralPath $taskCanary
 }
 if (Test-Path $taskUninstallKey) { throw 'Uninstall registration left behind' }
-if ((Test-Path -LiteralPath $taskDesktopLink) -or (Test-Path -LiteralPath $taskMenuLink)) { throw 'Uninstall shortcut cleanup failed' }
+if ((!$SkipDesktopShortcut -and (Test-Path -LiteralPath $taskDesktopLink)) -or (Test-Path -LiteralPath $taskMenuLink)) { throw 'Uninstall shortcut cleanup failed' }
+if ($SkipDesktopShortcut -and $taskDesktopHash -and (!(Test-Path -LiteralPath $taskDesktopLink) -or (Get-FileHash -LiteralPath $taskDesktopLink -Algorithm SHA256).Hash -ne $taskDesktopHash)) { throw 'Existing desktop shortcut was modified' }
 foreach ($taskFile in $taskBuild.files) { if (Test-Path -LiteralPath (Join-Path $taskInstallDir $taskFile.path)) { throw ('Uninstall retained registered file: ' + $taskFile.path) } }
 if ((Get-Content -LiteralPath $taskUserFile -Raw).Trim() -ne $taskId) { throw 'Uninstall deleted user-created data' }
 $taskChecks.Add('Uninstall removes payload, shortcuts and registry, retains user files/account cache')
