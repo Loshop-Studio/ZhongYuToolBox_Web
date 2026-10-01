@@ -1,10 +1,12 @@
 <template>
   <div class="mistake-page">
-    <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers" :disabled="exporting">在题目后附答案与解析</el-checkbox><el-button :disabled="!activeBookId || removing || booksLoading" :loading="exporting" @click="exportSubject('all')">导出本科全部 PDF</el-button><el-button :disabled="!selectedIds.length || removing || exporting || loading" @click="exportSubject('selected')">导出选中 {{ selectedIds.length }} 题 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
+    <div class="export-bar"><strong>中育官方错题本</strong><el-checkbox v-model="includeAnswers" :disabled="exporting">在题目后附答案与解析</el-checkbox><el-button :disabled="!activeBookId || removing || booksLoading" :loading="exporting" @click="exportSubject('all')">导出本科全部 PDF</el-button><el-button v-if="selectedIds.length" :disabled="removing || exporting || loading" @click="exportSubject('selected')">导出选中 {{ selectedIds.length }} 题 PDF</el-button><el-button v-if="exporting" @click="exportAbort?.abort()">取消</el-button><span>{{ exportProgress }}</span></div>
     <div v-if="activeBookId" class="export-bar">
       <el-checkbox :model-value="allSelected" :indeterminate="selectedIds.length > 0 && !allSelected" :disabled="loading || removing || exporting || !list.length" @change="selectAll">选择当前科目列表</el-checkbox>
-      <span>已选 {{ selectedIds.length }} 题</span>
-      <el-button type="danger" plain :disabled="!selectedIds.length || loading || exporting" :loading="removing" @click="removeSelected(selectedIds)">删除选中错题</el-button>
+      <template v-if="selectedIds.length">
+        <span>已选 {{ selectedIds.length }} 题</span>
+        <el-button type="danger" plain :disabled="loading || exporting" :loading="removing" @click="removeSelected(selectedIds)">删除选中错题</el-button>
+      </template>
     </div>
     <el-empty v-if="!booksLoading && books.length === 0" description="暂无错题本" />
 
@@ -16,7 +18,11 @@
             v-for="(item, idx) in list"
             :key="item.id"
             class="mistake-card"
-            @click="openDetail(item)"
+            @click="onCardClick(item)"
+            @contextmenu.prevent="onContextMenu(item, $event)"
+            @touchstart.passive="startPress(item)"
+            @touchend="endPress"
+            @touchmove="endPress"
           >
             <el-checkbox :model-value="selectedIds.includes(String(item.id))" :aria-label="`选择错题 ${idx + 1}`" :disabled="removing || exporting" @click.stop @change="value => selectItem(item, !!value)" />
             <div class="idx">{{ idx + 1 }}</div>
@@ -29,16 +35,27 @@
               <div class="src">{{ item.source || '未命名题目' }}</div>
               <div class="time">{{ item.creationTime }}</div>
             </div>
-            <el-button type="danger" plain size="small" :disabled="removing || exporting" @click.stop="removeSelected([String(item.id)])">删除</el-button>
           </div>
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <teleport to="body">
+      <div v-if="menuItem" class="mmask" :class="{ mobile: menuMobile }" @click="closeMenu" @contextmenu.prevent="closeMenu" />
+      <div v-if="menuItem && !menuMobile" class="mmenu" :style="menuStyle">
+        <button type="button" class="danger" :disabled="removing || exporting" @click="menuRemove">删除</button>
+      </div>
+      <div v-if="menuItem && menuMobile" class="msheet">
+        <button type="button" class="danger" :disabled="removing || exporting" @click="menuRemove">删除</button>
+        <button type="button" class="cancel" @click="closeMenu">取消</button>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
+import { useIsMobile } from '@/composables/useIsMobile'
 import { createMistakePdf, type ExportQuestion } from '@/utils/mistakePdf'
 import { parseQuestionHtml } from '@/utils/questionHtml'
 import { getMistakeDetail, fetchQstHtml } from '@/api/mistake'
@@ -66,6 +83,52 @@ function selectItem(item: MistakeItem, selected: boolean) {
   selectedIds.value = selected ? [...new Set([...selectedIds.value,id])] : selectedIds.value.filter(value => value !== id)
 }
 function selectAll(value: unknown) { selectedIds.value = value ? list.value.map(item => String(item.id)) : [] }
+
+const { isMobile } = useIsMobile()
+const menuItem = ref<MistakeItem | null>(null)
+const menuX = ref(0)
+const menuY = ref(0)
+const menuMobile = ref(false)
+const menuStyle = computed(() => {
+  let left = menuX.value
+  let top = menuY.value
+  const width = 160
+  const height = 44
+  if (left + width > window.innerWidth) left = window.innerWidth - width - 8
+  if (top + height > window.innerHeight) top = window.innerHeight - height - 8
+  return { left: `${Math.max(8, left)}px`, top: `${Math.max(8, top)}px` }
+})
+let pressTimer: number | undefined
+let pressConsumed = false
+function onContextMenu(item: MistakeItem, ev: MouseEvent) {
+  ev.preventDefault()
+  menuItem.value = item
+  if (isMobile.value) { menuMobile.value = true; pressConsumed = true }
+  else { menuMobile.value = false; menuX.value = ev.clientX; menuY.value = ev.clientY }
+}
+function openMobileMenu(item: MistakeItem) {
+  menuItem.value = item
+  menuMobile.value = true
+  pressConsumed = true
+}
+function startPress(item: MistakeItem) {
+  if (!isMobile.value) return
+  endPress()
+  pressTimer = window.setTimeout(() => openMobileMenu(item), 450)
+}
+function endPress() {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = undefined }
+}
+function onCardClick(item: MistakeItem) {
+  if (pressConsumed) { pressConsumed = false; return }
+  openDetail(item)
+}
+function closeMenu() { menuItem.value = null }
+async function menuRemove() {
+  const item = menuItem.value
+  closeMenu()
+  if (item) await removeSelected([String(item.id)])
+}
 async function removeSelected(selection: string[]) {
   if (removing.value || exporting.value) return
   const bookId = activeBookId.value, key = accountKey()
@@ -266,6 +329,76 @@ function openDetail(item: MistakeItem) {
   margin-top: 4px;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+/* 右键菜单 / 移动端底部菜单（与 NoteRowMenu 一致） */
+.mmask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+.mmask.mobile {
+  background: rgba(0, 0, 0, 0.35);
+}
+.mmenu {
+  position: fixed;
+  z-index: 2001;
+  min-width: 140px;
+  background: var(--el-bg-color);
+  border: 1px solid var(--el-border-color);
+  border-radius: 10px;
+  box-shadow: var(--el-box-shadow-light);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.mmenu button,
+.msheet button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+.mmenu button:hover,
+.msheet button:hover {
+  background: var(--el-fill-color-light);
+}
+.mmenu button:disabled,
+.msheet button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.mmenu button.danger,
+.msheet button.danger {
+  color: var(--el-color-danger);
+}
+.msheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2001;
+  background: var(--el-bg-color);
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.msheet button.cancel {
+  color: var(--el-text-color-secondary);
+  border-top: 1px solid var(--el-border-color);
+  margin-top: 4px;
+  padding-top: 12px;
 }
 
 @media (max-width: 767px) {

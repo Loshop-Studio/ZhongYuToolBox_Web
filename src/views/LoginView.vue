@@ -2,7 +2,7 @@
   <div class="login-page">
     <el-card class="login-card" shadow="always">
       <template #header>
-        <div class="card-title">{{ auth.isLoggedIn ? '你的账号' : '登录账号' }}</div><p v-if="IS_WINDOWS" class="login-intro">使用中育账号登录，随后从左侧选择需要的工具。</p>
+        <div class="card-title">{{ auth.isLoggedIn ? '你的账号' : '登录账号' }}</div>
       </template>
 
       <div v-if="!auth.isLoggedIn">
@@ -66,7 +66,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { blockState } from '@/stores/block'
-import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
+import { IS_BROWSER, PLATFORM } from '@/config'
 const router = useRouter()
 const auth = useAuthStore()
 

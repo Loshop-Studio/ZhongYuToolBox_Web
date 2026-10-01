@@ -9,8 +9,8 @@ if ((Get-FileHash -LiteralPath $taskBuild.installer -Algorithm SHA256).Hash -ne 
 $taskId = [Guid]::NewGuid().ToString('N')
 $taskVerification = Join-Path $taskRoot ('.local/installer-verification-' + $taskId)
 $taskInstallDir = Join-Path $taskVerification '安装验证 app'
-$taskGroup = '中育工具箱 安装验证 ' + $taskId
-$taskDesktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) '中育工具箱 · aoki.lnk'
+$taskGroup = '中育Toolbox 安装验证 ' + $taskId
+$taskDesktopLink = Join-Path ([Environment]::GetFolderPath('Desktop')) '中育Toolbox.lnk'
 if ((Test-Path -LiteralPath $taskDesktopLink) -and !$SkipDesktopShortcut) { throw 'Desktop shortcut already exists; use -SkipDesktopShortcut to preserve it during verification' }
 $taskDesktopHash = if (Test-Path -LiteralPath $taskDesktopLink) { (Get-FileHash -LiteralPath $taskDesktopLink -Algorithm SHA256).Hash } else { $null }
 $taskCacheDir = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'ZhongYuToolbox-aoki-WebView2'
@@ -42,12 +42,12 @@ try {
     if ($taskRegistration.DisplayVersion -ne $taskBuild.version -or $taskRegistration.InstallLocation.TrimEnd('\') -ne $taskInstallDir) { throw 'Uninstall registration mismatch' }
     $taskChecks.Add('Current-user uninstall registration and version')
     $taskShell = New-Object -ComObject WScript.Shell
-    $taskExe = Join-Path $taskInstallDir '中育工具箱-aoki.exe'
+    $taskExe = Join-Path $taskInstallDir '中育Toolbox.exe'
     if (!$SkipDesktopShortcut) {
         $taskLink = $taskShell.CreateShortcut($taskDesktopLink)
         if ($taskLink.TargetPath -ne $taskExe -or $taskLink.WorkingDirectory -ne $taskInstallDir) { throw 'Desktop shortcut mismatch' }
     }
-    $taskMenuLink = Join-Path ([Environment]::GetFolderPath('StartMenu')) ('Programs\' + $taskGroup + '\中育工具箱 · aoki.lnk')
+    $taskMenuLink = Join-Path ([Environment]::GetFolderPath('StartMenu')) ('Programs\' + $taskGroup + '\中育Toolbox.lnk')
     if (!(Test-Path -LiteralPath $taskMenuLink) -or $taskShell.CreateShortcut($taskMenuLink).TargetPath -ne $taskExe) { throw 'Start menu shortcut mismatch' }
     $taskChecks.Add($(if ($SkipDesktopShortcut) { 'Start menu shortcut target; desktop shortcut preserved' } else { 'Desktop and Start menu shortcut targets' }))
     $taskProcess = Start-Process -FilePath $taskExe -ArgumentList '--self-test' -WindowStyle Hidden -Wait -PassThru

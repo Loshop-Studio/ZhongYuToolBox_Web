@@ -59,7 +59,7 @@ internal sealed class ToolboxWindow : Window {
     public ToolboxWindow(bool qaMode, string devUrl = null) {
         qa = qaMode;
         devOrigin = devUrl == null ? null : new Uri(devUrl);
-        Title = "中育工具箱 · aoki" + (devOrigin == null ? "" : " · 开发模式");
+        Title = "中育Toolbox" + (devOrigin == null ? "" : " · 开发模式");
         var iconPath = Path.Combine(root, "dist", "icon.png");
         if (File.Exists(iconPath)) Icon = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(iconPath));
         Width = 1280; Height = 820; MinWidth = 800; MinHeight = 600;

@@ -1,9 +1,7 @@
 <template>
   <div class="donate-page">
     <el-card class="block" header="支持作者">
-      <p class="muted donate-desc">
-        感谢 Loshop 开源中育工具箱。本版本保留原作者的支持入口，捐赠对象仍为原作者；欢迎支持他的开发工作。
-      </p>
+      
       <div class="donate-amounts">
         <el-button
           v-for="p in presetAmounts"
