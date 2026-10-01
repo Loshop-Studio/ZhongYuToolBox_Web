@@ -11,6 +11,7 @@ const noteTemplate={type:1,fileUrl:'https://fixture.invalid/note',parentId:'0',v
 const notes=[{...noteTemplate,fileId:'QA_NOTE',fileName:'数学 · 几何复习'},{...noteTemplate,fileId:'QA_NOTE_2',fileName:'物理 · 力学复习'},{...noteTemplate,type:0,fileId:'QA_FOLDER',fileName:'归档'}]
 const task={id:77,examTaskId:77,examId:991,examName:'数学 · 单元测评（离线演示）',topicName:'数学',enableScore:true,groups:[{questions:[{id:11,originScore:2,myScore:10,score:10,completed:false,number:'1'},{id:12,originScore:1,score:5,number:'2'}]}]}
 const html='<div class="stem"><p>已知 x² + y² = 1，求图形面积。</p><img src="'+image+'"></div><div class="answers"><p>答案：π。</p></div><div class="analysis"><p>半径为 1，由圆的面积公式可得。</p></div>'
+let mistakeItems=[{id:1,source:'数学 · 单元测评',stemShoot:image,creationTime:'2026-10-01'},{id:2,source:'数学 · 综合训练',stemShoot:image,creationTime:'2026-09-30'}]
 const json=(data:any)=>new Response(JSON.stringify(data),{headers:{'Content-Type':'application/json'}})
 const originalFetch=window.fetch.bind(window)
 window.fetch=async(url,options)=>{
@@ -30,7 +31,12 @@ window.fetch=async(url,options)=>{
   if(address.includes('GetQuestionViewAsync'))return json({success:true,result:{path:'/Question/View/11',isInMistakeBook:true}})
   if(address.includes('/Question/View/'))return new Response(html)
   if(address.includes('GetMyMistakeBooksAsync'))return json({result:[{id:1,topic:{content:'数学'}}]})
-  if(address.includes('SearchMistakeQstItemsAsync'))return json({result:{totalCount:2,items:[{id:1,source:'数学 · 单元测评',stemShoot:image,creationTime:'2026-10-01'},{id:2,source:'数学 · 综合训练',stemShoot:image,creationTime:'2026-09-30'}]}})
+  if(address.includes('MultiRemoveMistakeItemsAsync')) {
+    if (new URL(location.href).searchParams.get('deleteFailure') === '1') return json({success:false,error:{message:'离线模拟：官方拒绝删除'}})
+    const body=JSON.parse(String(options?.body)); if (body.bookId!==1 || !Array.isArray(body.itemIds)) throw new Error('删除参数不正确')
+    mistakeItems=mistakeItems.filter(item=>!body.itemIds.includes(item.id));return json({success:true,result:null})
+  }
+  if(address.includes('SearchMistakeQstItemsAsync'))return json({result:{totalCount:mistakeItems.length,items:mistakeItems}})
   if(address.includes('GetMistakeQstItemDetailInfoAsync'))return json({result:{qstPath:'/Question/View/11',stemShoot:image}})
   throw new Error('离线 UI 测试阻止网络：'+address)
 }
