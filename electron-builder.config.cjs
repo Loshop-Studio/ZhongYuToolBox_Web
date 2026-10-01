@@ -12,7 +12,7 @@ module.exports = {
   // 使用网页图标（public/icon.png 封装的 .ico）
   icon: 'public/icon.ico',
   directories: {
-    output: 'release/ui-v2',
+    output: 'release',
     buildResources: 'electron/resources'
   },
   files: ['dist/**/*', 'electron/**/*', 'package.json'],
