@@ -37,8 +37,9 @@ export async function appDownloadsQa(check: (ok: boolean, message: string) => vo
       throw new Error('Unexpected QA request: ' + url.pathname)
     }
     application = createApp(AppDownloadsView); application.use(getActivePinia()!); application.use(ElementPlus); application.mount(container)
-    await wait(() => container.querySelectorAll('.app-card').length === 7 && !button('下载 APK')?.disabled)
+    await wait(() => container.querySelectorAll('.app-card').length === STUDENT_APPS.length && !button('下载 APK')?.disabled)
     check(container.textContent!.includes('优课畅学') && container.textContent!.includes('vQA'), '真实 Vue 页面显示官方学生应用与版本')
+    check(container.textContent!.includes('中育桌面') && container.textContent!.includes('导入本地 APK / ZIP'), '应用目录显示中育桌面和本地软件包导入入口')
     const search = container.querySelector<HTMLInputElement>('[aria-label="搜索中育应用"]')!
     search.value = '优课畅学'; search.dispatchEvent(new Event('input', { bubbles: true })); await nextTick()
     check(container.querySelectorAll('.app-card').length === 1, '下载页搜索只显示匹配应用')

@@ -18,6 +18,8 @@ import { examNavigationQa } from './exam-navigation-qa'
 import { examAutomationQa } from './exam-automation-qa'
 import { recycleExportQa } from './recycle-export-qa'
 import { appDownloadsQa } from './app-downloads-qa'
+import { officialApksQa } from './official-apks-qa'
+import { pictureQa } from './picture-qa'
 import { mistakeMathQa, mathPrintQuestion } from './mistake-math-qa'
 import '../src/styles/windows.css'
 
@@ -35,6 +37,8 @@ export async function featureQa(check: (ok: boolean, message: string) => void, o
     await examAutomationQa(check, user)
     await recycleExportQa(check)
     await appDownloadsQa(check)
+    await officialApksQa(check)
+    await pictureQa(check)
     let payload: any, fail = false
     window.fetch = async (_url, opts) => { payload = JSON.parse(aesDecrypt(String(opts?.body))); return response(fail ? {code:1,msg:'TEST rejected'} : {code:0,data:aesEncrypt(JSON.stringify({version:5}))}) }
     const note = {fileId:'TEST_ID',fileName:'旧名称',type:1,fileUrl:'https://fixture.invalid/note',parentId:'',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,createTime:'old',noteList:[]}
