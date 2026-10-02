@@ -15,6 +15,9 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item :icon="User" command="user">个人中心</el-dropdown-item>
+              <el-dropdown-item v-if="isWindowsEdition" divided command="theme-light">浅色外观 {{ themeMode === 'light' ? '✓' : '' }}</el-dropdown-item>
+              <el-dropdown-item v-if="isWindowsEdition" command="theme-dark">深色外观 {{ themeMode === 'dark' ? '✓' : '' }}</el-dropdown-item>
+              <el-dropdown-item v-if="isWindowsEdition" command="theme-system">跟随系统 {{ themeMode === 'system' ? '✓' : '' }}</el-dropdown-item>
               <el-dropdown-item :icon="SwitchButton" command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -82,7 +85,7 @@
       size="72%"
       class="mobile-drawer"
     >
-      <SideMenu :collapse="false" @select="drawer = false" />
+      <SideMenu :collapse="false" :light="isWindowsEdition" @select="drawer = false" />
     </el-drawer>
 
     <!-- 返回顶部 -->
@@ -117,7 +120,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useProxyStore } from '@/stores/proxy'
 import { startProxyPolling, stopProxyPolling, getProxyBaseUrl } from '@/utils/proxy'
 import { useIsMobile } from '@/composables/useIsMobile'
-import { PLATFORM, IS_WINDOWS } from '@/config'
+import { PLATFORM, IS_AOKI } from '@/config'
 import { EDITION } from '@/config/edition'
 import { themeMode, setThemeMode } from '@/composables/useTheme'
 
@@ -126,7 +129,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const proxy = useProxyStore()
 const { isMobile } = useIsMobile()
-const isWindowsEdition = IS_WINDOWS
+const isWindowsEdition = IS_AOKI
 const baseUrl = import.meta.env.BASE_URL
 const descriptions: Record<string, string> = {
   '/login': '管理账号，快速进入你的学习资源。', '/note': '浏览笔记与文件夹，将 PDF 整理到云端。',
@@ -142,6 +145,13 @@ function toggleSidebar(event: MouseEvent) {
   collapsed.value = !collapsed.value
 }
 const drawer = ref(false)
+if (PLATFORM === 'android') (window as any).__zytbBack = () => {
+  if (drawer.value) { drawer.value = false; return true }
+  const overlay = document.querySelector('.el-overlay-dialog .el-dialog__headerbtn, .el-message-box__headerbtn') as HTMLElement
+  if (overlay) { overlay.click(); return true }
+  if (route.path === '/login' || route.path === '/') return false
+  router.back(); return true
+}
 const bgUrl = ref(`${import.meta.env.BASE_URL}bg3.jpg`)
 
 const currentTitle = computed(() => (route.meta.title as string) || '中育ToolBox')
@@ -166,6 +176,7 @@ function goLogin() {
   router.push('/login')
 }
 function onMobileCommand(cmd: string) {
+  if (cmd.startsWith('theme-')) { setThemeMode(cmd.slice(6) as 'light' | 'dark' | 'system'); return }
   if (cmd === 'user') {
     router.push('/login')
   } else if (cmd === 'logout') {
