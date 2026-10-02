@@ -8,7 +8,7 @@ import { aesEncrypt } from '@/utils/crypto'
 import { uploadFile } from '@/utils/oss'
 import { blobToMd5, convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
 import { prepareLandscapePdf } from '@/utils/pdfLandscape'
-import { PLATFORM, IS_WINDOWS } from '@/config'
+import { PLATFORM, IS_AOKI as IS_WINDOWS } from '@/config'
 import { NOTE_CANVAS } from '@/utils/noteCanvas'
 import { isPlus } from '@/utils/plusPicker'
 
@@ -175,7 +175,8 @@ function readByPlusIo(plus: any, rel: string): Promise<Blob> {
  */
 async function readBundledBlob(rel: string): Promise<Blob> {
   const w: any = window as any
-  if (IS_WINDOWS && w.electronAPI?.readNoteTemplate) return new Blob([await w.electronAPI.readNoteTemplate(rel)])
+  const host = w.nativeHost || w.electronAPI
+  if (IS_WINDOWS && host?.readNoteTemplate) return new Blob([await host.readNoteTemplate(rel)])
   try {
     return await readByRequest(TEMPLATE_BASE + rel)
   } catch (e) {
