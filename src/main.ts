@@ -5,12 +5,13 @@ import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/mobile.css'
 import './styles/windows.css'
+import './styles/android.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { IS_BROWSER, PLATFORM, IS_WINDOWS } from './config'
+import { IS_BROWSER, PLATFORM, IS_AOKI } from './config'
 import { setupPlusBackButton } from './utils/plusBack'
 import { logError } from './utils/errorText'
 import { ElMessage } from 'element-plus'
@@ -25,9 +26,10 @@ if (!IS_BROWSER) {
   document.head.appendChild(meta)
 }
 
-if (IS_WINDOWS) {
+if (IS_AOKI) {
   initializeTheme()
 }
+if (PLATFORM === 'android') document.documentElement.classList.add('android-edition')
 
 const app = createApp(App)
 
