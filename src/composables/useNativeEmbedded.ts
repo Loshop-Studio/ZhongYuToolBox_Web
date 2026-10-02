@@ -1,7 +1,7 @@
 import { onMounted, onBeforeUnmount, onActivated, onDeactivated, nextTick, ref, watch } from 'vue'
 import { buildInjectJS, type UseWebviewInjectArgs } from './useWebviewInject'
 
-export function isWebView2(): boolean { return (window as any).nativeHost?.kind === 'webview2' }
+export function isWebView2(): boolean { return ['webview2', 'android'].includes((window as any).nativeHost?.kind) }
 
 /** Remote pages get a separate control with no privileged native bridge. */
 export function useNativeEmbedded(args: UseWebviewInjectArgs & { prepareScript?: () => Promise<string> }) {
