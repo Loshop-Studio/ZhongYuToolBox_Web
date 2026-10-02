@@ -69,6 +69,7 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '领创' }
   },
   { path: '/advance', name: 'advance', component: () => import('@/views/AdvanceView.vue'), meta: { title: '高级选项' } },
+  { path: '/apps', name: 'app-downloads', component: () => import('@/views/AppDownloadsView.vue'), meta: { title: '中育应用下载' } },
   { path: '/dev', name: 'dev', component: () => import('@/views/DevelopView.vue'), meta: { title: '开发工具' } },
   { path: '/share', name: 'share', component: () => import('@/views/ShareView.vue'), meta: { title: '分享' } },
   { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: '说明&致谢' } },
@@ -84,7 +85,7 @@ const router = createRouter({
 // 未登录拦截（登录页除外）
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  const publicPages = ['/login', '/about', '/donate']
+  const publicPages = ['/login', '/about', '/donate', '/apps']
   if (!publicPages.includes(to.path) && !auth.isLoggedIn) {
     return { path: '/login' }
   }
