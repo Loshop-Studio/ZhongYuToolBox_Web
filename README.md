@@ -1,8 +1,8 @@
-# ZhongYuToolBox · Windows aoki edition
+# ZhongYuToolBox · Windows / Android aoki edition
 
-基于 [Loshop-Studio/ZhongYuToolBox_Web](https://github.com/Loshop-Studio/ZhongYuToolBox_Web) 的独立 Windows 改造版。原作者 **Loshop**；新增 co-author **aoki**。感谢原作者及所有贡献者，保留原有“支持作者”入口与捐赠对象。本 fork 不代表中育官方或原作者发布。
+基于 [Loshop-Studio/ZhongYuToolBox_Web](https://github.com/Loshop-Studio/ZhongYuToolBox_Web) 的独立 Windows / Android 改造版。原作者 **Loshop**；新增 co-author **aoki**。感谢原作者及所有贡献者，保留原有“支持作者”入口与捐赠对象。本 fork 不代表中育官方或原作者发布。
 
-[下载 Windows 便携包](https://github.com/nickfox395/ZhongYuToolBox_Web/releases) · [操作与构建说明](WINDOWS_AOKI.txt) · [后端依赖说明](SERVER_DEPENDENCIES.md) · [新增接口合约](api.md)
+[下载 Windows / Android 发布包](https://github.com/nickfox395/ZhongYuToolBox_Web/releases) · [Windows 操作与构建说明](WINDOWS_AOKI.txt) · [Android 操作与构建说明](native-android/README.md) · [后端依赖说明](SERVER_DEPENDENCIES.md) · [新增接口合约](api.md)
 
 ## Windows 版本
 
@@ -39,7 +39,20 @@ npm run build:ww2
 npm run build:installer
 ```
 
-构建需要 Windows 内置 C# 编译器，不需要 .NET SDK。缺少 WebView2 SDK 缓存时由脚本从官方 NuGet 下载固定版本。完整验证流程见 WINDOWS_AOKI.txt。保留上游 Android / 5+ Worker 与模板兼容性修复；本 fork 只发布 Windows 包。
+构建需要 Windows 内置 C# 编译器，不需要 .NET SDK。缺少 WebView2 SDK 缓存时由脚本从官方 NuGet 下载固定版本。完整验证流程见 WINDOWS_AOKI.txt。保留上游 Android / 5+ Worker 与模板兼容性修复。
+
+## Android 版本（1.1.7-aoki）
+
+原生 Android WebView 壳沿用这套 aoki 界面与业务功能，保留得意黑、紫白配色、浅色／深色／跟随系统和支持作者入口。手机使用抽屉菜单，横屏平板使用侧栏。支持系统文件选择器多选 PDF／图片，以及本地图片转 PDF、旋转和导出“另存为”。学校及 OSS 请求通过受限的本机网络桥处理，不需要作者服务器或电脑代理。
+
+Android 8.0+，需要较新的 Android System WebView／Chrome。包名 `com.aoki.zhongyutoolbox`，可与原作者 APK 共存；仅申请 INTERNET 权限，不打包账号、Token 或用户笔记，也不启用系统数据备份。
+
+```sh
+npm run test:android
+npm run build:android
+```
+
+需要 JDK 17、Gradle 8.14.3、Android SDK 35 / build-tools 35.0.0，详细环境和签名说明见 [native-android/README.md](native-android/README.md)。界面显示版本、Android versionName / versionCode 与包名中的版本统一读取根目录 package.json；Windows 安装版本也读取同一文件。
 
 `dev:ww2` 编译原生窗口后启动仅监听 `127.0.0.1:5174` 的 Vite 服务，窗口加载开发页面，支持 HMR 和 WebView2 开发工具。关闭窗口或按 Ctrl+C 会停止启动器创建的服务。可用 `npm run dev:ww2 -- --port=5175` 换端口；端口被占用时直接报错，不连接其他服务。开发账号缓存单独位于 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2-dev`，正式版缓存不受影响；开发产物不能打包为安装程序。
 
