@@ -1,17 +1,10 @@
 import JSZip from 'jszip'
 import { request } from '@/utils/request'
+import { OFFICIAL_APK_CATALOG } from './officialApkCatalog'
 
 // Package identities verified against official APKs and AppStore/CheckUpdateAsync.
 // This is a list of common student apps, not an enumeration of the entire store.
-export const STUDENT_APPS = [
-  { name: '优课畅学', packageName: 'com.zhongyukejiao.learningexpert' },
-  { name: '云笔记', packageName: 'com.friday.cloudsnote' },
-  { name: '新测评', packageName: 'com.zykj.evaluation' },
-  { name: '错题本', packageName: 'com.zykj.mistake' },
-  { name: '随身答', packageName: 'com.zykj.student.dialogue' },
-  { name: '在线专栏', packageName: 'com.zykj.subscriber' },
-  { name: '用户中心', packageName: 'com.zykj.manage' }
-]
+export const STUDENT_APPS = OFFICIAL_APK_CATALOG
 
 export interface OfficialApp {
   name: string
