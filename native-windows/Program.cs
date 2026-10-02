@@ -136,7 +136,10 @@ internal sealed class ToolboxWindow : Window {
         core.WebResourceRequested += Network;
     }
     async void Network(object sender, CoreWebView2WebResourceRequestedEventArgs e) {
-        if (!IsRemote(e.Request.Uri)) return;
+        bool authorStats = sender == main.CoreWebView2 && IsTrusted(main.CoreWebView2.Source) &&
+            e.Request.Uri == "https://tbapi.loshop.com.cn/api/login" &&
+            (e.Request.Method == "POST" || e.Request.Method == "OPTIONS");
+        if (!IsRemote(e.Request.Uri) && !authorStats) return;
         // Let the browser stream media/documents and load its own page assets.
         // CORS adaptation is needed for API calls and canvas-readable images.
         if (new[] { CoreWebView2WebResourceContext.Media, CoreWebView2WebResourceContext.Document,
