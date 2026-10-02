@@ -1,3 +1,5 @@
+import packageInfo from '../../package.json'
+
 /**
  * 统一配置中心
  * 集中管理 API 基地址、代理地址、学校/学科常量、AES 密钥生成等。
@@ -17,15 +19,18 @@
 export const IS_BROWSER: boolean =
   (import.meta.env.VITE_IS_BROWSER as string | undefined) !== 'false'
 
-export type Platform = 'browser' | 'electron' | 'webview2' | 'plus'
+export type Platform = 'browser' | 'electron' | 'webview2' | 'plus' | 'android'
 
 export const PLATFORM: Platform = IS_BROWSER
   ? 'browser'
   : (import.meta.env.VITE_PLATFORM as string | undefined) === 'plus'
     ? 'plus'
+    : (import.meta.env.VITE_PLATFORM as string | undefined) === 'android' ? 'android'
     : (import.meta.env.VITE_PLATFORM as string | undefined) === 'webview2' ? 'webview2' : 'electron'
 
 export const IS_WINDOWS = PLATFORM === 'electron' || PLATFORM === 'webview2'
+/** Both native editions share aoki's UI, themes and local conversion workflow. */
+export const IS_AOKI = IS_WINDOWS || PLATFORM === 'android'
 
 /** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */
 export const USE_PROXY: boolean = IS_BROWSER
@@ -52,7 +57,7 @@ export const SHARE_SERVER: string =
 export const TRACK_API: string = ''
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
-export const APP_VERSION: string = '1.1.6-aoki'
+export const APP_VERSION: string = packageInfo.version
 
 /** 浏览器资源代理（仅本机） */
 export const PROXY_REMOTE = 'http://127.0.0.1:5005/proxy/'

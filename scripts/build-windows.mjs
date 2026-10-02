@@ -30,12 +30,16 @@ const output = path.join(root, 'release', `${dev ? 'webview2-dev' : qa ? 'webvie
 fs.mkdirSync(output, { recursive: true })
 const framework = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319')
 const exe = path.join(output, '中育工具箱-aoki.exe')
+const version = JSON.parse(fs.readFileSync('package.json', 'utf8')).version
+if (!/^\d+\.\d+\.\d+-aoki$/.test(version)) throw new Error('Invalid aoki release version')
+const assemblyVersion = path.join(root, '.local', `windows-version-${stamp}.cs`)
+fs.writeFileSync(assemblyVersion, `using System.Reflection;\n[assembly: AssemblyVersion("${version.split('-')[0]}.0")]\n[assembly: AssemblyFileVersion("${version.split('-')[0]}.0")]\n[assembly: AssemblyInformationalVersion("${version}")]\n`)
 const refs = ['System.dll', 'System.Core.dll', 'System.Web.Extensions.dll', 'System.Net.Http.dll', 'System.Xaml.dll',
   'WPF/WindowsBase.dll', 'WPF/PresentationCore.dll', 'WPF/PresentationFramework.dll'].map(f => '/reference:' + path.join(framework, f))
 refs.push(...['Core', 'Wpf'].map(f => '/reference:' + path.join(sdk, `lib/net462/Microsoft.Web.WebView2.${f}.dll`)))
 execFileSync(path.join(framework, 'csc.exe'), ['/nologo', '/target:winexe', '/platform:x64', '/optimize+', '/codepage:65001',
   '/out:' + exe, '/win32manifest:' + path.join(root, 'native-windows/app.manifest'), '/win32icon:' + path.join(root, 'public/icon.ico'), ...refs,
-  path.join(root, 'native-windows/Program.cs')], { stdio: 'inherit' })
+  path.join(root, 'native-windows/Program.cs'), assemblyVersion], { stdio: 'inherit' })
 for (const name of ['Core', 'Wpf']) fs.copyFileSync(path.join(sdk, `lib/net462/Microsoft.Web.WebView2.${name}.dll`), path.join(output, `Microsoft.Web.WebView2.${name}.dll`))
 fs.copyFileSync(path.join(sdk, 'runtimes/win-x64/native/WebView2Loader.dll'), path.join(output, 'WebView2Loader.dll'))
 fs.copyFileSync('native-windows/bridge.js', path.join(output, 'bridge.js'))

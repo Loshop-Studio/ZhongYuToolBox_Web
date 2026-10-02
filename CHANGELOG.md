@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.7-aoki] - 2026-10-02
+
+- 新增独立 Android WebView 壳，沿用 aoki 的界面和功能；手机抽屉、横屏平板侧栏、得意黑及三种主题模式保留。
+- Android 支持系统文件选择器多选、本地图片转 PDF、逆时针旋转、PDF Worker 渲染和系统另存为。
+- Android 网络桥直连官方 API 和 OSS；独立学校页面只获得网络能力，不获得本机文件、设备或窗口权限。
+- Windows 与 Android 同步为 1.1.7-aoki；显示版本、Android 安装版本和发布文件名统一从 package.json 读取，Windows 可执行文件增加对应版本信息。
+- 新增 Android 构建、测试和签名说明；保留 Loshop 原作者署名、支持作者入口与 aoki co-author 署名。
+
 ## [1.1.6-aoki] - 2026-10-01
 
 - 新增官方学生应用下载页面，包括优课畅学；公开更新接口直连官方，下载 APK 后本地核验文件结构、大小和 SHA-256。

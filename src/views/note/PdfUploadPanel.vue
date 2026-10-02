@@ -101,7 +101,7 @@
       <el-alert type="info" :closable="false" class="usage">
         <template #title>使用说明</template>
         <ul class="usage-list">
-          <li>Windows 版选择 PDF 后，在本机检测方向并逆时针旋转竖版页，整页等比例放入横版笔记画布，原文件不被覆盖。</li>
+          <li>aoki 版选择 PDF 后，在本机检测方向并逆时针旋转竖版页，整页等比例放入横版笔记画布，原文件不被覆盖。</li>
           <li v-if="imageMode">直接开始上传时，会先在本机按当前顺序合成 PDF。生成并预览是可选步骤。</li>
           <li>预览显示处理后的前 5 页，也可以先保存生成的 PDF 到本机。</li>
           <li>点击“开始上传”后，在本地转换页面图片，再上传并保存到当前账号的云笔记。</li>
@@ -121,7 +121,7 @@ import { runNoteUploadQueue, type NoteUploadJob } from '@/utils/noteUploadQueue'
 import { accountKey } from '@/utils/localData'
 import { convertPdfToImages, zipBlobs, type PdfPageImage } from '@/utils/pdf'
 import { prepareLandscapePdf } from '@/utils/pdfLandscape'
-import { PLATFORM, IS_WINDOWS } from '@/config'
+import { PLATFORM, IS_AOKI as IS_WINDOWS } from '@/config'
 import { NOTE_CANVAS } from '@/utils/noteCanvas'
 import { saveBlobFile } from '@/utils/saveFile'
 import { imagesToPdf, validateImageFiles } from '@/utils/imagesToPdf'

@@ -1,9 +1,9 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.6-aoki",
+  "version": "1.1.7-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
-  "description": "ZhongYuToolBox Windows WebView2 shell, themes, local image/PDF conversion",
+  "description": "ZhongYuToolBox aoki Windows WebView2 and Android WebView editions, themes, local image/PDF conversion",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -20,7 +20,9 @@
     "build:ww2": "node scripts/build-windows.mjs",
     "dev:ww2": "node scripts/dev-windows.mjs",
     "test:windows": "node scripts/build-windows.mjs --qa",
-    "build:installer": "node scripts/build-installer.mjs"
+    "build:installer": "node scripts/build-installer.mjs",
+    "build:android": "node scripts/build-android.mjs",
+    "test:android": "node scripts/test-android.mjs && node scripts/test-android-oss.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

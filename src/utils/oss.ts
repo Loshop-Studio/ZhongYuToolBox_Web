@@ -6,6 +6,7 @@
  */
 import OSS from 'ali-oss'
 import CryptoJS from 'crypto-js'
+import { PLATFORM } from '@/config'
 
 /** 上传类型 -> fc 数值映射（复刻 V_MAP） */
 const V_MAP: Record<string, number> = {
@@ -133,6 +134,21 @@ export async function uploadFile(
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
 
   const result = await generateStsToken(userId, fc, nonce)
+
+  if (PLATFORM === 'android') {
+    const remoteFile = `${fc}/${FR}/${userId}/${dateStr}/${nonce}/${remoteFileName}`
+    const endpoint = result.endpoint || `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com`
+    const date = new Date().toUTCString(), contentType = file.type || 'application/octet-stream'
+    const canonical = ['PUT', '', contentType, date, `x-oss-security-token:${result.securityToken}`, `/${result.bucket}/${remoteFile}`].join('\n')
+    const signature = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA1(canonical, result.accessKeySecret))
+    const url = endpoint.replace(/\/+$/, '') + '/' + remoteFile
+    const response = await fetch(url, { method: 'PUT', body: file, headers: {
+      Date: date, 'Content-Type': contentType, 'x-oss-security-token': result.securityToken,
+      Authorization: `OSS ${result.accessKeyId}:${signature}`
+    } })
+    if (!response.ok) throw new Error(`OSS 上传失败(${response.status}): ${(await response.text()).slice(0, 200)}`)
+    return url
+  }
 
   const client = new OSS({
     region: result.region || 'oss-cn-hangzhou',

@@ -1,11 +1,11 @@
 <template>
   <div class="about-page">
     <el-card class="block" header="aoki fork · 新增功能">
-      <p class="muted">Windows 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
+      <p class="muted">Windows / Android 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
       <div class="feature-list">
         <section v-for="feature in forkFeatures" :key="feature.title"><h3>{{ feature.title }}</h3><p>{{ feature.description }}</p></section>
       </div>
-      <p><a href="https://github.com/nickfox395/ZhongYuToolBox_Web/releases" target="_blank" rel="noopener noreferrer">下载本 fork 的 Windows 正式版</a></p>
+      <p><a href="https://github.com/nickfox395/ZhongYuToolBox_Web/releases" target="_blank" rel="noopener noreferrer">本 fork 的发布记录</a></p>
     </el-card>
     <el-card class="block" header="使用说明">
       <section class="usage">
@@ -16,7 +16,7 @@
           <li>支持文件夹视图浏览和分页加载</li>
           <li>点击笔记即可下载原始图片压缩包</li>
           <li>支持 <strong>PDF 上传</strong> 转存到云笔记</li>
-          <li>Windows 版支持多张 PNG、JPG、WebP 图片在本机合成 PDF 后上传，可调整页面顺序。</li>
+          <li>aoki 版支持多张 PNG、JPG、WebP 图片在本机合成 PDF 后上传，可调整页面顺序。</li>
           <li>每张图片可手动逆时针旋转 90°，连续点击循环切换方向；也可恢复自动方向。</li>
           <li>笔记列表支持重命名、批量移动文件夹和移至中育官方回收站；回收站支持查看、单条和批量永久删除。恢复请使用官方客户端。</li>
           <li>竖版页面逆时针旋转 90°，整页等比例放入横版画布，原文件不被修改。</li>

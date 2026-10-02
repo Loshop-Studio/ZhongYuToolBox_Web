@@ -8,7 +8,8 @@ export function resolveDarkMode(mode: ThemeMode, systemDark: boolean): boolean {
 export const themeMode = ref<ThemeMode>('system')
 let systemTheme: MediaQueryList | null = null
 function applyTheme() {
-  const dark = resolveDarkMode(themeMode.value, systemTheme?.matches ?? false)
+  const host = (window as any).nativeHost
+  const dark = resolveDarkMode(themeMode.value, host?.kind === 'android' ? host.systemDark : systemTheme?.matches ?? false)
   document.documentElement.classList.toggle('dark', dark)
   ;(window as any).nativeHost?.setThemeDark(dark).catch(() => {})
 }
@@ -27,5 +28,6 @@ export function initializeTheme() {
   } catch { /* Use system appearance. */ }
   systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
   systemTheme.addEventListener('change', applyTheme)
+  window.addEventListener('zytb-system-theme', applyTheme)
   applyTheme()
 }

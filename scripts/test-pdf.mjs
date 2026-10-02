@@ -47,7 +47,7 @@ await writeFile(output + '/mixed.pdf', inputBytes)
 await writeFile(output + '/mixed-landscape.pdf', new Uint8Array(await result.file.arrayBuffer()))
 
 const mocks = {
-  '@/config': 'export const PLATFORM = "webview2"; export const IS_WINDOWS = true;',
+  '@/config': 'export const PLATFORM = "webview2"; export const IS_WINDOWS = true; export const IS_AOKI = true;',
   '@/utils/plusPicker': 'export const isPlus = false;',
   '@/utils/crypto': 'export const aesEncrypt = value => value;',
   '@/utils/pdf': `import {createHash} from 'node:crypto'; export const blobToMd5 = async blob => createHash('md5').update(Buffer.from(await blob.arrayBuffer())).digest('hex').toUpperCase(); export async function convertPdfToImages(file, progress, options) { return globalThis.renderPages(file, options); }`,
