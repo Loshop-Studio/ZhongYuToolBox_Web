@@ -4,6 +4,7 @@
 import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
 import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
+import { reportLogin } from '@/utils/track'
 
 function parseJwt(token: string): any {
   try {
@@ -90,6 +91,7 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('loginSchoolCode', schoolCode)
       }
       this.startRefresh()
+      void reportLogin(effectiveSchool, account)
       // Authentication is exclusively enforced by the school's official API.
       return userInfo
     },
