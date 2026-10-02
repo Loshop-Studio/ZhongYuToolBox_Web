@@ -9,7 +9,7 @@
     :text-color="plain ? undefined : (light ? 'var(--muted)' : '#cbd5e1')"
     :active-text-color="plain ? undefined : (light ? 'var(--accent)' : '#ffffff')"
   >
-    <el-menu-item v-for="item in items" :key="item.index" :index="item.index" :aria-label="item.title" :class="{ 'is-support': item.index === '/donate', 'is-section-start': light && ['/advance', '/donate'].includes(item.index) }" @click="onClick(item.index)">
+    <el-menu-item v-for="item in items" :key="item.index" :index="item.index" :aria-label="item.title" :class="{ 'is-support': item.index === '/donate', 'is-section-start': light && item.index === '/donate' }" @click="onClick(item.index)">
       <el-icon><component :is="item.icon" /></el-icon>
       <template #title>{{ item.title }}</template>
     </el-menu-item>

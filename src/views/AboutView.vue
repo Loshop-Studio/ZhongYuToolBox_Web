@@ -93,6 +93,7 @@
     <el-card class="block" header="致谢">
       <p>感谢各位的使用，我们有缘再会。</p>
       <p>开发：Loshop</p>
+      <p>贡献者：Aoki</p>
 
       <p>界面字体：<a href="https://github.com/atelier-anchor/smiley-sans" target="_blank" rel="noopener noreferrer">得意黑 Smiley Sans · atelierAnchor</a>，按 SIL Open Font License 1.1 分发。</p>
       <p>PDF 正文字体：<a href="https://github.com/adobe-fonts/source-han-serif" target="_blank" rel="noopener noreferrer">思源宋体 · Adobe / Google</a>，按 SIL Open Font License 1.1 分发。</p>

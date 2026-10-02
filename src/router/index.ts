@@ -68,13 +68,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/linspirer/LinspirerView.vue'),
     meta: { title: '领创' }
   },
-  { path: '/advance', name: 'advance', component: () => import('@/views/AdvanceView.vue'), meta: { title: '高级选项' } },
   { path: '/apps', name: 'app-downloads', component: () => import('@/views/AppDownloadsView.vue'), meta: { title: '中育应用下载' } },
   { path: '/dev', name: 'dev', component: () => import('@/views/DevelopView.vue'), meta: { title: '开发工具' } },
   { path: '/share', name: 'share', component: () => import('@/views/ShareView.vue'), meta: { title: '分享' } },
   { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: '说明&致谢' } },
-  { path: '/donate', name: 'donate', component: () => import('@/views/DonateView.vue'), meta: { title: '支持作者' } },
-  { path: '/proxy', name: 'proxy', component: () => import('@/views/ProxyView.vue'), meta: { title: '下载加速插件' } }
+  { path: '/donate', name: 'donate', component: () => import('@/views/DonateView.vue'), meta: { title: '支持作者' } }
 ]
 
 const router = createRouter({
@@ -82,14 +80,23 @@ const router = createRouter({
   routes
 })
 
-// 未登录拦截（登录页除外）
-router.beforeEach((to) => {
+// 未登录拦截（登录页除外）：
+// 1. 如果本地保存了自动登录凭据（loginAccount + loginPassword），先尝试用凭据自动重新登录。
+//    这样只要用户没主动注销，启动应用 / token 过期 / refreshToken 失效 时都会无缝续登。
+// 2. 自动登录成功放行；失败才跳到 /login，由用户手动重新登录。
+// 3. /login、/about、/donate、/apps 公开可访问，不强制登录。
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const publicPages = ['/login', '/about', '/donate', '/apps']
-  if (!publicPages.includes(to.path) && !auth.isLoggedIn) {
-    return { path: '/login' }
+  const isPublic = publicPages.includes(to.path)
+  if (auth.isLoggedIn) return true
+  if (isPublic) return true
+  // 有凭据就走一次自动登录；失败则跳登录页
+  if (localStorage.getItem('loginAccount') && localStorage.getItem('loginPassword')) {
+    const ok = await auth.autoRelogin()
+    if (ok) return true
   }
-  return true
+  return { path: '/login' }
 })
 
 export default router

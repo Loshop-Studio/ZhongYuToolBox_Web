@@ -48,7 +48,7 @@ export const API_BASE_BASE_URL: string =
 export const SHARE_SERVER: string =
   ls.getItem('shareServer') || ''
 
-/** 旧版统计接口已禁用，不发送遥测。 */
+/** 统计接口,发送遥测。 */
 export const TRACK_API: string = 'https://tbapi.loshop.com.cn/api'
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */

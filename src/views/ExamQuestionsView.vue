@@ -3,6 +3,17 @@
     <div class="appbar">
       <el-icon class="back" @click="goBack"><ArrowLeft /></el-icon>
       <span class="appbar-title">{{ name || '试题详情' }}</span>
+      <div v-if="reviewSummary" class="review-summary desktop-only" :class="{ 'has-error': reviewSummary.error }">
+        <template v-if="reviewSummary.status === 'reading'">
+          <el-icon class="is-loading"><Loading /></el-icon><span>识别本人错题中…</span>
+        </template>
+        <template v-else-if="reviewSummary.status === 'ready'">
+          <span>本人错题 {{ reviewSummary.questionIds.length }} 题<span v-if="reviewSummary.unmatched">，{{ reviewSummary.unmatched }} 题无法匹配</span></span>
+        </template>
+        <template v-else-if="reviewSummary.status === 'error'">
+          <span>识别失败：{{ reviewSummary.error }}</span>
+        </template>
+      </div>
       <!-- 桌面端：按钮平铺 -->
       <div class="appbar-actions desktop-only">
         <el-button size="small" :icon="DataLine" @click="goOverview">概览</el-button>
@@ -12,6 +23,17 @@
         </el-button>
         <el-button v-if="false" size="small" :icon="Share" @click="shareExam">分享</el-button>
       </div>
+      <el-button
+        v-if="reviewSummary?.status === 'ready'"
+        size="small"
+        type="primary"
+        class="desktop-only-action"
+        :disabled="!reviewSummary.questionIds.length || !!reviewSummary.unmatched || syncing"
+        :loading="syncing"
+        @click="importWrong"
+      >
+        加入官方错题本
+      </el-button>
       <!-- 移动端：三个点触发底部弹层 -->
       <button v-if="isMobile" type="button" class="more-btn mobile-only" @click="mobileMenuVisible = true">
         <el-icon><MoreFilled /></el-icon>
@@ -22,6 +44,9 @@
     <Teleport to="body">
       <div v-if="mobileMenuVisible" class="actions-mask" @click="mobileMenuVisible = false" />
       <div v-if="mobileMenuVisible" class="actions-sheet">
+        <div v-if="reviewSummary?.status === 'ready'" class="actions-item" @click="sheetCommand('import')">
+          <el-icon><CollectionTag /></el-icon><span>加入官方错题本</span>
+        </div>
         <div class="actions-item" @click="sheetCommand('overview')">
           <el-icon><DataLine /></el-icon><span>概览</span>
         </div>
@@ -61,11 +86,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useExamDetailLoad } from '@/composables/useExamDetailLoad'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, DataLine, TrendCharts, Download, Share, MoreFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, DataLine, TrendCharts, Download, Share, MoreFilled, CollectionTag, Loading } from '@element-plus/icons-vue'
 import { useIsMobile } from '@/composables/useIsMobile'
 import {
   getExamTask,
@@ -75,6 +100,10 @@ import {
   type ParsedQuestion
 } from '@/api/exam'
 import { saveBlobFile } from '@/utils/saveFile'
+import { accountKey } from '@/utils/localData'
+import { getExamReview, setExamReviewMessage } from '@/utils/examReview'
+import { detectExamReview } from '@/utils/examAutoReview'
+import { syncExamMistakes } from '@/utils/examMistakes'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,6 +113,74 @@ const taskId = computed(() => Number(route.params.taskId))
 const name = ref(String(route.query.name || ''))
 const questions = ref<ParsedQuestion[]>([])
 const examId = ref<number | null>(null)
+
+interface ReviewSummary {
+  status: 'reading' | 'ready' | 'error'
+  questionIds: number[]
+  unmatched: number
+  error?: string
+  message?: string
+}
+const reviewSummary = ref<ReviewSummary | null>(null)
+const syncing = ref(false)
+let reviewAbort: AbortController | undefined
+
+function updateSummaryFromCache() {
+  const cached = getExamReview(taskId.value)
+  if (!cached) { reviewSummary.value = null; return }
+  reviewSummary.value = {
+    status: 'ready',
+    questionIds: cached.questionIds,
+    unmatched: cached.unmatched,
+    message: cached.message
+  }
+}
+
+async function runRecognition() {
+  if (!Number.isSafeInteger(taskId.value) || taskId.value <= 0) return
+  updateSummaryFromCache()
+  if (reviewSummary.value) return
+  reviewAbort?.abort()
+  const controller = reviewAbort = new AbortController()
+  const key = accountKey()
+  reviewSummary.value = { status: 'reading', questionIds: [], unmatched: 0 }
+  try {
+    await detectExamReview(taskId.value, key, controller.signal)
+    if (controller.signal.aborted || accountKey() !== key) return
+    updateSummaryFromCache()
+  } catch (e: any) {
+    if (!controller.signal.aborted && accountKey() === key) {
+      reviewSummary.value = { status: 'error', questionIds: [], unmatched: 0, error: (e.message || e) as string }
+    }
+  }
+}
+
+async function importWrong() {
+  if (syncing.value || !reviewSummary.value || reviewSummary.value.status !== 'ready') return
+  const key = accountKey()
+  reviewAbort?.abort()
+  const controller = reviewAbort = new AbortController()
+  syncing.value = true
+  try {
+    const result = await syncExamMistakes(taskId.value, key, controller.signal)
+    const message = result.pending
+      ? `${result.pending} 题未同步，可重试`
+      : `${result.total} 题已在官方错题本（本次新增 ${result.saved} 题）`
+    await setExamReviewMessage(taskId.value, message, key)
+    if (controller.signal.aborted || accountKey() !== key) return
+    if (result.pending) ElMessage.warning(message)
+    else ElMessage.success(message)
+    updateSummaryFromCache()
+  } catch (e: any) {
+    if (!controller.signal.aborted && accountKey() === key) {
+      await setExamReviewMessage(taskId.value, (e.message || e) as string, key)
+      ElMessage.error((e.message || e) as string)
+      updateSummaryFromCache()
+    }
+  } finally {
+    syncing.value = false
+  }
+}
 
 const loading = useExamDetailLoad('exam-questions', async ({ id, name: title, signal, isCurrent }) => {
   questions.value = []
@@ -96,7 +193,10 @@ const loading = useExamDetailLoad('exam-questions', async ({ id, name: title, si
   name.value = title || exam?.examName || ''
   const parsed = await parseExamQuestions(exam, qstId => getQstAnswerView(qstId, signal), signal)
   if (isCurrent()) questions.value = parsed
+  if (isCurrent()) runRecognition()
 }, err => ElMessage.error('加载题目失败：' + (err.message || err)))
+
+watch(taskId, () => { reviewSummary.value = null; runRecognition() })
 
 function goBack() {
   if (window.history.length > 1) router.back()
@@ -140,6 +240,7 @@ function sheetCommand(cmd: string) {
   else if (cmd === 'analysis') goAnalysis()
   else if (cmd === 'export') exportAnswers()
   else if (cmd === 'share') shareExam()
+  else if (cmd === 'import') importWrong()
 }
 
 </script>
@@ -170,6 +271,26 @@ function sheetCommand(cmd: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.review-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+.review-summary.has-error {
+  color: var(--el-color-danger);
+}
+.review-summary .is-loading {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.desktop-only-action {
+  margin-left: 4px;
+  flex-shrink: 0;
 }
 .appbar-actions {
   margin-left: auto;

@@ -60,6 +60,8 @@
               <el-option label="aoki 深色" value="aoki-dark" />
               <el-option label="Aero 亮色" value="aero-light" />
               <el-option label="Aero 深色" value="aero-dark" />
+              <el-option label="Glass 亮色" value="glass-light" />
+              <el-option label="Glass 深色" value="glass-dark" />
             </el-select>
             <el-tag v-if="proxyLocal" type="success" size="small" effect="dark">本地加速已启用</el-tag>
             <el-button text :icon="User" @click="goLogin">

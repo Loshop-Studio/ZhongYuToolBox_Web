@@ -40,6 +40,18 @@
                   <div class="pic-ph"><el-icon><Picture /></el-icon></div>
                 </template>
               </el-image>
+              <el-button
+                v-if="item.id != null"
+                class="cell-action"
+                type="danger"
+                size="small"
+                :icon="Delete"
+                circle
+                plain
+                :loading="busyIds.has(item.id)"
+                aria-label="删除图片"
+                @click.stop="confirmTrash(item)"
+              />
             </div>
           </div>
           <div class="load-more">
@@ -52,7 +64,6 @@
 
       <!-- 回收站 -->
       <el-tab-pane label="回收站" name="recycle">
-        <p class="muted">图库回收站目前支持查看。官方永久删除接口尚未核实，此版本不提供删除操作。</p>
         <el-empty v-if="!loading.recycle && !recycle.loadingMore && recycle.items.length === 0" description="回收站为空" />
         <div v-else class="grid-scroll">
           <div class="pic-grid">
@@ -67,6 +78,18 @@
                   <div class="pic-ph"><el-icon><Picture /></el-icon></div>
                 </template>
               </el-image>
+              <el-button
+                v-if="item.id != null"
+                class="cell-action"
+                type="danger"
+                size="small"
+                :icon="DeleteFilled"
+                circle
+                plain
+                :loading="busyIds.has(item.id)"
+                aria-label="彻底删除"
+                @click.stop="confirmHardDelete(item)"
+              />
             </div>
           </div>
           <div class="load-more">
@@ -83,9 +106,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Upload, Picture, Loading } from '@element-plus/icons-vue'
-import { getPictures, addPicture, formatFileSize, type PictureItem } from '@/api/picture'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Upload, Picture, Loading, Delete, DeleteFilled } from '@element-plus/icons-vue'
+import { getPictures, addPicture, movePicturesToRecycleBin, deletePictures, formatFileSize, type PictureItem } from '@/api/picture'
 import { uploadFile, fetchUserId, generateNonce } from '@/utils/oss'
 import { proxyImgSrc } from '@/utils/proxy'
 import { isPlus, pickImages } from '@/utils/plusPicker'
@@ -96,6 +119,65 @@ const PAGE_SIZE = 12
 
 const activeTab = ref<'normal' | 'recycle'>('normal')
 const uploading = ref(false)
+const busyIds = reactive(new Set<string | number>())
+
+function removeItemById(key: 'normal' | 'recycle', id: string | number) {
+  const s = sectionOf(key)
+  const idx = s.items.findIndex(it => it.id === id)
+  if (idx >= 0) {
+    s.items.splice(idx, 1)
+    s.total = Math.max(0, s.total - 1)
+    if (s.skip > 0) s.skip -= 1
+  }
+}
+
+async function confirmTrash(item: PictureItem) {
+  if (item.id == null) return
+  const name = item.name || '该图片'
+  try {
+    await ElMessageBox.confirm(
+      `确定要把「${name}」移入回收站吗？\n（可在回收站彻底删除，移入回收站可被官方客户端恢复）`,
+      '移入回收站',
+      { type: 'warning', confirmButtonText: '移入回收站', cancelButtonText: '取消' }
+    )
+  } catch { return }
+  if (busyIds.has(item.id)) return
+  busyIds.add(item.id)
+  try {
+    await movePicturesToRecycleBin([item.id])
+    ElMessage.success('已移入回收站')
+    removeItemById('normal', item.id)
+  } catch (e: any) {
+    logError('confirmTrash', e)
+    ElMessage.error('移入回收站失败：' + formatError(e))
+  } finally {
+    busyIds.delete(item.id)
+  }
+}
+
+async function confirmHardDelete(item: PictureItem) {
+  if (item.id == null) return
+  const name = item.name || '该图片'
+  try {
+    await ElMessageBox.confirm(
+      `确定要彻底删除「${name}」吗？\n此操作不可恢复！`,
+      '彻底删除',
+      { type: 'warning', confirmButtonText: '彻底删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch { return }
+  if (busyIds.has(item.id)) return
+  busyIds.add(item.id)
+  try {
+    await deletePictures([item.id])
+    ElMessage.success('已彻底删除')
+    removeItemById('recycle', item.id)
+  } catch (e: any) {
+    logError('confirmHardDelete', e)
+    ElMessage.error('彻底删除失败：' + formatError(e))
+  } finally {
+    busyIds.delete(item.id)
+  }
+}
 
 interface SectionState {
   items: PictureItem[]
@@ -150,7 +232,8 @@ function openDetail(item: PictureItem) {
       name: item.name,
       size: item.size,
       createTime: item.createTime,
-      id: item.id
+      id: item.id,
+      recycle: activeTab.value === 'recycle' ? '1' : ''
     }
   })
 }
@@ -291,6 +374,27 @@ onBeforeUnmount(() => {
 }
 .pic-cell:hover {
   transform: scale(1.03);
+}
+.cell-action {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 1;
+}
+.pic-cell:hover .cell-action,
+.pic-cell:focus-within .cell-action {
+  opacity: 1;
+  transform: scale(1);
+}
+/* 触屏与未悬停时也始终可见，避免移动端没法触发 */
+@media (hover: none), (max-width: 767px) {
+  .cell-action {
+    opacity: 0.85;
+    transform: scale(0.85);
+  }
 }
 .pic-img {
   width: 100%;

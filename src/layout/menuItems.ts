@@ -15,7 +15,6 @@ import {
   Present,
   Tools,
   Download,
-  Setting,
   Coffee,
   InfoFilled,
   Crop
@@ -41,8 +40,6 @@ export const MENU_ITEMS: MenuItem[] = [
   { index: '/linspirer', title: '领创', icon: Present },
   { index: '/apps', title: '中育应用下载', icon: Download },
   { index: '/lesson', title: '优客畅学', icon: Reading },
-  { index: '/advance', title: '高级选项', icon: Setting },
   { index: '/dev', title: '开发工具', icon: Tools },
-  { index: '/proxy', title: '下载加速插件', icon: Download },
   { index: '/about', title: '说明&致谢', icon: InfoFilled }
 ]

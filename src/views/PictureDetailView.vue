@@ -8,6 +8,13 @@
       <template v-if="!isMobile">
         <el-button type="primary" :icon="View" @click="openRaw">打开原图</el-button>
         <el-button :icon="Download" @click="download">下载</el-button>
+        <el-button
+          v-if="id"
+          :type="fromRecycle ? 'danger' : 'warning'"
+          :icon="fromRecycle ? DeleteFilled : Delete"
+          :loading="busy"
+          @click="fromRecycle ? confirmHardDelete() : confirmTrash()"
+        >{{ fromRecycle ? '彻底删除' : '移入回收站' }}</el-button>
       </template>
       <!-- 移动端：三个点按钮 + 底部弹出面板 -->
       <template v-else>
@@ -22,6 +29,14 @@
             </div>
             <div class="actions-item" @click="onAction('download')">
               <el-icon><Download /></el-icon><span>下载</span>
+            </div>
+            <div
+              v-if="id"
+              class="actions-item danger-item"
+              @click="onAction(fromRecycle ? 'hardDelete' : 'trash')"
+            >
+              <el-icon><component :is="fromRecycle ? DeleteFilled : Delete" /></el-icon>
+              <span>{{ fromRecycle ? '彻底删除' : '移入回收站' }}</span>
             </div>
             <div class="actions-cancel" @click="showSheet = false">取消</div>
           </div>
@@ -57,12 +72,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, View, Download, Picture, MoreFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, View, Download, Picture, MoreFilled, Delete, DeleteFilled } from '@element-plus/icons-vue'
 import { proxyImgSrc, proxyUrl } from '@/utils/proxy'
 import { saveUrlFile } from '@/utils/saveFile'
 import { useIsMobile } from '@/composables/useIsMobile'
 import { formatError, logError } from '@/utils/errorText'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { movePicturesToRecycleBin, deletePictures } from '@/api/picture'
 
 const { isMobile } = useIsMobile()
 const route = useRoute()
@@ -73,8 +89,10 @@ const name = ref<string>((route.query.name as string) || '')
 const size = ref<string>((route.query.size as string) || '')
 const createTime = ref<string>((route.query.createTime as string) || '')
 const id = ref<string>((route.query.id as string) || '')
+const fromRecycle = ref<boolean>(route.query.recycle === '1')
 const loading = ref(false)
 const showSheet = ref(false)
+const busy = ref(false)
 
 const imgSrc = computed(() => proxyImgSrc(picture.value))
 const previewList = computed(() => (picture.value ? [imgSrc.value] : []))
@@ -86,6 +104,7 @@ function syncFromQuery() {
   size.value = (route.query.size as string) || ''
   createTime.value = (route.query.createTime as string) || ''
   id.value = (route.query.id as string) || ''
+  fromRecycle.value = route.query.recycle === '1'
 }
 
 function goBack() {
@@ -115,6 +134,52 @@ function onAction(cmd: string) {
   showSheet.value = false
   if (cmd === 'raw') openRaw()
   else if (cmd === 'download') download()
+  else if (cmd === 'trash') confirmTrash()
+  else if (cmd === 'hardDelete') confirmHardDelete()
+}
+
+async function confirmTrash() {
+  if (!id.value || busy.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要把「${name.value || '该图片'}」移入回收站吗？\n（可在回收站彻底删除，移入回收站可被官方客户端恢复）`,
+      '移入回收站',
+      { type: 'warning', confirmButtonText: '移入回收站', cancelButtonText: '取消' }
+    )
+  } catch { return }
+  busy.value = true
+  try {
+    await movePicturesToRecycleBin([id.value])
+    ElMessage.success('已移入回收站')
+    router.back()
+  } catch (e: any) {
+    logError('PictureDetailView.confirmTrash', e)
+    ElMessage.error('移入回收站失败：' + formatError(e))
+  } finally {
+    busy.value = false
+  }
+}
+
+async function confirmHardDelete() {
+  if (!id.value || busy.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确定要彻底删除「${name.value || '该图片'}」吗？\n此操作不可恢复！`,
+      '彻底删除',
+      { type: 'warning', confirmButtonText: '彻底删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch { return }
+  busy.value = true
+  try {
+    await deletePictures([id.value])
+    ElMessage.success('已彻底删除')
+    router.back()
+  } catch (e: any) {
+    logError('PictureDetailView.confirmHardDelete', e)
+    ElMessage.error('彻底删除失败：' + formatError(e))
+  } finally {
+    busy.value = false
+  }
 }
 
 onMounted(() => {
@@ -215,6 +280,9 @@ watch(
 }
 .actions-item:active {
   background: var(--el-fill-color-light);
+}
+.actions-item.danger-item {
+  color: var(--el-color-danger);
 }
 .actions-cancel {
   margin-top: 6px;

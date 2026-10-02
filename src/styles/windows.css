@@ -131,6 +131,102 @@
   color-scheme: dark;
 }
 
+/* ===== Glass 皮肤（亮/暗）：玻璃拟态 + 紫蓝渐变 ===== */
+:root.glass-edition {
+  --violet: #7c3aed;
+  --cloud: #f8fafc;
+  --canvas: #eef2ff;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-soft: rgba(241, 245, 249, 0.62);
+  --ink: #1e1b4b;
+  --muted: #64748b;
+  --line: rgba(124, 58, 237, 0.16);
+  --accent: #7c3aed;
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: #a78bfa;
+  --el-color-primary-light-5: #c4b5fd;
+  --el-color-primary-light-7: #ddd6fe;
+  --el-color-primary-light-8: #ede9fe;
+  --el-color-primary-light-9: var(--accent-soft);
+  --el-color-primary-dark-2: #6d28d9;
+  --el-text-color-primary: var(--ink);
+  --el-text-color-regular: var(--ink);
+  --el-text-color-secondary: var(--muted);
+  --el-text-color-placeholder: var(--muted);
+  --el-bg-color: var(--surface);
+  --el-bg-color-page: var(--canvas);
+  --el-bg-color-overlay: var(--surface);
+  --el-fill-color: var(--surface-soft);
+  --el-fill-color-light: var(--surface-soft);
+  --el-fill-color-lighter: var(--canvas);
+  --el-fill-color-blank: var(--surface);
+  --el-border-color: var(--line);
+  --el-border-color-light: var(--line);
+  --el-border-color-lighter: var(--line);
+  --el-border-radius-base: 14px;
+  --el-font-family: 'Smiley Sans', 'PingFang SC', system-ui, sans-serif;
+  color-scheme: light;
+  font-family: var(--el-font-family);
+  font-synthesis: none;
+  color: var(--ink);
+  background: var(--canvas);
+}
+:root.glass-edition.dark {
+  --canvas: #0f0f23;
+  --surface: rgba(30, 27, 75, 0.55);
+  --surface-soft: rgba(46, 41, 91, 0.45);
+  --ink: #f1f5f9;
+  --muted: #c7d2fe;
+  --line: rgba(167, 139, 250, 0.22);
+  --accent: #a78bfa;
+  --accent-soft: rgba(167, 139, 250, 0.18);
+  --el-color-primary: var(--accent);
+  --el-color-primary-light-3: #c4b5fd;
+  --el-color-primary-light-5: #6d28d9;
+  --el-color-primary-light-7: #4c1d95;
+  --el-color-primary-light-8: #3b1d6b;
+  --el-color-primary-light-9: var(--accent-soft);
+  --el-color-primary-dark-2: #ddd6fe;
+  color-scheme: dark;
+}
+/* Glass 特有：玻璃质感（aside、header、card 用 backdrop-filter 透出底层背景图）。
+   与 aoki/Aero 不同，Glass 主题需要显示 bg-cover 作为底图才能看见玻璃效果。 */
+html.glass-edition #app .windows-ui .aside,
+html.glass-edition #app .windows-ui .header {
+  background: var(--surface);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border-color: var(--line);
+}
+html.glass-edition #app .windows-ui .content {
+  background: transparent;
+}
+html.glass-edition #app .windows-ui .el-card {
+  background: var(--surface);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid var(--line);
+}
+html.glass-edition #app .windows-ui .bg-cover {
+  display: block;
+  filter: brightness(0.85) saturate(120%);
+}
+html.glass-edition #app .windows-ui .edition-monogram {
+  background: linear-gradient(135deg, #a78bfa, #7c3aed);
+  color: #fff;
+}
+html.glass-edition.dark #app .windows-ui .edition-monogram {
+  background: linear-gradient(135deg, #c4b5fd, #a78bfa);
+  color: #1e1b4b;
+}
+html.glass-edition #app .windows-ui .el-input__wrapper,
+html.glass-edition #app .windows-ui .el-select__wrapper {
+  background: var(--surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 .aoki-edition body, .aero-edition body { margin: 0; background: var(--canvas); }
 .aoki-edition button, .aoki-edition input, .aoki-edition textarea,
 .aero-edition button, .aero-edition input, .aero-edition textarea,

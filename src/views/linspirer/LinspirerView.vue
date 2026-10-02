@@ -11,7 +11,7 @@
             <el-input v-model="form.swdid" placeholder="请输入设备号" clearable />
           </el-form-item>
           <el-form-item label="用户名">
-            <el-input v-model="form.account" placeholder="领创账号（默认中育用户名）" clearable />
+            <el-input :model-value="zyName" readonly placeholder="中育用户名" />
           </el-form-item>
           <el-form-item label="设备型号">
             <el-input v-model="form.model" placeholder="如 Pixel 6" clearable />
@@ -102,7 +102,7 @@
             <el-input v-model="pwdForm.swdid" placeholder="留空则使用已绑定设备号" clearable />
           </el-form-item>
           <el-form-item label="用户名">
-            <el-input v-model="pwdForm.account" placeholder="留空则使用已绑定用户名" clearable />
+            <el-input :model-value="zyName" readonly placeholder="中育用户名" />
           </el-form-item>
           <el-form-item label="设备型号">
             <el-input v-model="pwdForm.model" placeholder="留空则使用已绑定型号" clearable />
@@ -214,9 +214,10 @@ const auth = useAuthStore()
 
 const activeTab = ref('bind')
 const welcomeName = ref('')
+const zyName = computed(() => localStorage.getItem('loginAccount') || auth.realName || auth.userName || '')
 
 /* ===== 绑定 ===== */
-const form = reactive({ swdid: '', account: '', model: '' })
+const form = reactive({ swdid: '', model: '' })
 const binding = ref(false)
 const bindStatus = ref('')
 const bindStatusType = ref<'ok' | 'err'>('ok')
@@ -227,7 +228,7 @@ const apps = ref<LinspirerApp[]>([])
 const loadingApps = ref(false)
 
 /* ===== 密码 ===== */
-const pwdForm = reactive({ swdid: '', account: '', model: '' })
+const pwdForm = reactive({ swdid: '', model: '' })
 const calcLoading = ref(false)
 const pwdResult = ref('')
 const pwdDate = ref('')
@@ -250,31 +251,22 @@ function appPkg(a: LinspirerApp) {
 
 onMounted(() => {
   // 自动填充中育用户名
-  const zyName = auth.realName || auth.userName
-  if (zyName) {
-    welcomeName.value = zyName
-    if (!form.account) form.account = zyName
-    if (!pwdForm.account) pwdForm.account = zyName
-  }
+  if (zyName.value) welcomeName.value = zyName.value
   // 恢复上次 session
   const savedSwdid = localStorage.getItem('linspirer_swdid') || ''
-  const savedAccount = localStorage.getItem('linspirer_account') || ''
   const savedModel = localStorage.getItem('linspirer_model') || ''
   const savedSid = localStorage.getItem('linspirer_studentId') || ''
   if (savedSwdid) {
     form.swdid = savedSwdid
     session.swdid = savedSwdid
   }
-  if (savedAccount) {
-    form.account = savedAccount
-    session.account = savedAccount
-  }
+  session.account = zyName.value
   if (savedModel) {
     form.model = savedModel
     session.model = savedModel
   }
   if (savedSid) sessionStudentId = savedSid
-  if (savedSwdid && savedAccount && savedModel) {
+  if (savedSwdid && zyName.value && savedModel) {
     activeTab.value = 'apps'
     loadApps()
   }
@@ -283,9 +275,10 @@ onMounted(() => {
 let sessionStudentId = ''
 
 async function doBind() {
-  const { swdid, account, model } = form
+  const { swdid, model } = form
+  const account = zyName.value
   if (!swdid || !account || !model) {
-    bindStatus.value = '请填写设备号、用户名和设备型号'
+    bindStatus.value = '请填写设备号和设备型号（用户名取自中育）'
     bindStatusType.value = 'err'
     return
   }
@@ -303,7 +296,6 @@ async function doBind() {
     session.account = account
     session.model = model
     localStorage.setItem('linspirer_swdid', swdid)
-    localStorage.setItem('linspirer_account', account)
     localStorage.setItem('linspirer_model', model)
 
     bindStatus.value = `获取成功，共 ${apps.value.length} 个应用`
@@ -416,7 +408,7 @@ function openRawDl() {
 
 async function doCalc() {
   const swdid = pwdForm.swdid.trim() || session.swdid
-  const account = pwdForm.account.trim() || session.account
+  const account = zyName.value || session.account
   const model = pwdForm.model.trim() || session.model
   if (!swdid) {
     ElMessage.warning('请先填写设备号')

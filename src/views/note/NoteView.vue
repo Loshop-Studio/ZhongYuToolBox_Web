@@ -42,10 +42,6 @@
                 <small>创建时间: {{ note.createTime || '-' }}</small>
               </div>
             </div>
-            <div class="row-end">
-              <el-tag :type="note.type === 0 ? 'info' : 'primary'" round size="small">{{ note.type === 0 ? '文件夹' : '笔记' }}</el-tag>
-  
-            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -407,7 +403,6 @@ onMounted(() => loadNotes('0'))
   gap: 10px;
   min-width: 0;
 }
-.row-end { display:flex; align-items:center; gap:12px; }
 .note-row { gap:12px; flex-wrap:wrap; }
 .row-icon {
   font-size: 20px;

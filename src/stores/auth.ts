@@ -22,6 +22,9 @@ export function isTokenExpired(token: string): boolean {
   return payload.exp <= Date.now() / 1000
 }
 
+/** 自动登录流程单例锁：避免启动时多个路由跳转并发触发多次 login() */
+let autoLoginInFlight: Promise<boolean> | null = null
+
 interface AuthState {
   token: string
   refreshToken: string
@@ -84,13 +87,13 @@ export const useAuthStore = defineStore('auth', {
       const effectiveSchool = schoolSelect === 'other' ? schoolCode : 'sxz'
       this.schoolCode = effectiveSchool
       localStorage.setItem('schoolCode', effectiveSchool)
-      // 内嵌模式在本机用户数据中记录自动登录凭据，不进入导出文件
-      if (!IS_BROWSER) {
-        localStorage.setItem('loginAccount', account)
-        localStorage.setItem('loginPassword', password)
-        localStorage.setItem('loginSchoolSelect', schoolSelect)
-        localStorage.setItem('loginSchoolCode', schoolCode)
-      }
+      // 在本地持久化自动登录凭据：只要用户不主动注销，每次启动应用 / token 失效时
+      // 都会基于此凭据自动重新登录。
+      // 内嵌模式凭据落在本机用户目录，导出文件不含本机数据；浏览器模式同样落地到 localStorage。
+      localStorage.setItem('loginAccount', account)
+      localStorage.setItem('loginPassword', password)
+      localStorage.setItem('loginSchoolSelect', schoolSelect)
+      localStorage.setItem('loginSchoolCode', schoolCode)
       this.startRefresh()
       // 接入登录上报 + 被动封禁查询（命中封禁则全屏阻断；上报失败不影响主流程）
       let deviceId: string | undefined
@@ -108,14 +111,28 @@ export const useAuthStore = defineStore('auth', {
       // Authentication is exclusively enforced by the school's official API.
       return userInfo
     },
-    /** 用记录的凭据自动重新登录（401 刷新失败后的兜底） */
-    async autoRelogin() {
+    /** 用记录的凭据自动重新登录（401 刷新失败后的兜底 / 应用启动时无缝续登） */
+    async autoRelogin(): Promise<boolean> {
+      if (autoLoginInFlight) return autoLoginInFlight
       const account = localStorage.getItem('loginAccount')
       const password = localStorage.getItem('loginPassword')
       const schoolSelect = localStorage.getItem('loginSchoolSelect') || 'sxz'
       const schoolCode = localStorage.getItem('loginSchoolCode') || ''
-      if (!account || !password) throw new Error('无可用登录凭据')
-      await this.login(account, password, schoolSelect, schoolCode)
+      if (!account || !password) return false
+      autoLoginInFlight = (async () => {
+        try {
+          await this.login(account, password, schoolSelect, schoolCode)
+          return true
+        } catch (e) {
+          console.warn('autoRelogin failed:', e)
+          return false
+        }
+      })();
+      try {
+        return await autoLoginInFlight
+      } finally {
+        autoLoginInFlight = null
+      }
     },
     async doRefresh(): Promise<boolean> {
       if (!this.token || !this.refreshToken) return false

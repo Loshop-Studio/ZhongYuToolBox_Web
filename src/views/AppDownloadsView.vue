@@ -47,7 +47,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh, Download, Cellphone } from '@element-plus/icons-vue'
-import { API_BASE_URL } from '@/config'
+import { API_BASE_URL, PLATFORM } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { STUDENT_APPS, getStudentApp, downloadOfficialApk, appFilename, type OfficialApp } from '@/api/appStore'
 import { saveBlobFile } from '@/utils/saveFile'
@@ -60,6 +60,7 @@ const search = ref(''), packageQuery = ref(''), loading = ref(false), querying =
 const downloading = ref(''), received = ref(0), total = ref(0), downloadPhase = ref('正在下载')
 const receipt = ref<{ name: string; sha256: string } | null>(null)
 let listController: AbortController | undefined, downloadController: AbortController | undefined
+let plusDownloadTask: any
 let disposed = false
 const visibleApps = computed(() => entries.value.filter(entry => `${entry.app?.name || entry.name} ${entry.packageName}`.toLowerCase().includes(search.value.trim().toLowerCase())))
 const percentage = computed(() => total.value ? Math.min(100, Math.floor(received.value / total.value * 100)) : 0)
@@ -96,12 +97,69 @@ async function copyUrl(app: OfficialApp) {
   try { await navigator.clipboard.writeText(app.fileUrl); ElMessage.success('已复制官方 APK 地址') }
   catch { ElMessage.error('复制失败，请检查剪贴板权限') }
 }
-function cancelDownload() { downloadController?.abort() }
+function cancelDownload() {
+  downloadController?.abort()
+  // 5+ 任务需要单独 abort：DownloadTask.abort()，仅 plus 平台下有意义
+  if (plusDownloadTask) {
+    try { plusDownloadTask.abort() } catch { /* ignore */ }
+    plusDownloadTask = undefined
+  }
+}
+
+/** 5+ 原生下载并安装：plus.downloader 拉取 → plus.runtime.install 唤起系统安装器 */
+async function downloadOnPlus(app: OfficialApp, signal: AbortSignal) {
+  const plus: any = (window as any).plus
+  if (!plus?.downloader || !plus?.runtime?.install) throw new Error('当前环境不支持原生下载/安装')
+  const filename = appFilename(app)
+  await new Promise<void>((resolve, reject) => {
+    let task: any
+    try {
+      task = plus.downloader.createDownload(
+        app.fileUrl,
+        { filename: '_downloads/' + filename, method: 'GET' },
+        (d: any, status: number) => {
+          plusDownloadTask = undefined
+          if (signal.aborted) { reject(new Error('下载已取消')); return }
+          if (status === 200) {
+            downloadPhase.value = '下载完成，准备安装'
+            plus.runtime.install(
+              d.filename,
+              { force: false },
+              () => { resolve() },
+              (err: any) => reject(new Error('调起系统安装器失败：' + (err?.message || JSON.stringify(err))))
+            )
+          } else {
+            reject(new Error('下载失败 HTTP ' + status))
+          }
+        }
+      )
+    } catch (e) {
+      reject(new Error('创建下载任务失败：' + (e as Error).message))
+      return
+    }
+    if (!task) { reject(new Error('创建下载任务失败：未返回任务对象')); return }
+    plusDownloadTask = task
+    task.addEventListener('statechanged', (d: any) => {
+      if (signal.aborted) return
+      // state: 0=undone,1=downloading,2=downloaded,3=cancelled,4=failed
+      received.value = d.downloadedSize || 0
+      total.value = d.totalSize || app.size
+      if (d.state === 1) downloadPhase.value = '正在下载'
+    })
+    task.start()
+  })
+}
+
 async function download(app: OfficialApp) {
   if (downloading.value) return
   const current = downloadController = new AbortController()
   downloading.value = app.name; received.value = 0; total.value = app.size; receipt.value = null; downloadPhase.value = '正在下载'
   try {
+    if (PLATFORM === 'plus') {
+      await downloadOnPlus(app, current.signal)
+      if (!disposed && !current.signal.aborted) ElMessage.success('APK 已开始安装')
+      return
+    }
     const result = await downloadOfficialApk(app, current.signal, (count, size) => {
       received.value = count; total.value = size
       if (count === size) downloadPhase.value = '正在检查安装包'
@@ -112,7 +170,7 @@ async function download(app: OfficialApp) {
     if (!disposed && !current.signal.aborted) { receipt.value = { name: app.name, sha256: result.sha256 }; ElMessage.success('APK 已保存') }
   } catch (e) {
     if (!disposed) ElMessage[current.signal.aborted ? 'info' : 'error'](current.signal.aborted ? '下载已取消' : (e as Error).message)
-  } finally { downloading.value = ''; downloadController = undefined }
+  } finally { downloading.value = ''; downloadController = undefined; plusDownloadTask = undefined }
 }
 watch(server, () => { cancelDownload(); receipt.value = null; entries.value = STUDENT_APPS.map(app => ({ ...app })); void load() })
 onMounted(load)
