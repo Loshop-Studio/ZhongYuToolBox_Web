@@ -122,7 +122,8 @@
 import { ref, onMounted } from 'vue'
 import { EDITION } from '@/config/edition'
 const forkFeatures = [
-  {title:'中育学生应用下载',description:'无需领创绑定，从当前学校官方更新接口查询优课畅学等常用学生应用；支持包名查询、下载进度和取消、APK 结构与大小检查、SHA-256 摘要。'},
+  {title:'中育学生应用下载',description:'查询官方在线版本；支持本地 APK / ZIP 导入、摘要核对、离线另存为。在线与已导入版本分别显示；图库集成在中育桌面中。'},
+  {title:'图库回收站管理',description:'选中图片移至官方回收站，恢复或永久删除回收站图片；提交前确认，并重新核对当前账号的图片状态。'},
   {title:'Windows 原生壳与界面',description:'WPF + 系统 WebView2；得意黑字体、紫白配色、浅色 / 深色 / 跟随系统，侧栏与页面过渡。保留支持原作者入口。'},
   {title:'云笔记上传与整理',description:'多个 PDF 独立命名、排队上传与失败重试；图片本地合成 PDF、调整顺序及逆时针旋转；竖版 PDF 整页转横版。支持重命名、批量移动和回收站管理。'},
   {title:'新测评与官方错题本',description:'自动读取当前页已完成作业的本人错题；手动确认后批量加入中育官方错题本，核对官方状态避免重复。支持单题及选中批量删除。'},
