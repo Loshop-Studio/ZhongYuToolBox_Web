@@ -111,7 +111,7 @@ public final class MainActivity extends Activity {
                 if(method.equals("openEmbedded")||method.equals("resizeEmbedded")||method.equals("closeEmbedded")||method.equals("getEmbeddedState")||method.equals("setThemeDark")||method.equals("openExternal")||method.equals("finishSave")||method.equals("getEnvironment")) {
                     handleUi(method,params,id,reply); return;
                 }
-                io.execute(() -> {try{ reply(reply,id,handleIo(method,params),null); }catch(Exception error){reply(reply,id,null,error.getMessage());}});
+                io.execute(() -> {try{ reply(reply,id,handleIo(method,params,privileged),null); }catch(Exception error){reply(reply,id,null,error.getMessage());}});
             }catch(Exception error){ try {int id=new JSONObject(message.getData()).optInt("id");reply(reply,id,null,error.getMessage());}catch(Exception ignored){} }
         });
         String script=bridge+"\n"+bootstrap;
@@ -179,9 +179,13 @@ public final class MainActivity extends Activity {
         return new WebResourceResponse(mime,"UTF-8",status,status>=400?"Error":"OK",headers,body);
     }
     private HttpURLConnection connect(String url,String method,JSONObject headers,File body)throws Exception{
+        return connect(url,method,headers,body,false);
+    }
+    private HttpURLConnection connect(String url,String method,JSONObject headers,File body,boolean privileged)throws Exception{
         String current=url;JSONObject currentHeaders=headers;
         for(int redirect=0;redirect<6;redirect++){
-            if(!remoteAllowed(current))throw new IOException("仅允许访问中育、领创及官方 OSS 服务");
+            boolean authorStats=privileged&&"POST".equals(method)&&"https://tbapi.loshop.com.cn/api/login".equals(current);
+            if(!remoteAllowed(current)&&!authorStats)throw new IOException("请求地址未获允许");
             HttpURLConnection conn=(HttpURLConnection)new URL(current).openConnection();conn.setInstanceFollowRedirects(false);conn.setConnectTimeout(30000);conn.setReadTimeout(120000);conn.setRequestMethod(method);
             Iterator<String> keys=currentHeaders.keys();
             while(keys.hasNext()){String key=keys.next();if(!Arrays.asList("host","origin","referer","connection","content-length","accept-encoding","cookie").contains(key.toLowerCase(Locale.ROOT)))conn.setRequestProperty(key,currentHeaders.getString(key));}
@@ -195,28 +199,28 @@ public final class MainActivity extends Activity {
             }return conn;
         }throw new IOException("服务器重定向次数过多");
     }
-    private Object handleIo(String method,JSONObject args)throws Exception{
+    private Object handleIo(String method,JSONObject args,boolean privileged)throws Exception{
         String session=args.optString("session");Stage stage;
         switch(method){
             case "getDeviceId": return Settings.Secure.getString(getContentResolver(),Settings.Secure.ANDROID_ID);
             case "beginRequest": return createStage(requests,"request").id;
             case "writeRequest": stage=require(requests,session);stage.write(args);return true;
             case "cancelRequest": cancelled.add(session);HttpURLConnection conn=connections.remove(session);if(conn!=null)conn.disconnect();stage=requests.remove(session);if(stage!=null)stage.close();return true;
-            case "request": return network(args);
+            case "request": return network(args,privileged);
             case "beginSave": return createStage(saves,args.optString("filename","下载文件.bin")).id;
             case "writeSaveChunk":stage=require(saves,session);stage.write(args);return true;
             case "abortSave":stage=saves.remove(session);if(stage!=null)stage.close();return true;
             default: throw new IllegalArgumentException("未知本机操作");
         }
     }
-    private Object network(JSONObject args)throws Exception{
+    private Object network(JSONObject args,boolean privileged)throws Exception{
         String id=args.getString("session");Stage stage=require(requests,id);File responseFile=new File(cache,UUID.randomUUID()+".bin");
         HttpURLConnection conn=null;
         try{
             if(cancelled.contains(id))throw new IOException("请求已取消");
             String method=args.optString("method","GET").toUpperCase(Locale.ROOT);
             if(!Arrays.asList("GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS").contains(method))throw new IOException("不支持的请求方法");
-            conn=connect(args.getString("url"),method,args.optJSONObject("headers"),stage.file);connections.put(id,conn);
+            conn=connect(args.getString("url"),method,args.optJSONObject("headers"),stage.file,privileged);connections.put(id,conn);
             if(cancelled.contains(id))throw new IOException("请求已取消");
             int status=conn.getResponseCode();JSONObject headers=new JSONObject();
             for(Map.Entry<String,List<String>> item:conn.getHeaderFields().entrySet())if(item.getKey()!=null&&!Arrays.asList("content-encoding","transfer-encoding","set-cookie").contains(item.getKey().toLowerCase(Locale.ROOT)))headers.put(item.getKey(),String.join(", ",item.getValue()));
