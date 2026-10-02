@@ -2,7 +2,7 @@
 param([switch]$SkipDesktopShortcut)
 $ErrorActionPreference = 'Stop'
 $taskRoot = Split-Path -Parent $PSScriptRoot
-$taskBuild = Get-Content -LiteralPath (Join-Path $taskRoot '.local/latest-installer-build.json') -Raw | ConvertFrom-Json
+$taskBuild = Get-Content -LiteralPath (Join-Path $taskRoot '.local/latest-installer-build.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $taskUninstallKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{79877EC8-D1D0-4FD6-BBA4-2F354332AF13}_is1'
 if (Test-Path $taskUninstallKey) { throw 'An installation already exists. Do not run this first-install test against it.' }
 if ((Get-FileHash -LiteralPath $taskBuild.installer -Algorithm SHA256).Hash -ne $taskBuild.sha256) { throw 'Installer checksum mismatch' }
