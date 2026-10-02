@@ -36,9 +36,18 @@
 
 题干和图片读取后在本机生成 A4 PDF，支持长题续页。选中导出只读取所选条目；本科全部导出遍历该科目分页。全部题目连续编号，答案与解析在题目部分结束后新开一页，沿用题号。读取非学校 origin 资源不携带账号 Bearer Token。同步新增、错题删除和云笔记修改已做模拟合约回归，未使用真实账号执行破坏性删除测试。
 
-## 图库回收站限制
+## 图库回收站
 
-现有来源只核实了 PictureLibrary/GetAllPicturesFromLibrary 与 AddPictureAsync。用户提供的 APK 不包含图库客户端，公开资料未提供可验证的永久删除请求。本版本不猜测删除路径和参数，不发送图库永久删除请求。
+图库集成在用户提供的中育桌面 `com.zykj.manage` 1.1.2（versionCode 10102）中。以下合约来自其 `com.zykj.gallery.api.PictureService` 的 Retrofit 方法与参数注解。
+
+| 操作 | 方法与路径（前缀 `/api/services/app/`） | 参数 |
+| --- | --- | --- |
+| 查看 | GET `PictureLibrary/GetAllPicturesFromLibrary` | 查询 `SkipCount`、`MaxResultCount`、`IsRecycleBin` |
+| 移至回收站 | POST `PictureLibrary/MoveToRecycleBinAsync` | JSON 数字 ID 数组，如 `[101,102]` |
+| 恢复 | POST `PictureLibrary/RecoverPictureFromRecycleBinAsync` | JSON 数字 ID 数组 |
+| 永久删除 | DELETE `PictureLibrary/DeletePicture` | 重复查询参数 `?ids=101&ids=102`，无正文 |
+
+界面支持单选、多选及确认取消；提交前重新核对当前账号的图库或回收站状态，永久删除仅接受回收站中的图片编号。接口合约和异常路径使用模拟响应验证，没有为测试删除真实图片。
 
 PDF 排版使用 随包思源宋体，标准页宽下正文约 12 磅，1.5 倍行距，紧凑段落间距；长题优先利用当前页余量，空白行附近续页，答案部分仍另起一页。
 ## 中育学生应用下载
@@ -46,3 +55,5 @@ PDF 排版使用 随包思源宋体，标准页宽下正文约 12 磅，1.5 倍�
 - GET `/api/services/app/AppStore/CheckUpdateAsync?packageName=<Android包名>&version=0&appType=0`：官方用户中心 APK 已核实 `packageName` / `version` / `appType` 参数。学生端使用 0；响应 `result` 包含 `name`、`packageName`、`versionName`、`versionCode`、`fileUrl`、`size`、`icon`、`disabled`。公开更新查询不携带账号 Token，也不登记设备或提交下载遥测。
 - 查询当前登录学校 API；未登录时默认省锡中。`result=null` 或 `disabled=true` 不提供下载；包名、类型不匹配时拒绝使用响应。
 - 从返回的中育资源地址下载 APK，核对记录大小和 APK 基本结构，生成本地 SHA-256。未验证平板安装、官方签名及账号课程权限。
+- 2026-10-02 附件中的 7 个 APK 已读取实际包名、版本与 SHA-256，目录见 [OFFICIAL_APPS.md](OFFICIAL_APPS.md)。学校在线版本可能比附件旧；显示在线版本和附件参考版本时分别标示，不虚构新版本下载地址。
+- 支持本地导入 ZIP / APK / `.apk.1`，按已核实摘要识别，不信任文件名。APK 只保存在本机 IndexedDB，可再次校验并另存为；附件二进制不进入工具箱源码或安装包。
