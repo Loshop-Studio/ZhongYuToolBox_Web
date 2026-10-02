@@ -53,8 +53,11 @@ export const API_BASE_BASE_URL: string =
 export const SHARE_SERVER: string =
   ls.getItem('shareServer') || ''
 
-/** 旧版统计接口已禁用，不发送遥测。 */
-export const TRACK_API: string = ''
+/** Fork default stays off. Upstream PR changes this default to true; see UPSTREAM_PR.md. */
+const AUTHOR_STATS_DEFAULT = false
+export const AUTHOR_STATS_ENABLED = import.meta.env.VITE_AUTHOR_STATS === undefined
+  ? AUTHOR_STATS_DEFAULT : import.meta.env.VITE_AUTHOR_STATS === 'true'
+export const TRACK_API = 'https://tbapi.loshop.com.cn/api'
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
 export const APP_VERSION: string = packageInfo.version
