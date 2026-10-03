@@ -24,7 +24,14 @@ let server = LocalAssetServer(root: root, cache: cache)
 let ready = DispatchSemaphore(value: 0)
 var startError: Error?
 server.start { result in if case .failure(let error) = result { startError = error }; ready.signal() }
-check(ready.wait(timeout: .now() + 10) == .success && startError == nil, "Loopback server starts")
+let startDeadline = Date().addingTimeInterval(15)
+var didStart = false
+while Date() < startDeadline {
+    if ready.wait(timeout: .now()) == .success { didStart = true; break }
+    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+}
+if let startError { print("Listener error: \(startError)") }
+check(didStart && startError == nil, "Loopback server starts")
 func request(_ path: String, host: String? = nil) -> (Data, HTTPURLResponse) {
     var req = URLRequest(url: URL(string: HostPolicy.origin + path)!)
     if let host { req.setValue(host, forHTTPHeaderField: "Host") }
