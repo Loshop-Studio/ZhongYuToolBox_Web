@@ -62,12 +62,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { blockState } from '@/stores/block'
 import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const schoolSelect = ref('sxz')
@@ -94,7 +95,11 @@ async function onLogin() {
       ElMessage.warning('你的账号为非学生账号，功能受限(没适配)，仅可查看随身答和下载应用')
     }
     ElMessage.success(`你好，${info.realName || auth.userName}`)
-    router.push('/note')
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
+    // Only known local routes may resume after authentication; never redirect to an external URL.
+    const safeRedirect = PLATFORM === 'ios' && /^\/(note|column|lesson|course|exam|mistake|quora|picture|linspirer|advance|apps|dev|share|proxy)(\/|\?|$)/.test(redirect)
+    if (PLATFORM === 'ios') router.replace(safeRedirect ? redirect : '/note')
+    else router.push('/note')
   } catch (e: any) {
     ElMessage.error(e.message || '登录失败')
   } finally {
