@@ -2,6 +2,10 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 
+private extension NSLayoutConstraint {
+    func withPriority(_ priority: UILayoutPriority) -> NSLayoutConstraint { self.priority = priority; return self }
+}
+
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -19,7 +23,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let controller = ToolboxController()
         let navigation = UINavigationController(rootViewController: controller)
         navigation.navigationBar.prefersLargeTitles = false
-        navigation.setToolbarHidden(false, animated: false)
+        navigation.setToolbarHidden(true, animated: false)
+        #if targetEnvironment(simulator)
+        if ProcessInfo.processInfo.arguments.contains("--navigation-ui-test") {
+            navigation.setViewControllers([NavigationTestController()], animated: false)
+        }
+        #endif
         window.rootViewController = navigation; self.window = window; window.makeKeyAndVisible()
     }
 }
@@ -34,11 +43,8 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
     private var openReply: (([URL]?) -> Void)?
     private var importedFiles: [URL] = []
     private let status = UILabel()
+    private let bottomNavigation = SlidingToolNavigation()
     private var systemDark: Bool { UIScreen.main.traitCollection.userInterfaceStyle == .dark }
-    private let items: [(String, String, String)] = [
-        ("云笔记", "doc.text", "/note"), ("新测评", "square.and.pencil", "/exam"),
-        ("错题本", "book.closed", "/mistake"), ("图库", "photo.on.rectangle", "/picture")
-    ]
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "中育工具箱"; view.backgroundColor = .systemBackground
@@ -46,16 +52,19 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
         navigationItem.leftBarButtonItem?.accessibilityLabel = "返回"
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu())
         navigationItem.rightBarButtonItem?.accessibilityLabel = "更多工具与外观设置"
-        var controls: [UIBarButtonItem] = []
-        for (index, item) in items.enumerated() {
-            if index > 0 { controls.append(UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)) }
-            let button = UIBarButtonItem(image: UIImage(systemName: item.1), style: .plain, target: self, action: #selector(tool(_:)))
-            button.tag = index; button.accessibilityLabel = item.0; controls.append(button)
-        }
-        toolbarItems = controls
+        bottomNavigation.translatesAutoresizingMaskIntoConstraints = false
+        bottomNavigation.onCommit = { [weak self] index in self?.navigate(SlidingToolNavigation.paths[index]) }
+        view.addSubview(bottomNavigation)
+        NSLayoutConstraint.activate([
+            bottomNavigation.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
+            bottomNavigation.widthAnchor.constraint(equalTo: view.safeAreaLayoutGuide.widthAnchor, constant: -32).withPriority(.defaultHigh),
+            bottomNavigation.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
+            bottomNavigation.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
+            bottomNavigation.heightAnchor.constraint(greaterThanOrEqualToConstant: 52)
+        ])
         // Do not install an opaque bar background; UIKit applies Liquid Glass on iOS 26.
         navigationController?.navigationBar.tintColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.80, green: 0.70, blue: 0.83, alpha: 1) : UIColor(red: 0.44, green: 0.34, blue: 0.46, alpha: 1) }
-        navigationController?.toolbar.tintColor = navigationController?.navigationBar.tintColor
+        bottomNavigation.tintColor = navigationController?.navigationBar.tintColor
         status.text = "正在启动中育工具箱…"; status.textAlignment = .center; status.numberOfLines = 0
         status.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(status)
         NSLayoutConstraint.activate([status.centerXAnchor.constraint(equalTo: view.centerXAnchor), status.centerYAnchor.constraint(equalTo: view.centerYAnchor), status.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -36)])
@@ -69,7 +78,8 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
             transport = NativeTransport(cache: cache); server = LocalAssetServer(root: web, cache: cache)
             main = makeWebView(privileged: true)
             main.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(main)
-            NSLayoutConstraint.activate([main.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor), main.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor), main.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), main.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)])
+            NSLayoutConstraint.activate([main.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor), main.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor), main.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), main.bottomAnchor.constraint(equalTo: bottomNavigation.topAnchor, constant: -10)])
+            view.bringSubviewToFront(bottomNavigation)
             server.start { [weak self] result in DispatchQueue.main.async {
                 guard let self else { return }
                 switch result { case .success(let url): self.main.load(URLRequest(url: url)); case .failure(let error): self.main.isHidden = true; self.status.text = "本地界面启动失败：\(error.localizedDescription)" }
@@ -92,7 +102,6 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
         guard let data = try? JSONSerialization.data(withJSONObject: [path]), let encoded = String(data: data, encoding: .utf8) else { return }
         main?.evaluateJavaScript("window.__zytbNavigate && window.__zytbNavigate(\(encoded)[0])", completionHandler: nil)
     }
-    @objc private func tool(_ item: UIBarButtonItem) { navigate(items[item.tag].2) }
     @objc private func back() {
         if let guest, guest.canGoBack { guest.goBack() }
         else { main?.evaluateJavaScript("window.__zytbBack && window.__zytbBack()", completionHandler: nil) }
@@ -120,6 +129,7 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
         case "syncNavigation":
             route = args["path"] as? String ?? "/login"; title = args["title"] as? String ?? "中育工具箱"
             navigationItem.leftBarButtonItem?.isEnabled = route != "/login"
+            bottomNavigation.sync(path: route)
             reply(true, nil)
         case "setThemeDark":
             let mode = args["mode"] as? String ?? "system"
