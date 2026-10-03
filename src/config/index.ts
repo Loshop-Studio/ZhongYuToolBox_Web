@@ -30,8 +30,9 @@ export const PLATFORM: Platform = IS_BROWSER
     : (import.meta.env.VITE_PLATFORM as string | undefined) === 'webview2' ? 'webview2' : 'electron'
 
 export const IS_WINDOWS = PLATFORM === 'electron' || PLATFORM === 'webview2'
+export const IS_MOBILE = PLATFORM === 'ios' || PLATFORM === 'android' || PLATFORM === 'plus'
 /** Both native editions share aoki's UI, themes and local conversion workflow. */
-export const IS_AOKI = IS_WINDOWS || PLATFORM === 'android' || PLATFORM === 'ios'
+export const IS_AOKI = IS_WINDOWS || IS_MOBILE
 
 /** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */
 export const USE_PROXY: boolean = IS_BROWSER
