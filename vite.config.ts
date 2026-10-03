@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // 内嵌 ezy-board-viewer 源码（packages/），改源码即时生效，无需重新 build tgz
+      'ezy-board-viewer': fileURLToPath(new URL('./packages/ezy-board-viewer/src/index.js', import.meta.url))
     }
   },
   server: {

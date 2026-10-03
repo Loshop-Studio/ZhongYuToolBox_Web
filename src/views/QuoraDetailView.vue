@@ -37,6 +37,17 @@
               <div class="thumb-ph"><el-icon><Picture /></el-icon></div>
             </template>
           </el-image>
+          <div class="board-actions">
+            <el-button
+              v-if="m.content"
+              size="small"
+              type="primary"
+              :icon="VideoPlay"
+              @click="openBoardView(m)"
+            >
+              查看画板
+            </el-button>
+          </div>
         </div>
       </div>
     </el-scrollbar>
@@ -47,9 +58,14 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Picture, Share, EditPen } from '@element-plus/icons-vue'
+import { ArrowLeft, Picture, Share, EditPen, VideoPlay } from '@element-plus/icons-vue'
 import { proxyImgSrc } from '@/utils/proxy'
-import { getMessages, resetReadState, markSessionRead, type QuoraMessage } from '@/api/quora'
+import {
+  getMessages,
+  resetReadState,
+  markSessionRead,
+  type QuoraMessage
+} from '@/api/quora'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,6 +108,21 @@ function openBoard() {
 
 function shareSession() {
   router.push(`/share?type=quora&id=${sessionId.value}`)
+}
+
+/* ---------------- 进入独立画板页 ---------------- */
+function openBoardView(m: QuoraMessage) {
+  if (!m.content) {
+    ElMessage.warning('该消息没有可播放的画板')
+    return
+  }
+  router.push({
+    path: `/quora/${sessionId.value}/board-view`,
+    query: {
+      content: m.content,
+      name: `quora-${m.id ?? 'board'}`
+    }
+  })
 }
 
 onMounted(load)
@@ -183,6 +214,14 @@ watch(
   justify-content: center;
   font-size: 28px;
   color: var(--el-text-color-placeholder);
+}
+
+/* ===== 画板查看入口 ===== */
+.board-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 @media (max-width: 767px) {

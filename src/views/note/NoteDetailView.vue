@@ -6,6 +6,17 @@
       <span class="appbar-title">{{ fileName || '笔记预览' }}</span>
       <!-- 桌面端：纯图标按钮 -->
       <template v-if="!isMobile">
+        <el-dropdown trigger="click" @command="setRenderer">
+          <el-button :title="renderer === 'hd' ? '当前：高清渲染器' : '当前：传统渲染器'">
+            <el-icon><Picture /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="classic" :disabled="renderer === 'classic'">切换到传统渲染器</el-dropdown-item>
+              <el-dropdown-item command="hd" :disabled="renderer === 'hd'">切换到高清渲染器</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button type="success" :loading="exporting" @click="exportPdf">
           <el-icon><Document /></el-icon>
         </el-button>
@@ -27,6 +38,10 @@
             <div class="actions-item" @click="onActionCommand('zip')">
               <el-icon><Download /></el-icon><span>下载笔记</span>
             </div>
+            <div class="actions-item" @click="onActionCommand('renderer')">
+              <el-icon><Picture /></el-icon>
+              <span>{{ renderer === 'hd' ? '切换到传统渲染器' : '切换到高清渲染器' }}</span>
+            </div>
             <div class="actions-cancel" @click="showSheet = false">取消</div>
           </div>
         </Teleport>
@@ -36,11 +51,12 @@
     <div v-loading="loading" class="preview-body">
       <el-empty v-if="!loading && pages.length === 0" description="该笔记没有可预览的内容" />
       <div v-else-if="currentPageData" class="page-content">
-        <!-- 页面总览（笔记截图） -->
-        <div v-if="currentPageData.thumbnail" class="thumb-wrap">
+        <!-- 页面总览：传统渲染器直接显示笔记截图，高清渲染器渲染真实画板 -->
+        <div class="thumb-wrap">
           <el-image
-            :src="currentPageData.thumbnail.imgSrc"
-            :preview-src-list="[currentPageData.thumbnail.imgSrc]"
+            v-if="renderer === 'classic'"
+            :src="currentPageData.thumbnail?.imgSrc"
+            :preview-src-list="currentPageData.thumbnail ? [currentPageData.thumbnail.imgSrc] : []"
             :initial-index="0"
             fit="contain"
             class="thumb-img"
@@ -54,6 +70,16 @@
               </div>
             </template>
           </el-image>
+          <EzyBoardViewer
+            v-else-if="boardSource"
+            :source="boardSource"
+            :file-name="`${fileName || 'note'}-${currentPage}`"
+            class="thumb-board"
+          />
+          <div v-else class="img-error">
+            <el-icon><Loading /></el-icon>
+            <span>{{ boardLoading ? '正在渲染画板…' : boardError || '该页没有可渲染的画板' }}</span>
+          </div>
         </div>
 
         <!-- 页内插入的图片（水平滚动） -->
@@ -121,9 +147,10 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, Document, Download, PictureFilled, MoreFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Document, Download, Picture, PictureFilled, MoreFilled, Loading } from '@element-plus/icons-vue'
 import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
+import { EzyBoardViewer, type BoardFile } from 'ezy-board-viewer'
 import { getNoteResources, getNoteResourcesForZip, type NoteResource } from '@/api/note'
 import { proxyUrl, proxyImgSrc, resourceFetchUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
@@ -184,16 +211,117 @@ function onActionCommand(cmd: string) {
   showSheet.value = false
   if (cmd === 'pdf') exportPdf()
   else if (cmd === 'zip') downloadZip()
+  else if (cmd === 'renderer') setRenderer(renderer.value === 'hd' ? 'classic' : 'hd')
+}
+
+/** 资源绝对地址 */
+function fullUrl(item: NoteResource): string {
+  return item.ossImageUrl.startsWith('http') ? item.ossImageUrl : OSS_BASE + item.ossImageUrl
 }
 
 /** 资源地址转换（复刻 noteDownload 中 ossImageUrl 处理） */
 function toEntry(item: NoteResource): ResEntry {
-  const full = item.ossImageUrl.startsWith('http') ? item.ossImageUrl : OSS_BASE + item.ossImageUrl
+  const full = fullUrl(item)
   return {
     url: proxyUrl(full),
     imgSrc: proxyImgSrc(full),
     raw: full,
     ext: item.ossImageUrl.split('.').pop() || ''
+  }
+}
+
+/* ===== 渲染器：高清 = 渲染画板，传统 = 直接展示截图 ===== */
+const renderer = ref<'hd' | 'classic'>('hd')
+function setRenderer(v: 'hd' | 'classic') {
+  renderer.value = v
+  // 传统模式下翻页不会更新 boardSource，切回高清时按当前页重新组装
+  if (v === 'hd') loadBoard()
+}
+
+/* ===== 画板渲染：用 ezy-board-viewer 的文件列表形式 ===== */
+/** 每页的画板数据：snapshot.bin（渲染用）+ 同名 screenshot（取画布尺寸） */
+const pageBoards = ref<Record<number, { snapshot: string; screenshot: string }>>({})
+/** res/image 下的图片资源，多页共享 */
+const sharedImages = ref<NoteResource[]>([])
+const imageFiles = ref<BoardFile[] | null>(null)
+const boardSource = ref<BoardFile[] | null>(null)
+const boardLoading = ref(false)
+const boardError = ref('')
+
+/** 下载资源（走代理或直连） */
+async function fetchResourceBlob(url: string): Promise<Blob> {
+  const res = await fetch(resourceFetchUrl(url))
+  if (!res.ok) throw new Error('资源下载失败：HTTP ' + res.status)
+  return await res.blob()
+}
+
+/**
+ * 合成最小 header.bin（protobuf：field 2 = 宽、field 3 = 高，均为 varint）。
+ * 云笔记的 Resources/GetByFileId 不会返回 header.bin，而 ezy-board-viewer 渲染每页时必须有它。
+ */
+function makeHeaderBlob(width: number, height: number): Blob {
+  const bytes: number[] = []
+  const vi = (v: number) => {
+    let x = v >>> 0
+    while (x > 0x7f) { bytes.push((x & 0x7f) | 0x80); x >>>= 7 }
+    bytes.push(x)
+  }
+  vi(0x10); vi(width)
+  vi(0x18); vi(height)
+  return new Blob([new Uint8Array(bytes)], { type: 'application/octet-stream' })
+}
+
+/** res/image 多页共享，整篇笔记只下一次 */
+async function ensureImageFiles(): Promise<BoardFile[]> {
+  if (imageFiles.value) return imageFiles.value
+  imageFiles.value = await Promise.all(sharedImages.value.map(async (item) => ({
+    path: 'res/image/' + (item.ossImageUrl.split('/').pop() || item.ossImageUrl),
+    blob: await fetchResourceBlob(fullUrl(item))
+  })))
+  return imageFiles.value
+}
+
+/** 组装某一页的文件列表：该页 header.bin / snapshot.bin + 共享图片 */
+async function buildBoardSource(pageKey: number): Promise<BoardFile[]> {
+  const b = pageBoards.value[pageKey]
+  if (!b?.snapshot) throw new Error('该页缺少 snapshot.bin，无法渲染')
+  const [snapshot, images] = await Promise.all([fetchResourceBlob(b.snapshot), ensureImageFiles()])
+  // 画布尺寸取该页截图的像素尺寸，保证渲染结果与 App 截图同比例
+  let width = 1080, height = 1920
+  if (b.screenshot) {
+    try {
+      const bmp = await createImageBitmap(await fetchResourceBlob(b.screenshot))
+      if (bmp.width > 1 && bmp.height > 1) { width = bmp.width; height = bmp.height }
+      bmp.close()
+    } catch {
+      // 取不到尺寸就按默认画布渲染
+    }
+  }
+  const dir = pageKey + '/'
+  return [
+    { path: dir + 'header.bin', blob: makeHeaderBlob(width, height) },
+    { path: dir + 'snapshot.bin', blob: snapshot },
+    ...images
+  ]
+}
+
+/** 载入当前页的画板 */
+async function loadBoard() {
+  const pageKey = pages.value[currentPage.value - 1]
+  boardSource.value = null
+  boardError.value = ''
+  if (pageKey == null) return
+  if (!pageBoards.value[pageKey]?.snapshot) {
+    boardError.value = '该页没有可用的画板数据'
+    return
+  }
+  boardLoading.value = true
+  try {
+    boardSource.value = await buildBoardSource(pageKey)
+  } catch (e: any) {
+    boardError.value = formatError(e)
+  } finally {
+    boardLoading.value = false
   }
 }
 
@@ -203,31 +331,56 @@ async function loadResources() {
   pageMap.value = {}
   pages.value = []
   currentPage.value = 1
+  // 切换笔记时，上一次的共享图片缓存与渲染结果都要失效
+  imageFiles.value = null
+  pageBoards.value = {}
+  sharedImages.value = []
+  boardSource.value = null
+  boardError.value = ''
   try {
     const list = await getNoteResources(fileId.value)
     const map: Record<number, PageData> = {}
     for (const item of list) {
-      // 过滤模板 bin 等非图片资源
-      if (!IMG_EXT_RE.test(item.ossImageUrl)) continue
       const page = item.pageIndex + 1
+      if (item.resourceType === 1) {
+        // 画板数据：snapshot.bin 交给 ezy-board-viewer 渲染；
+        // data.mdb / lock.mdb 是 App 自己的增量库，查看器不需要
+        if (/snapshot\.bin$/i.test(item.ossImageUrl)) {
+          if (!pageBoards.value[page]) pageBoards.value[page] = { snapshot: '', screenshot: '' }
+          pageBoards.value[page].snapshot = fullUrl(item)
+          // 只画了一个形状、没有图片资源的页也要能预览
+          if (!map[page]) map[page] = { originals: [] }
+        }
+        continue
+      }
+      // 过滤其他模板 bin 等非图片资源
+      if (!IMG_EXT_RE.test(item.ossImageUrl)) continue
       if (!map[page]) map[page] = { originals: [] }
       if (item.resourceType === 2) {
         // resourceType 2 为页面总览截图
         map[page].thumbnail = toEntry(item)
+        // 截图尺寸就是画布尺寸，用它合成渲染所需的 header.bin
+        if (!pageBoards.value[page]) pageBoards.value[page] = { snapshot: '', screenshot: '' }
+        pageBoards.value[page].screenshot = fullUrl(item)
       } else {
         // 其余为页内插入的图片
         map[page].originals.push(toEntry(item))
+        if (item.resourceType === 0) sharedImages.value.push(item)
       }
     }
     pageMap.value = map
-    pages.value = Object.keys(map)
-      .map(Number)
-      .sort((a, b) => a - b)
+    // 优先按"有画板数据的页"翻页，没有时退回原来的"有图片的页"
+    const boardPages = Object.keys(pageBoards.value).map(Number).sort((a, b) => a - b)
+    pages.value = boardPages.length
+      ? boardPages
+      : Object.keys(map).map(Number).sort((a, b) => a - b)
   } catch (e: any) {
     ElMessage.error(e.message || '加载笔记失败')
   } finally {
     loading.value = false
   }
+  // 传统渲染器只看截图，不必去拉画板资源
+  if (renderer.value === 'hd') await loadBoard()
 }
 
 /** 图片转 DataURL（复刻 loadImageAsDataURL） */
@@ -335,6 +488,10 @@ watch(
   () => [route.params.fileId, route.query.name],
   () => loadResources()
 )
+// 翻页时渲染对应页的画板
+watch(currentPage, () => {
+  if (renderer.value === 'hd') loadBoard()
+})
 </script>
 
 <style scoped>
@@ -448,13 +605,14 @@ watch(
   display: flex;
   flex-direction: column;
 }
-/* 页面总览（笔记截图）：居中大图，完整显示不裁剪 */
+/* 页面总览：居中 */
 .thumb-wrap {
   width: 100%;
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
 }
+/* 传统渲染器：截图大图，完整显示不裁剪 */
 .thumb-img {
   max-width: 100%;
   box-shadow: 0 2px 8px #ccc;
@@ -470,6 +628,14 @@ watch(
   max-width: 100%;
   max-height: calc(100vh - 300px);
   min-height: 320px;
+}
+/* 高清渲染器：画板需要显式高度，否则只有组件自带的最小高度 */
+.thumb-board {
+  width: 100%;
+  height: calc(100vh - 280px);
+  min-height: 320px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px #ccc;
 }
 /* 页内插入图片：水平滚动小图 */
 .originals-block {
@@ -557,6 +723,10 @@ watch(
   .preview-body {
     border-radius: 6px;
     padding: 8px;
+  }
+  .thumb-board {
+    height: 60vh;
+    min-height: 260px;
   }
   .pager-bar {
     position: fixed;

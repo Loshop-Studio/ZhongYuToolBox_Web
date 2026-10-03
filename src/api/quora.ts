@@ -3,6 +3,7 @@
  */
 import { reactive } from 'vue'
 import { request } from '@/utils/request'
+import { resourceFetchUrl } from '@/utils/proxy'
 
 export interface QuoraCatalog {
   id: number | string
@@ -105,6 +106,18 @@ export async function addMessage(content: string, sessionId: string | number, sn
  * 用普通对象映射而非 Set，避免响应式集合的追踪问题。
  */
 export const readSessionState = reactive<Record<string, boolean>>({})
+
+/**
+ * 把消息中的 content（zip URL）拉成 Blob，给 EzyBoardViewer 解析播放。
+ * 浏览器模式下走资源代理绕开跨域限制；原生运行环境（5+/Electron file://）直连。
+ */
+export async function fetchContentBlob(contentUrl: string): Promise<Blob> {
+  if (!contentUrl) throw new Error('content url is empty')
+  const url = resourceFetchUrl(contentUrl)
+  const resp = await fetch(url)
+  if (!resp.ok) throw new Error(`fetch zip failed: ${resp.status} ${resp.statusText}`)
+  return resp.blob()
+}
 
 export function markSessionRead(id: string | number): void {
   readSessionState[String(id)] = true

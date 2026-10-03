@@ -30,6 +30,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/quora', name: 'quora', component: () => import('@/views/QuoraView.vue'), meta: { title: '随身答', keepAlive: true } },
   { path: '/quora/:sessionId', name: 'quora-detail', component: () => import('@/views/QuoraDetailView.vue'), meta: { title: '问题详情', hideLayoutHeader: true, keepAlive: true } },
   { path: '/quora/:sessionId/board', name: 'quora-board', component: () => import('@/views/BoardView.vue'), meta: { title: '画板回复', hideLayoutHeader: true } },
+  { path: '/quora/:sessionId/board-view', name: 'quora-board-view', component: () => import('@/views/QuoraBoardView.vue'), meta: { title: '画板查看', hideLayoutHeader: true } },
   { path: '/exam', name: 'exam', component: () => import('@/views/ExamView.vue'), meta: { title: '新测评', keepAlive: true } },
   { path: '/exam/:taskId', name: 'exam-questions', component: () => import('@/views/ExamQuestionsView.vue'), meta: { title: '试题详情', hideLayoutHeader: true, keepAlive: true } },
   { path: '/exam/:taskId/overview', name: 'exam-overview', component: () => import('@/views/ExamOverviewView.vue'), meta: { title: '考试概览', hideLayoutHeader: true, keepAlive: true } },
