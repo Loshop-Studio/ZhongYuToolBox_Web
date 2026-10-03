@@ -2,13 +2,13 @@
 
 基于 [Loshop-Studio/ZhongYuToolBox_Web](https://github.com/Loshop-Studio/ZhongYuToolBox_Web) 的独立 Windows / Android 改造版。原作者 **Loshop**；新增 co-author **aoki**。感谢原作者及所有贡献者，保留原有“支持作者”入口与捐赠对象。本 fork 不代表中育官方或原作者发布。
 
-## iPhone / iPad 版本（开发中）
+## iPhone / iPad 版本
 
-新增 Swift + UIKit + WKWebView 原生壳，沿用 aoki 的界面和学习功能；导航、工具栏与系统文件面板适配 iOS/iPadOS 26 的原生 Liquid Glass，iPad 支持侧栏与分屏。官方请求通过原生网络桥处理，PDF 导出到系统“文件”，保留支持作者入口。APK 下载功能供 Android 平板使用，不能在 iOS 安装 APK。
+新增 Swift + UIKit + WKWebView 原生壳，沿用 aoki 的界面和学习功能；底部采用一条支持拖动切换的完整原生分段导航，导航栏与系统文件面板适配 iOS/iPadOS 26 的原生 Liquid Glass，iPad 支持侧栏与分屏。官方请求通过原生网络桥处理，PDF 导出到系统“文件”，保留支持作者入口。APK 下载功能供 Android 平板使用，不能在 iOS 安装 APK。
 
 `npm run test:ios` 验证桥接与 OSS；`npm run build:ios` 在 macOS / Xcode 26+ 生成供爱思重新签名的未签名 IPA；Windows 使用 `npm run build:ios -- --web-only`。云端构建见 GitHub Actions 的 **Build iOS IPA**。完整操作说明、验证范围与签名步骤见 [native-ios/README.md](native-ios/README.md)。只有云端 Xcode 构建成功后才有真正的 IPA；Windows 前端构建不代表真机验证。
 
-[下载 Windows / Android 发布包](https://github.com/nickfox395/ZhongYuToolBox_Web/releases) · [Windows 操作与构建说明](WINDOWS_AOKI.txt) · [Android 操作与构建说明](native-android/README.md) · [后端依赖说明](SERVER_DEPENDENCIES.md) · [新增接口合约](api.md)
+[下载 Windows / Android / iOS 发布包](https://github.com/nickfox395/ZhongYuToolBox_Web/releases) · [Windows 操作与构建说明](WINDOWS_AOKI.txt) · [Android 操作与构建说明](native-android/README.md) · [后端依赖说明](SERVER_DEPENDENCIES.md) · [新增接口合约](api.md)
 
 ## Windows 版本
 

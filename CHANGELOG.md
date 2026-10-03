@@ -4,12 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.1.9-aoki] - 2026-10-03（开发中）
+## [1.1.10-aoki] - 2026-10-03
+
+- iPhone / iPad 底部改为一个完整的原生 Liquid Glass 分段导航栏，拖动滑动选区，松手进入目标功能；返回或登录拦截后按实际路由恢复选择。
+- 取消四个分离的玻璃按钮，保留更多工具、支持作者及三种外观设置；适配安全区、横屏与 iPad 宽度，采用 UIKit 系统无障碍和减少动态效果。
+- 新增实际 iOS 模拟器导航 UI 测试，验证单一导航面、点击、双向拖动与触控尺寸。
+
+## [1.1.9-aoki] - 2026-10-03
 
 - 新增 iPhone / iPad Swift + UIKit + WKWebView 壳与 Xcode 工程生成器；原生导航、工具栏、菜单及文件面板采用 iOS/iPadOS 26 系统 Liquid Glass。
 - 沿用 aoki 紫白界面与既有云笔记、图库、新测评、错题本业务；多文件选择、分块导出、官方/OSS 请求通过受限原生桥处理，远端嵌入页不提供本机权限。
 - 新增 `build:ios`、`dev:ios`、`test:ios`；GitHub macOS 工作流生成供爱思重新签名的 arm64 未签名 IPA，不使用个人证书或 Apple ID。
-- 当前为待 Xcode 编译/真机验证的开发版；不能把 Windows 前端构建视为 IPA 发布完成。
+- 已通过云端 Xcode 26 的 arm64 设备和模拟器编译，完成 iPhone / iPad 浅色、深色启动检查；未签名 IPA 需自行重新签名安装，尚未进行实机签名和官方账号端到端验证。
 
 ## [1.1.8-aoki] - 2026-10-02
 
