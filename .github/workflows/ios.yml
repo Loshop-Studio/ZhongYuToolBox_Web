@@ -24,6 +24,7 @@ jobs:
       - run: npm run build:ios -- --simulator --skip-web
       - run: node scripts/test-ios-simulator.mjs
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ZhongYuToolBox-iPhone-iPad-unsigned-IPA
           path: |
