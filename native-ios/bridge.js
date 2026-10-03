@@ -15,6 +15,9 @@
     try { const u=new URL(url,location.href); return ['http:','https:'].includes(u.protocol) && u.origin!==LOCAL; } catch { return false; }
   };
   window.fetch = async (input, init) => {
+    // Export/render code may read an img.src rewritten to the native image scheme.
+    // Fetch its original official URL through the existing binary bridge.
+    if(typeof input==='string' && input.startsWith('zytb-image://fetch?')) input=new URL(input).searchParams.get('url');
     const req = new Request(input instanceof Request ? input : new URL(String(input),location.href), init);
     if (!remote(req.url)) return originalFetch(req);
     if (req.signal.aborted) throw new DOMException('请求已取消','AbortError');
@@ -81,8 +84,48 @@
     });
   };
   Object.assign(window.XMLHttpRequest,{UNSENT:0,OPENED:1,HEADERS_RECEIVED:2,LOADING:3,DONE:4});
+  // <img>, v-html articles and Element Plus lazy images bypass fetch/XHR.
+  // A WebKit scheme handler streams approved images via URLSession with no web-origin headers.
+  function imageUrl(value) {
+    if(!value || typeof value!=='string')return value;
+    try {
+      const u=new URL(value,location.href), host=u.hostname.toLowerCase();
+      const suffix=['zykj.org','zyai.cc','aliyuncs.com','linspirer.com'].find(s=>host===s || host.endsWith('.'+s));
+      if(!suffix || !['http:','https:'].includes(u.protocol) || u.username || u.password || (u.port && !['80','443'].includes(u.port) && !(suffix==='linspirer.com'&&u.port==='883')))return value;
+      return 'zytb-image://fetch?url='+encodeURIComponent(u.href);
+    } catch { return value; }
+  }
+  function imageSet(value) { return String(value).split(',').map(part=>{const pieces=part.trim().split(/\s+/);pieces[0]=imageUrl(pieces[0]);return pieces.join(' ');}).join(', '); }
+  if(typeof HTMLImageElement!=='undefined' && typeof MutationObserver!=='undefined') {
+    const descriptor=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');
+    const setAttribute=Element.prototype.setAttribute;
+    if(descriptor?.set)Object.defineProperty(HTMLImageElement.prototype,'src',{...descriptor,set(value){this.removeAttribute('crossorigin');descriptor.set.call(this,imageUrl(String(value)));}});
+    Element.prototype.setAttribute=function(name,value){
+      const key=String(name).toLowerCase();
+      if(this instanceof HTMLImageElement){
+        if(key==='crossorigin' && (this.getAttribute('src')||'').startsWith('zytb-image:'))return;
+        if(key==='src' || key==='srcset'){this.removeAttribute('crossorigin');value=key==='src'?imageUrl(String(value)):imageSet(value);}
+      }
+      return setAttribute.call(this,name,value);
+    };
+    function rewrite(image){
+      const src=image.getAttribute('src'), srcset=image.getAttribute('srcset');
+      if(src){const mapped=imageUrl(src);if(mapped!==src)image.setAttribute('src',mapped);}
+      if(srcset){const mapped=imageSet(srcset);if(mapped!==srcset)image.setAttribute('srcset',mapped);}
+      if((image.getAttribute('src')||'').startsWith('zytb-image:') && image.hasAttribute('crossorigin'))image.removeAttribute('crossorigin');
+    }
+    const observe=()=>{
+      document.querySelectorAll('img').forEach(rewrite);
+      new MutationObserver(records=>{for(const record of records){
+        if(record.type==='attributes' && record.target instanceof HTMLImageElement)rewrite(record.target);
+        for(const node of record.addedNodes || []){if(node instanceof HTMLImageElement)rewrite(node);node.querySelectorAll?.('img').forEach(rewrite);}
+      }}).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['src','srcset','crossorigin']});
+    };
+    if(document.documentElement)observe();else document.addEventListener('DOMContentLoaded',observe,{once:true});
+  }
+  window.__zytbImageUrl=imageUrl;
   if (!local) return; // Guest pages have networking only, never file/device/window capabilities.
-  const markChrome=()=>document.documentElement?.classList.add('ios-web-chrome');
+  const markChrome=()=>document.documentElement?.classList.add('ios-native-chrome');
   if(document.documentElement)markChrome();else document.addEventListener('DOMContentLoaded',markChrome,{once:true});
   const host={
     kind:'ios', get systemDark(){return systemDark;},
