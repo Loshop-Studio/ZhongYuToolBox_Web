@@ -45,7 +45,7 @@ export async function saveBlobFile(blob: Blob, filename: string): Promise<void> 
       return
     }
   }
-  if (IS_WINDOWS || PLATFORM === 'android') {
+  if (IS_WINDOWS || PLATFORM === 'android' || PLATFORM === 'ios') {
     const ab = await blobToArrayBuffer(blob)
     await saveByElectron(ab, safeName)
     return

@@ -135,7 +135,7 @@ export async function uploadFile(
 
   const result = await generateStsToken(userId, fc, nonce)
 
-  if (PLATFORM === 'android') {
+  if (PLATFORM === 'android' || PLATFORM === 'ios') {
     const remoteFile = `${fc}/${FR}/${userId}/${dateStr}/${nonce}/${remoteFileName}`
     const endpoint = result.endpoint || `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com`
     const date = new Date().toUTCString(), contentType = file.type || 'application/octet-stream'

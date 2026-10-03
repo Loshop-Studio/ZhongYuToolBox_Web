@@ -45,7 +45,7 @@ export function proxyImgSrc(url: string): string {
  */
 export function isCorsExemptRuntime(): boolean {
   if (typeof window === 'undefined') return false
-  if (['webview2', 'android'].includes((window as any).nativeHost?.kind)) return true
+  if (['webview2', 'android', 'ios'].includes((window as any).nativeHost?.kind)) return true
   if (location.protocol !== 'file:') return false
   if ('plus' in window) return true
   if ('electronAPI' in window) return true
