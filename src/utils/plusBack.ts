@@ -19,7 +19,9 @@ router.afterEach((to, from) => {
 
 function onBack() {
   const plus = (window as any).plus
-  if (depth > 0) {
+  const mobileBack = (window as any).__zytbBack
+  if (typeof mobileBack === 'function' && mobileBack()) return
+  if (typeof mobileBack !== 'function' && depth > 0) {
     depth -= 1
     router.back()
     return
