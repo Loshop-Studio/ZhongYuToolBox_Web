@@ -26,5 +26,17 @@ for(const kind of ['iPhone','iPad']) {
   await new Promise(resolve=>setTimeout(resolve,3000))
   run(['io',device.udid,'screenshot',join(output,`${kind}-dark.png`)])
   console.log(`Launched ${device.name}; screenshots require visual inspection`)
+  if(kind === 'iPhone') {
+   const test=spawnSync('xcodebuild',[
+    '-project','native-ios/ZhongYuToolBox.xcodeproj','-scheme','ZhongYuToolBox',
+    '-configuration','Release','-destination',`platform=iOS Simulator,id=${device.udid}`,
+    '-derivedDataPath','.local/ios-simulator',
+    '-resultBundlePath',join(output,'NavigationUI.xcresult'),
+    '-parallel-testing-enabled','NO','-only-testing:NavigationUITests',
+    'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','test'
+   ],{stdio:'inherit'})
+   if(test.error)throw test.error
+   if(test.status!==0)throw Error(`Navigation UI test failed (${test.status}, ${test.signal})`)
+  }
  } finally { run(['shutdown',device.udid]) }
 }
