@@ -16,7 +16,8 @@
         </router-view>
       </div>
     </main>
-    <MobileGlassDock v-if="!nativeNavigation" :active="activeGroup" @select="selectGroup" @search="searchOpen = true" />
+    <MobileTabDock v-if="androidNavigation" :active="activeGroup" @select="selectGroup" @search="searchOpen = true" />
+    <MobileGlassDock v-else-if="!nativeNavigation" :active="activeGroup" @select="selectGroup" @search="searchOpen = true" />
     <el-dialog v-model="searchOpen" title="查找功能" class="ios-search-dialog" width="min(520px, calc(100% - 28px))" @opened="searchInput?.focus()">
       <el-input ref="searchInput" v-model="searchQuery" placeholder="搜索笔记、错题本、选课…" clearable aria-label="搜索功能名称"><template #prefix><el-icon><Search /></el-icon></template></el-input>
       <div class="ios-search-results"><button v-for="item in searchResults" :key="item.path" :aria-label="item.label" @click="openSearchResult(item.path)"><span>{{ item.label }}</span><small>{{ item.category }}</small><el-icon><TopRight /></el-icon></button><p v-if="!searchResults.length" class="ios-search-empty">没有找到这个功能，换个关键词试试。</p></div>
@@ -28,11 +29,14 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import MobileGlassDock from '@/components/MobileGlassDock.vue'
+import MobileTabDock from '@/components/MobileTabDock.vue'
+import { PLATFORM } from '@/config'
 import { mobileGroups, mobileGroupForPath, mobileSectionForPath, resourceSections, assessmentSections, personalTools, type MobileGroup } from '@/config/mobileNavigation'
 import { setThemeMode } from '@/composables/useTheme'
 const route = useRoute(), router = useRouter(), auth = useAuthStore()
 const baseUrl = import.meta.env.BASE_URL, scroller = ref<HTMLElement>()
 const nativeNavigation = (window as any).nativeHost?.kind === 'ios'
+const androidNavigation = PLATFORM === 'android' || PLATFORM === 'plus'
 const searchOpen = ref(false), searchQuery = ref(''), searchInput = ref<{ focus: () => void }>()
 const activeGroup = computed(() => mobileGroupForPath(route.path))
 const currentGroup = computed(() => mobileGroups.find(g => g.key === activeGroup.value)!)
@@ -59,7 +63,7 @@ watch(() => route.fullPath, async (value, previous) => {
   if (mobileGroups.some(g => g.path === route.path)) guestRemembered[group] = route.fullPath
   if (group === 'resources' && !['/resources', '/course'].includes(route.path)) remembered.resources = '/' + route.path.split('/')[1]
   if (group === 'assessment' && route.path !== '/assessment') remembered.assessment = '/' + route.path.split('/')[1]
-  ;(window as any).nativeHost?.syncNavigation({ path: route.path, title: heading.value, group, canGoBack: backAvailable.value }).catch(() => {})
+  ;(window as any).nativeHost?.syncNavigation?.({ path: route.path, title: heading.value, group, canGoBack: backAvailable.value })?.catch(() => {})
   await nextTick(); if (scroller.value) scroller.value.scrollTop = scrollPositions.get(value) || 0
 }, { immediate: true })
 watch(() => auth.userId, () => scrollPositions.clear())
@@ -76,7 +80,13 @@ function openSearchResult(path: string) { searchOpen.value = false; router.push(
 ;(window as any).__zytbNavigate = (path: string) => router.push(path)
 ;(window as any).__zytbSelectGroup = selectGroup
 ;(window as any).__zytbSetThemeMode = setThemeMode
-;(window as any).__zytbBack = () => { if (searchOpen.value) { searchOpen.value = false; return true }; if (mobileGroups.some(g => g.path === route.path)) return false; back(); return true }
+;(window as any).__zytbBack = () => {
+  if (searchOpen.value) { searchOpen.value = false; return true }
+  const close = document.querySelector('.el-overlay-dialog .el-dialog__headerbtn, .el-message-box__headerbtn') as HTMLElement | null
+  if (close) { close.click(); return true }
+  if (mobileGroups.some(g => g.path === route.path) || ['/note', '/exam', '/quora'].includes(route.path)) return false
+  back(); return true
+}
 function openTools() { searchOpen.value = true }
 onMounted(() => { if (auth.isLoggedIn) auth.startRefresh(); window.addEventListener('app:open-drawer', openTools) })
 onBeforeUnmount(() => { window.removeEventListener('app:open-drawer', openTools) })
