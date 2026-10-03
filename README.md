@@ -4,7 +4,7 @@
 
 ## iPhone / iPad 版本
 
-新增 Swift + UIKit + WKWebView 原生壳，沿用 aoki 的界面和学习功能；底部采用一条支持拖动切换的完整原生分段导航，导航栏与系统文件面板适配 iOS/iPadOS 26 的原生 Liquid Glass，iPad 支持侧栏与分屏。官方请求通过原生网络桥处理，PDF 导出到系统“文件”，保留支持作者入口。APK 下载功能供 Android 平板使用，不能在 iOS 安装 APK。
+新增 Swift + WKWebView 全屏壳，加载包内编译的前端资源；导航和业务界面在同一网页中绘制，底部按资源、测评、问答、我的分组，采用可滑动的悬浮玻璃样式与功能搜索。iPhone / iPad 共用分组 UX，保留 aoki 的紫白配色、得意黑和支持作者入口；系统只负责状态栏、文件面板与受限网络桥。玻璃外观由网页 CSS 模拟。APK 下载功能供 Android 平板使用，不能在 iOS 安装 APK。
 
 `npm run test:ios` 验证桥接与 OSS；`npm run build:ios` 在 macOS / Xcode 26+ 生成供爱思重新签名的未签名 IPA；Windows 使用 `npm run build:ios -- --web-only`。云端构建见 GitHub Actions 的 **Build iOS IPA**。完整操作说明、验证范围与签名步骤见 [native-ios/README.md](native-ios/README.md)。只有云端 Xcode 构建成功后才有真正的 IPA；Windows 前端构建不代表真机验证。
 
