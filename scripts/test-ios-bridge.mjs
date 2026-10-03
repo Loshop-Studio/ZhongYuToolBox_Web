@@ -83,6 +83,12 @@ checks.push('模板白名单拒绝路径穿越')
 const guarded=sandbox(false,{stripDate:true})
 await guarded.context.fetch('https://test.oss-cn-hangzhou.aliyuncs.com/test',{method:'PUT',headers:{Date:'Thu, 01 Oct 2026 00:00:00 GMT'},body:bytes})
 check(guarded.calls.find(call=>call.method==='request').args.headers.date==='Thu, 01 Oct 2026 00:00:00 GMT','WebKit 过滤 Date 时仍保留 OSS 签名日期')
+const imageSource='https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/a.png?signature=a%2Bb&x=2';
+const mappedImage=context.__zytbImageUrl(imageSource);
+check(mappedImage.startsWith('zytb-image://fetch?')&&new URL(mappedImage).searchParams.get('url')===imageSource,'原生图片地址保留签名参数和完整 URL')
+for(const blocked of ['https://zykj.org.evil.test/a.png','http://127.0.0.1:18765/a.png','https://user:password@zykj.org/a.png','data:image/png;base64,a','https://zykj.org:8080/a.png'])check(context.__zytbImageUrl(blocked)===blocked,'图片代理不扩大官方主机白名单：'+blocked)
+await context.fetch(context.__zytbImageUrl('https://sxz.alicdn.zykj.org/image.png'));
+check(calls.at(-1).method==='request'&&calls.at(-1).args.url==='https://sxz.alicdn.zykj.org/image.png','导出代码读取重写 img.src 时还原官方地址，经原生二进制桥读取')
 console.log(JSON.stringify({passed:checks.length,checks},null,2))
 
 console.log('PASS: iOS bridge '+checks.length+' checks; simulated native transport, no account/network access.')
