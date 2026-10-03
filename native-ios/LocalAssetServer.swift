@@ -13,13 +13,14 @@ final class LocalAssetServer {
         do {
             let parameters = NWParameters.tcp
             parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: UInt16(HostPolicy.port))!)
-            let listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: UInt16(HostPolicy.port))!)
+            let listener = try NWListener(using: parameters)
             self.listener = listener
             var replied = false
             listener.stateUpdateHandler = { state in
                 switch state {
                 case .ready: if !replied { replied = true; completion(.success(URL(string: HostPolicy.origin + "/")!)) }
                 case .failed(let error): if !replied { replied = true; completion(.failure(error)) }
+                case .waiting(let error): print("Local asset listener waiting: \(error)")
                 default: break
                 }
             }
