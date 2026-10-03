@@ -28,7 +28,7 @@ if(existsSync(assets))rmSync(assets,{recursive:true,force:true});copyTree(work,a
 run(process.execPath,[join(root,'scripts','generate-ios-project.mjs')])
 if(webOnly){console.log('iOS 前端与 Xcode 工程已准备；尚未编译 IPA。');process.exit(0)}
 const xcode=spawnSync('xcodebuild',['-version'],{encoding:'utf8'});console.log(xcode.stdout)
-if(xcode.status!==0 || Number(xcode.stdout.match(/Xcode (\d+)/)?.[1]||0)<26)throw Error('需要 Xcode 26+ SDK 才能采用原生 Liquid Glass')
+if(xcode.status!==0 || Number(xcode.stdout.match(/Xcode (\d+)/)?.[1]||0)<26)throw Error('此 iOS 构建配置需要 Xcode 26+ SDK')
 const icon=join(project,'Assets.xcassets','AppIcon.appiconset');mkdirSync(icon,{recursive:true})
 run('swift',[join(root,'scripts','generate-ios-icon.swift'),join(root,'public','icon.png'),join(icon,'AppIcon.png')])
 writeFileSync(join(icon,'Contents.json'),JSON.stringify({images:[{filename:'AppIcon.png',idiom:'universal',platform:'ios',size:'1024x1024'}],info:{author:'aoki',version:1}},null,2))
