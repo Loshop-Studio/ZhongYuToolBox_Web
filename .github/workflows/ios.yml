@@ -1,0 +1,26 @@
+name: Build iOS IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/ios-liquid-glass-1.1.9]
+permissions:
+  contents: read
+jobs:
+  ipa:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:ios
+      - run: npm run build:ios
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZhongYuToolBox-iPhone-iPad-unsigned-IPA
+          path: release/ios/
+          if-no-files-found: error
+          retention-days: 30
