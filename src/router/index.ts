@@ -1,10 +1,17 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { PLATFORM } from '@/config'
 
 const Placeholder = () => import('@/views/PlaceholderView.vue')
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: PLATFORM === 'ios' ? '/resources' : '/login' },
+  ...(PLATFORM === 'ios' ? [
+    { path: '/resources', name: 'mobile-resources', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'resources' }, meta: { title: '资源' } },
+    { path: '/assessment', name: 'mobile-assessment', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'assessment' }, meta: { title: '测评' } },
+    { path: '/questions', name: 'mobile-questions', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'questions' }, meta: { title: '问答' } },
+    { path: '/me', name: 'mobile-me', component: () => import('@/views/mobile/MobileMeView.vue'), meta: { title: '我的' } }
+  ] : []),
   {
     path: '/login',
     name: 'login',
@@ -85,9 +92,13 @@ const router = createRouter({
 // 未登录拦截（登录页除外）
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  const publicPages = ['/login', '/about', '/donate', '/apps']
+  const publicPages = ['/login', '/about', '/donate', '/apps', ...(PLATFORM === 'ios' ? ['/resources', '/assessment', '/questions', '/me'] : [])]
+  if (PLATFORM === 'ios' && auth.isLoggedIn && ['/resources', '/assessment', '/questions'].includes(to.path)) {
+    const sections: Record<string, string> = to.path === '/resources' ? { note: '/note', column: '/column', lesson: '/lesson' } : { exam: '/exam', mistake: '/mistake' }
+    return { path: to.path === '/questions' ? '/quora' : sections[String(to.query.section)] || (to.path === '/resources' ? '/note' : '/exam') }
+  }
   if (!publicPages.includes(to.path) && !auth.isLoggedIn) {
-    return { path: '/login' }
+    return PLATFORM === 'ios' ? { path: '/login', query: { redirect: to.fullPath } } : { path: '/login' }
   }
   return true
 })
