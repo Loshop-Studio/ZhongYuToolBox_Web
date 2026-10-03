@@ -1,0 +1,35 @@
+/* Content keeps aoki's palette. Native navigation uses UIKit's system Liquid Glass. */
+.ios-edition body { overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+.ios-edition .layout-root { height: 100dvh; }
+.ios-edition.ios-native-chrome #app .windows-ui .mobile-topbar,
+.ios-edition.ios-native-chrome #app .windows-ui > .main-container > .el-container > .header { display: none; }
+.ios-edition.ios-native-chrome #app .windows-ui .main-container.is-mobile { height: 100%; }
+.ios-edition #app .windows-ui .content { padding: 20px 28px 28px; }
+.ios-edition #app .windows-ui .content.flush { padding: 0; }
+.ios-edition .el-dialog { max-width: calc(100vw - 24px); }
+.ios-edition .el-overlay-dialog { padding: 0 12px; }
+.ios-edition .el-message { max-width: calc(100vw - 24px); word-break: break-word; }
+.ios-edition .el-button { min-height: 44px !important; }
+.ios-edition .el-input__inner { font-size: 16px; }
+.ios-edition .selection-bar, .ios-edition .pdf-queue-row,
+.ios-edition .image-selection-row { flex-wrap: wrap; gap: 8px; }
+.ios-edition .mobile-drawer.el-drawer,
+.ios-edition .mobile-drawer .el-drawer__header,
+.ios-edition .mobile-drawer .el-drawer__body { background: var(--surface); color: var(--ink); }
+.ios-edition .mobile-drawer .el-drawer__close-btn { color: var(--ink); }
+@media (max-width: 767px) {
+  .ios-edition #app .windows-ui .content:not(.flush) { padding: 18px 14px 24px; }
+  .ios-edition .edition-breadcrumb { display: none; }
+  .ios-edition .edition-page-heading { margin-bottom: 20px; gap: 12px; }
+  .ios-edition .edition-page-heading h1 { font-size: 28px; }
+  .ios-edition .edition-page-heading p { font-size: 14px; }
+  .ios-edition #app .windows-ui .el-card { border-radius: 22px; }
+  .ios-edition #app .windows-ui .el-card__header { padding: 18px 16px 0; font-size: 21px; }
+  .ios-edition #app .windows-ui .el-card__body { padding: 18px 16px; }
+  .ios-edition .edition-footer, .ios-edition .el-pagination { flex-wrap: wrap; gap: 8px; }
+  .ios-edition .queue-file, .ios-edition .image-file-name { min-width: 0; overflow-wrap: anywhere; }
+}
+/* System accessibility settings take precedence over decorative animation/transparency. */
+@media (prefers-reduced-motion: reduce) {
+  .ios-edition *, .ios-edition *::before, .ios-edition *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; }
+}
