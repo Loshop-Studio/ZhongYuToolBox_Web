@@ -111,10 +111,10 @@ export const readSessionState = reactive<Record<string, boolean>>({})
  * 把消息中的 content（zip URL）拉成 Blob，给 EzyBoardViewer 解析播放。
  * 浏览器模式下走资源代理绕开跨域限制；原生运行环境（5+/Electron file://）直连。
  */
-export async function fetchContentBlob(contentUrl: string): Promise<Blob> {
+export async function fetchContentBlob(contentUrl: string, signal?: AbortSignal): Promise<Blob> {
   if (!contentUrl) throw new Error('content url is empty')
   const url = resourceFetchUrl(contentUrl)
-  const resp = await fetch(url)
+  const resp = await fetch(url, { signal })
   if (!resp.ok) throw new Error(`fetch zip failed: ${resp.status} ${resp.statusText}`)
   return resp.blob()
 }
