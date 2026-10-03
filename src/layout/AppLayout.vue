@@ -5,13 +5,13 @@
 
     <!-- ===== 移动端顶栏（置顶，二级页面隐藏） ===== -->
     <header v-if="isMobile && !hideHeader" class="mobile-topbar">
-      <el-button text :icon="Menu" class="menu-btn" @click="drawer = true" />
+      <el-button text :icon="Menu" class="menu-btn" aria-label="打开导航菜单" @click="drawer = true" />
       <span class="mb-title">{{ currentTitle }}</span>
       <div class="mb-right">
         <el-tag v-if="proxyLocal" type="success" size="small" effect="dark">加速</el-tag>
-        <el-button text :icon="User" @click="goLogin" />
+        <el-button text :icon="User" aria-label="用户中心" @click="goLogin" />
         <el-dropdown trigger="click" @command="onMobileCommand">
-          <el-button text :icon="More" />
+          <el-button text :icon="More" aria-label="更多操作" />
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item :icon="User" command="user">个人中心</el-dropdown-item>
@@ -103,7 +103,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -145,7 +145,15 @@ function toggleSidebar(event: MouseEvent) {
   collapsed.value = !collapsed.value
 }
 const drawer = ref(false)
-if (PLATFORM === 'android') (window as any).__zytbBack = () => {
+if (PLATFORM === 'ios') {
+  const host = (window as any).nativeHost
+  ;(window as any).__zytbNavigate = (path: string) => router.push(path)
+  ;(window as any).__zytbSetThemeMode = setThemeMode
+  watch(() => route.fullPath, () => {
+    host?.syncNavigation({ path: route.path, title: String(route.meta.title || '中育工具箱') }).catch(() => {})
+  }, { immediate: true })
+}
+if (PLATFORM === 'android' || PLATFORM === 'ios') (window as any).__zytbBack = () => {
   if (drawer.value) { drawer.value = false; return true }
   const overlay = document.querySelector('.el-overlay-dialog .el-dialog__headerbtn, .el-message-box__headerbtn') as HTMLElement
   if (overlay) { overlay.click(); return true }
