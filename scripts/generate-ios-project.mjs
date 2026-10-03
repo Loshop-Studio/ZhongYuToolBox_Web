@@ -1,0 +1,28 @@
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs'
+import {resolve,dirname,join} from 'node:path'
+import {fileURLToPath} from 'node:url'
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'), project=join(root,'native-ios','ZhongYuToolBox.xcodeproj')
+const version=JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version.split('-')[0]
+if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('无效 iOS 版本号')
+const id=n=>n.toString(16).padStart(24,'0').toUpperCase()
+const sources=['App.swift','HostPolicy.swift','LocalAssetServer.swift','NativeTransport.swift']
+const resources=[['bridge.js','sourcecode.javascript'],['WebAssets','folder'],['Assets.xcassets','folder.assetcatalog']]
+let entries=[]
+sources.forEach((name,i)=>{entries.push(`${id(100+i)} = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ${name}; sourceTree = "<group>"; };`);entries.push(`${id(200+i)} = {isa = PBXBuildFile; fileRef = ${id(100+i)}; };`)})
+resources.forEach(([name,type],i)=>{entries.push(`${id(110+i)} = {isa = PBXFileReference; lastKnownFileType = ${type}; path = ${name}; sourceTree = "<group>"; };`);entries.push(`${id(210+i)} = {isa = PBXBuildFile; fileRef = ${id(110+i)}; };`)})
+entries.push(`${id(1)} = {isa = PBXProject; attributes = {LastUpgradeCheck = 2600; }; buildConfigurationList = ${id(20)}; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; knownRegions = (en, "zh-Hans", Base); mainGroup = ${id(2)}; productRefGroup = ${id(3)}; projectDirPath = ""; projectRoot = ""; targets = (${id(4)}); };`)
+entries.push(`${id(2)} = {isa = PBXGroup; children = (${sources.map((_,i)=>id(100+i)).join(',')},${resources.map((_,i)=>id(110+i)).join(',')},${id(3)}); sourceTree = "<group>"; };`)
+entries.push(`${id(3)} = {isa = PBXGroup; children = (${id(5)}); name = Products; sourceTree = "<group>"; };`)
+entries.push(`${id(5)} = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZhongYuToolBox.app; sourceTree = BUILT_PRODUCTS_DIR; };`)
+entries.push(`${id(4)} = {isa = PBXNativeTarget; buildConfigurationList = ${id(21)}; buildPhases = (${id(6)},${id(7)},${id(8)}); buildRules = (); dependencies = (); name = ZhongYuToolBox; productName = ZhongYuToolBox; productReference = ${id(5)}; productType = "com.apple.product-type.application"; };`)
+entries.push(`${id(6)} = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (${sources.map((_,i)=>id(200+i)).join(',')}); runOnlyForDeploymentPostprocessing = 0; };`)
+entries.push(`${id(7)} = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };`)
+entries.push(`${id(8)} = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (${resources.map((_,i)=>id(210+i)).join(',')}); runOnlyForDeploymentPostprocessing = 0; };`)
+const projectSettings='SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 16.0; SWIFT_VERSION = 5.0; CLANG_ENABLE_MODULES = YES;'
+const targetSettings=`PRODUCT_BUNDLE_IDENTIFIER = com.aoki.zhongyutoolbox.ios; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = Info.plist; MARKETING_VERSION = ${version}; CURRENT_PROJECT_VERSION = ${version.split('.').map(Number).reduce((v,n)=>v*100+n)}; TARGETED_DEVICE_FAMILY = "1,2"; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon; CODE_SIGNING_ALLOWED = NO; ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; ENABLE_USER_SCRIPT_SANDBOXING = YES; SWIFT_STRICT_CONCURRENCY = minimal;`
+for(const [base,settings] of [[30,projectSettings],[40,targetSettings]])for(const [offset,name]of [[0,'Debug'],[1,'Release']])entries.push(`${id(base+offset)} = {isa = XCBuildConfiguration; buildSettings = {${settings} SWIFT_OPTIMIZATION_LEVEL = "${name==='Debug'?'-Onone':'-O'}"; }; name = ${name}; };`)
+for(const [n,base]of [[20,30],[21,40]])entries.push(`${id(n)} = {isa = XCConfigurationList; buildConfigurations = (${id(base)},${id(base+1)}); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };`)
+mkdirSync(project,{recursive:true});writeFileSync(join(project,'project.pbxproj'),`// !$*UTF8*$!\n{archiveVersion = 1; classes = {}; objectVersion = 56; objects = {\n${entries.join('\n')}\n}; rootObject = ${id(1)}; }\n`)
+const shared=join(project,'xcshareddata','xcschemes');mkdirSync(shared,{recursive:true})
+writeFileSync(join(shared,'ZhongYuToolBox.xcscheme'),`<?xml version="1.0" encoding="UTF-8"?><Scheme LastUpgradeVersion="2600" version="1.3"><BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${id(4)}" BuildableName="ZhongYuToolBox.app" BlueprintName="ZhongYuToolBox" ReferencedContainer="container:ZhongYuToolBox.xcodeproj"/></BuildActionEntry></BuildActionEntries></BuildAction><LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.IDEFoundation.Launcher.LLDB"><BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="${id(4)}" BuildableName="ZhongYuToolBox.app" BlueprintName="ZhongYuToolBox" ReferencedContainer="container:ZhongYuToolBox.xcodeproj"/></BuildableProductRunnable></LaunchAction><ArchiveAction buildConfiguration="Release" revealArchiveInOrganizer="YES"/></Scheme>`)
+console.log('生成 Xcode 工程：'+project)
