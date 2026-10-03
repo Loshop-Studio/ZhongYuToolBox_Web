@@ -34,6 +34,7 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
     private var canvasConstraints: [NSLayoutConstraint] = []
     private var groupControllers: [UIViewController] = []
     private let groups = ["resources", "assessment", "questions", "me"]
+    private var currentWebGroup = "resources"
     private var systemDark: Bool { UIScreen.main.traitCollection.userInterfaceStyle == .dark }
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -130,8 +131,7 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
     }
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         guard let index = groupControllers.firstIndex(where: { $0 === viewController }) else { return }
-        mountCanvas()
-        main?.evaluateJavaScript("window.__zytbSelectGroup && window.__zytbSelectGroup('\(groups[index])')", completionHandler: nil)
+        selectNativeGroup(index)
     }
     @available(iOS 18.0, *)
     func tabBarController(_ tabBarController: UITabBarController, shouldSelectTab tab: UITab) -> Bool {
@@ -141,7 +141,14 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
     @available(iOS 18.0, *)
     func tabBarController(_ tabBarController: UITabBarController, didSelectTab selectedTab: UITab, previousTab: UITab?) {
         guard let index = groups.firstIndex(of: selectedTab.identifier) else { return }
+        selectNativeGroup(index)
+    }
+    private func selectNativeGroup(_ index: Int) {
         mountCanvas()
+        // Programmatic selection mirrors the web route and must not navigate it
+        // again. Both UIKit delegate APIs can also report the same user selection.
+        guard currentWebGroup != groups[index] else { return }
+        currentWebGroup = groups[index]
         main?.evaluateJavaScript("window.__zytbSelectGroup && window.__zytbSelectGroup('\(groups[index])')", completionHandler: nil)
     }
     private func makeWebView(privileged: Bool, script: String = "") -> WKWebView {
@@ -182,8 +189,11 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
         case "getDeviceId": reply(UIDevice.current.identifierForVendor?.uuidString ?? "", nil)
         case "syncNavigation":
             route = args["path"] as? String ?? "/login"; title = args["title"] as? String ?? "中育工具箱"
-            if let group = args["group"] as? String, let index = groups.firstIndex(of: group), selectedIndex != index {
-                selectedIndex = index; mountCanvas()
+            // Vue emits its unresolved root before the first route is ready.
+            guard route != "/" else { reply(true, nil); return }
+            if let group = args["group"] as? String, let index = groups.firstIndex(of: group) {
+                currentWebGroup = group
+                if selectedIndex != index { selectedIndex = index; mountCanvas() }
             }
             backButton.isHidden = !(args["canGoBack"] as? Bool ?? false)
             reply(true, nil)
