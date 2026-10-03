@@ -19,18 +19,19 @@ import packageInfo from '../../package.json'
 export const IS_BROWSER: boolean =
   (import.meta.env.VITE_IS_BROWSER as string | undefined) !== 'false'
 
-export type Platform = 'browser' | 'electron' | 'webview2' | 'plus' | 'android'
+export type Platform = 'browser' | 'electron' | 'webview2' | 'plus' | 'android' | 'ios'
 
 export const PLATFORM: Platform = IS_BROWSER
   ? 'browser'
   : (import.meta.env.VITE_PLATFORM as string | undefined) === 'plus'
     ? 'plus'
     : (import.meta.env.VITE_PLATFORM as string | undefined) === 'android' ? 'android'
+    : (import.meta.env.VITE_PLATFORM as string | undefined) === 'ios' ? 'ios'
     : (import.meta.env.VITE_PLATFORM as string | undefined) === 'webview2' ? 'webview2' : 'electron'
 
 export const IS_WINDOWS = PLATFORM === 'electron' || PLATFORM === 'webview2'
 /** Both native editions share aoki's UI, themes and local conversion workflow. */
-export const IS_AOKI = IS_WINDOWS || PLATFORM === 'android'
+export const IS_AOKI = IS_WINDOWS || PLATFORM === 'android' || PLATFORM === 'ios'
 
 /** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */
 export const USE_PROXY: boolean = IS_BROWSER
