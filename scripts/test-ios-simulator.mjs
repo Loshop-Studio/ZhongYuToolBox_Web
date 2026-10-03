@@ -1,5 +1,5 @@
 import {spawnSync} from 'node:child_process'
-import {mkdirSync, existsSync} from 'node:fs'
+import {mkdirSync, existsSync, readFileSync} from 'node:fs'
 import {resolve, join} from 'node:path'
 if(process.platform !== 'darwin') throw Error('Simulator verification requires macOS / Xcode')
 const app=resolve('release/ios/ZhongYuToolBox-Simulator.app'), output=resolve('release/ios/test-evidence')
@@ -17,14 +17,21 @@ for(const kind of ['iPhone','iPad']) {
  if(!device) throw Error(`No iOS 26 ${kind} simulator available`)
  try {
   run(['boot',device.udid]); run(['bootstatus',device.udid,'-b'])
+  run(['ui',device.udid,'appearance','light'])
   run(['status_bar',device.udid,'override','--time','9:41','--batteryState','charged','--batteryLevel','100'])
   run(['install',device.udid,app])
   run(['launch',device.udid,'com.aoki.zhongyutoolbox.ios'])
   await new Promise(resolve=>setTimeout(resolve,15000))
   run(['io',device.udid,'screenshot',join(output,`${kind}-light.png`)])
   run(['ui',device.udid,'appearance','dark'])
-  await new Promise(resolve=>setTimeout(resolve,3000))
-  run(['io',device.udid,'screenshot',join(output,`${kind}-dark.png`)])
+  const light=readFileSync(join(output,`${kind}-light.png`)), darkPath=join(output,`${kind}-dark.png`)
+  let changed=false
+  for(let attempt=0;attempt<5;attempt++) {
+   await new Promise(resolve=>setTimeout(resolve,3000))
+   run(['io',device.udid,'screenshot',darkPath])
+   if(!readFileSync(darkPath).equals(light)){changed=true;break}
+  }
+  if(!changed)throw Error(`${kind} did not redraw after the system appearance changed`)
   console.log(`Launched ${device.name}; screenshots require visual inspection`)
   if(kind === 'iPhone') {
    const test=spawnSync('xcodebuild',[
