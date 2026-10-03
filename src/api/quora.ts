@@ -1,3 +1,4 @@
+import { resourceFetchUrl } from '@/utils/proxy'
 /**
  * 随身答接口（复刻 index.js quesInit / ques_query / previewQuestion）
  */
@@ -108,4 +109,11 @@ export const readSessionState = reactive<Record<string, boolean>>({})
 
 export function markSessionRead(id: string | number): void {
   readSessionState[String(id)] = true
+}
+
+export async function fetchContentBlob(contentUrl: string, signal?: AbortSignal): Promise<Blob> {
+  if (!contentUrl) throw new Error('缺少画板资源地址')
+  const response = await fetch(resourceFetchUrl(contentUrl), { signal })
+  if (!response.ok) throw new Error(`下载画板失败：HTTP ${response.status}`)
+  return response.blob()
 }

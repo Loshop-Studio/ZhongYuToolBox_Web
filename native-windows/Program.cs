@@ -139,7 +139,9 @@ internal sealed class ToolboxWindow : Window {
         bool authorStats = sender == main.CoreWebView2 && IsTrusted(main.CoreWebView2.Source) &&
             e.Request.Uri == "https://tbapi.loshop.com.cn/api/login" &&
             (e.Request.Method == "POST" || e.Request.Method == "OPTIONS");
-        if (!IsRemote(e.Request.Uri) && !authorStats) return;
+        bool releaseCheck = sender == main.CoreWebView2 && IsTrusted(main.CoreWebView2.Source) &&
+            e.Request.Method == "GET" && new[] { "https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "https://api.github.com/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest" }.Contains(e.Request.Uri);
+        if (!IsRemote(e.Request.Uri) && !authorStats && !releaseCheck) return;
         // Let the browser stream media/documents and load its own page assets.
         // CORS adaptation is needed for API calls and canvas-readable images.
         if (new[] { CoreWebView2WebResourceContext.Media, CoreWebView2WebResourceContext.Document,

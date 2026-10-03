@@ -22,8 +22,7 @@ export const personalTools = [
   { label: '开发工具', description: '上传与接口工具', path: '/dev', icon: 'Tools', section: '工具' },
   { label: '分享', description: '分享你的学习资源', path: '/share', icon: 'Share', section: '工具' },
   { label: '加速插件', description: '桌面端辅助插件说明', path: '/proxy', icon: 'Connection', section: '工具' },
-  { label: '支持作者', description: '支持 Loshop 的开源工作', path: '/donate', icon: 'Heart', section: '项目' },
-  { label: '关于与致谢', description: '使用说明、版本与贡献者', path: '/about', icon: 'InfoFilled', section: '项目' }
+  { label: '关于应用', description: '检查更新、支持作者、说明与致谢', path: '/about', icon: 'InfoFilled', section: '项目' }
 ] as const
 export function mobileGroupForPath(path: string): MobileGroup {
   const root = '/' + path.split(/[/?#]/).filter(Boolean)[0]

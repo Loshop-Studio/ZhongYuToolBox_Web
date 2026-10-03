@@ -165,6 +165,9 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
         #if targetEnvironment(simulator)
         if privileged && ProcessInfo.processInfo.arguments.contains("--ios-ui-fixtures") {
             startup += "\n" + IOSSimulatorFixtures.script
+            if ProcessInfo.processInfo.arguments.contains("--ios-board-fixtures") {
+                startup += "\nlocation.hash='/quora/77/board';"
+            }
             imageHandler.testProtocols = [FixtureImageProtocol.self]
         } else if privileged {
             startup += "\nif(localStorage.getItem('ios-ui-fixture')==='true')localStorage.clear();"
@@ -188,7 +191,7 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
         let reply: (Any?, String?) -> Void = { value, error in DispatchQueue.main.async { replyHandler(value, error) } }
         let network = Set(["beginRequest", "writeRequest", "request", "cancelRequest"])
         guard privileged || network.contains(method) else { reply(nil, "远端页面不能访问文件、设备或窗口"); return }
-        if network.contains(method) || ["beginSave", "writeSaveChunk", "abortSave"].contains(method) { transport.handle(method, args, reply: reply); return }
+        if network.contains(method) || ["beginSave", "writeSaveChunk", "abortSave"].contains(method) { transport.handle(method, args, privileged: privileged, reply: reply); return }
         switch method {
         case "getEnvironment": reply(["systemDark": systemDark], nil)
         case "getDeviceId": reply(UIDevice.current.identifierForVendor?.uuidString ?? "", nil)

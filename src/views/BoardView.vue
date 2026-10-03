@@ -84,6 +84,9 @@ const MAX_HISTORY = 50
 
 function applyZoom() {
   if (!fc) return
+  const width = Math.max(1, Math.round(CANVAS_W * zoomLevel.value))
+  const height = Math.max(1, Math.round(CANVAS_H * zoomLevel.value))
+  fc.setDimensions({ width, height })
   fc.setZoom(zoomLevel.value)
   innerStyle.width = Math.round(CANVAS_W * zoomLevel.value) + 'px'
   innerStyle.height = Math.round(CANVAS_H * zoomLevel.value) + 'px'
@@ -94,7 +97,8 @@ function fitZoom() {
   const pad = 24
   const maxW = wrap.clientWidth - pad
   const maxH = wrap.clientHeight - pad
-  zoomLevel.value = Math.min(maxW / CANVAS_W, maxH / CANVAS_H, 1)
+  if (maxW <= 0 || maxH <= 0) return
+  zoomLevel.value = Math.max(0.05, Math.min(maxW / CANVAS_W, maxH / CANVAS_H, 1))
   applyZoom()
 }
 
@@ -106,7 +110,7 @@ function saveState() {
 }
 function undo() {
   if (!fc || undoStack.length < 2) return
-  undoStack.pop()
+  redoStack.push(undoStack.pop()!)
   const prev = undoStack[undoStack.length - 1]
   fc.loadFromJSON(prev, () => fc!.renderAll())
 }
@@ -208,12 +212,12 @@ async function send() {
   sending.value = true
   try {
     const prevZoom = zoomLevel.value
-    zoomLevel.value = 1
-    applyZoom()
-    const jpgUrl = fc.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1, width: CANVAS_W, height: CANVAS_H })
-    const pngUrl = fc.toDataURL({ format: 'png', multiplier: 1, width: CANVAS_W, height: CANVAS_H })
-    zoomLevel.value = prevZoom
-    applyZoom()
+    let jpgUrl: string, pngUrl: string
+    try {
+      zoomLevel.value = 1; applyZoom()
+      jpgUrl = fc.toDataURL({ format: 'jpeg', quality: 0.92, multiplier: 1, width: CANVAS_W, height: CANVAS_H })
+      pngUrl = fc.toDataURL({ format: 'png', multiplier: 1, width: CANVAS_W, height: CANVAS_H })
+    } finally { zoomLevel.value = prevZoom; applyZoom() }
 
     const jpgBlob = await (await fetch(jpgUrl)).blob()
     const pngBlob = await (await fetch(pngUrl)).blob()
@@ -253,6 +257,7 @@ function initCanvas() {
   fc = new fabric.Canvas(canvasRef.value, {
     width: CANVAS_W,
     height: CANVAS_H,
+    allowTouchScrolling: false,
     backgroundColor: '#ffffff',
     selection: true,
     preserveObjectStacking: true
@@ -276,7 +281,7 @@ function initCanvas() {
       insertImage(off.toDataURL())
     }
     img.onerror = () => console.error('插入问题截图失败')
-    img.src = pending
+    img.src = proxyImgSrc(pending)
   }
 }
 
@@ -303,6 +308,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 580px;
 }
 .appbar {
   display: flex;
@@ -370,9 +376,15 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: 8px;
-  min-height: 0;
+  min-height: 240px;
+  box-sizing: border-box;
 }
 .canvas-inner {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
 }
+</style>
+
+<style scoped>
+.board-wrap :deep(.upper-canvas) { touch-action: none; }
+@media(max-width:767px) { .board-page { height:auto; min-height:0; }.board-wrap { flex:none; height:clamp(260px,45dvh,600px); }.board-toolbar { gap:8px; }.swatches { flex-wrap:wrap; }.canvas-inner { flex-shrink:0; } }
 </style>

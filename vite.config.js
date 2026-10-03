@@ -11,7 +11,8 @@ export default defineConfig(function (_a) {
         plugins: [vue()],
         resolve: {
             alias: {
-                '@': fileURLToPath(new URL('./src', import.meta.url))
+                '@': fileURLToPath(new URL('./src', import.meta.url)),
+                'ezy-board-viewer': fileURLToPath(new URL('./packages/ezy-board-viewer/src/index.js', import.meta.url))
             }
         },
         server: {

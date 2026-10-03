@@ -19,6 +19,10 @@ enum HostPolicy {
         }
         return false
     }
+    static func release(_ url: URL?, method: String) -> Bool {
+        guard let url else { return false }
+        return method == "GET" && url.scheme == "https" && url.host == "api.github.com" && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil && url.query == nil && url.fragment == nil && ["/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest"].contains(url.path)
+    }
     static func external(_ url: URL?) -> Bool {
         guard let url else { return false }
         return ["http", "https"].contains(url.scheme ?? "") && url.user == nil && url.password == nil && !local(url)

@@ -59,7 +59,7 @@ if (!qa && fs.existsSync(path.join(output, 'dist/tests'))) throw new Error('QA p
 fs.mkdirSync(path.join(output, 'LICENSES'))
 fs.copyFileSync(path.join(sdk, 'LICENSE.txt'), path.join(output, 'LICENSES/WebView2-LICENSE.txt'))
 fs.copyFileSync(path.join(sdk, 'NOTICE.txt'), path.join(output, 'LICENSES/WebView2-NOTICE.txt'))
-for (const name of ['vue', 'pinia', 'element-plus', 'pdf-lib', 'pdfjs-dist', 'html2canvas', 'katex', 'crypto-js', 'jszip', 'ali-oss']) {
+for (const name of ['vue', 'pinia', 'element-plus', 'pdf-lib', 'pdfjs-dist', 'html2canvas', 'katex', 'crypto-js', 'jszip', 'ali-oss', 'mp4-muxer']) {
   const directory = path.join(root, 'node_modules', name)
   for (const file of fs.readdirSync(directory).filter(name => /^(license|notice)(\.|$)/i.test(name))) {
     if (fs.statSync(path.join(directory, file)).isFile()) fs.copyFileSync(path.join(directory, file), path.join(output, 'LICENSES', name + '-' + file))

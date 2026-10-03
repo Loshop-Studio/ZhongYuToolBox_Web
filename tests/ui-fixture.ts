@@ -20,6 +20,7 @@ const json=(data:any)=>new Response(JSON.stringify(data),{headers:{'Content-Type
 const originalFetch=window.fetch.bind(window)
 window.fetch=async(url,options)=>{
   const address=String(url)
+  if(address.startsWith('https://api.github.com/repos/')) return originalFetch(url,options)
   if (/GetExamTaskAsync|GetExamOverviewAsync|GetQuestionAnalysisAsync/.test(address)) {
     const params = new URL(address).searchParams, id = Number(params.get('id') ?? params.get('examId'))
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error('无效的测评编号：'+String(id))

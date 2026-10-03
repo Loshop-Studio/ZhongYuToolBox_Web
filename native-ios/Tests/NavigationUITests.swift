@@ -1,6 +1,29 @@
 import XCTest
 
 final class NavigationUITests: XCTestCase {
+    func testBoardReplyFitsPhoneAndSupportsEditing() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ios-ui-fixtures", "--ios-board-fixtures"]
+        app.launch()
+        let web = app.webViews.firstMatch
+        XCTAssertTrue(web.buttons["画笔"].waitForExistence(timeout: 20))
+        let zoom = web.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[0-9]+%" )).firstMatch
+        XCTAssertTrue(zoom.exists, "Zoom must be positive, never -1%")
+        let numericZoom = Int(zoom.label.replacingOccurrences(of: "%", with: "")) ?? 0
+        XCTAssertGreaterThan(numericZoom, 0)
+        XCTAssertLessThanOrEqual(numericZoom, 100)
+        web.buttons["文字"].tap()
+        let text = web.textViews.firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 5), "Fabric editing must open on real WKWebView")
+        text.typeText("iOS board")
+        web.buttons["选择"].tap()
+        web.buttons["撤销"].tap()
+        web.buttons["重做"].tap()
+        XCTAssertTrue(web.buttons["发送"].exists)
+        XCTAssertTrue(app.buttons["native-back"].exists)
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "Board reply positive zoom and visible canvas"; shot.lifetime = .keepAlways; add(shot)
+    }
     func testNativeGroupsAndSystemGlass() {
         let app = XCUIApplication()
         app.launch()

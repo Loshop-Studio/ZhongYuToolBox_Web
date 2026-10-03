@@ -21,7 +21,7 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
         return URLSession(configuration: config, delegate: self, delegateQueue: delegates)
     }()
     init(cache: URL) { self.cache = cache; super.init() }
-    func handle(_ method: String, _ args: [String: Any], reply: @escaping (Any?, String?) -> Void) {
+    func handle(_ method: String, _ args: [String: Any], privileged: Bool = false, reply: @escaping (Any?, String?) -> Void) {
         queue.async {
             do {
                 switch method {
@@ -46,7 +46,7 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
                     self.tasks[id]?.cancel()
                     if let stage = self.stages.removeValue(forKey: id) { try? FileManager.default.removeItem(at: stage.url) }
                     reply(true, nil)
-                case "request": try self.request(args, reply: reply)
+                case "request": try self.request(args, privileged: privileged, reply: reply)
                 default: throw HostFailure.message("未知网络操作")
                 }
             } catch { reply(nil, error.localizedDescription) }
@@ -68,9 +68,9 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
             } catch { completion(.failure(error)) }
         }
     }
-    private func request(_ args: [String: Any], reply: @escaping (Any?, String?) -> Void) throws {
+    private func request(_ args: [String: Any], privileged: Bool, reply: @escaping (Any?, String?) -> Void) throws {
         let id = args["session"] as? String ?? "", method = (args["method"] as? String ?? "GET").uppercased()
-        guard let stage = stages[id], tasks[id] == nil, let value = args["url"] as? String, let url = URL(string: value), HostPolicy.remote(url), HostPolicy.methods.contains(method) else { throw HostFailure.message("请求地址、方法或会话未获允许") }
+        guard let stage = stages[id], tasks[id] == nil, let value = args["url"] as? String, let url = URL(string: value), (HostPolicy.remote(url) || (privileged && HostPolicy.release(url, method: method))), HostPolicy.methods.contains(method) else { throw HostFailure.message("请求地址、方法或会话未获允许") }
         var request = URLRequest(url: url); request.httpMethod = method
         let forbidden = Set(["host", "origin", "referer", "connection", "content-length", "accept-encoding", "cookie"])
         for (key, value) in args["headers"] as? [String: String] ?? [:] where !forbidden.contains(key.lowercased()) { request.setValue(value, forHTTPHeaderField: key) }

@@ -4,6 +4,8 @@ import { convertPdfToImages } from '../src/utils/pdf'
 import { initializeTheme, setThemeMode, resolveDarkMode } from '../src/composables/useTheme'
 import { buildInjectJS } from '../src/composables/useWebviewInject'
 import { featureQa } from './features-qa'
+import { boardCodecQa } from './board-codec-qa'
+import { fetchLatestRelease } from '../src/utils/appUpdate'
 
 const checks: string[] = []
 function check(ok: boolean, message: string) {
@@ -83,6 +85,7 @@ async function main() {
   check(writes === settled && settled > 0, '样式监听收敛，无自身触发循环')
   observer.disconnect(); frame.remove()
 
+  const exportedBoard = await boardCodecQa(check)
   const host = (window as any).nativeHost
   if (host) {
     check(host.kind === 'webview2' && !(window as any).require, '真实 WebView2 壳，无 Node')
@@ -91,6 +94,11 @@ async function main() {
     check(denied, '原生桥拒绝任意路径')
     const bytes = new Uint8Array(2 * 1024 * 1024 + 7); bytes.forEach((_, i) => { bytes[i] = i % 251 })
     const saved = await host.saveFile(bytes.buffer, 'qa.bin'); check(!saved.canceled, '真实原生分块保存大于 2 MB 文件')
+    await host.saveFile(await exportedBoard.svg.arrayBuffer(), 'qa-board.svg')
+    await host.saveFile(await exportedBoard.mp4.arrayBuffer(), 'qa-board.mp4')
+    check(true, 'SVG / MP4 由真实原生桥本地保存')
+    const release = await fetchLatestRelease('nickfox395/ZhongYuToolBox_Web')
+    check(release.url.startsWith('https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/'), '真实原生桥读取公开 GitHub Release，无学校凭证')
     const version = await fetch('https://hagateway.zykj.org/api/discovery/sxz').then(r => r.json())
     check(version.server === 'http://sxz.api.zykj.org', '真实 WebView2 官方学校发现跨域读取')
     const options = await fetch('https://hagateway.zykj.org/api/discovery/sxz', { method: 'OPTIONS', headers: { 'Access-Control-Request-Headers': 'x-oss-test' } })

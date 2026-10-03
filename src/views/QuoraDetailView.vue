@@ -37,6 +37,7 @@
               <div class="thumb-ph"><el-icon><Picture /></el-icon></div>
             </template>
           </el-image>
+          <div v-if="m.content" class="board-actions"><el-button size="small" :icon="VideoPlay" @click="openBoardView(m)">查看 / 导出画板</el-button></div>
         </div>
       </div>
     </el-scrollbar>
@@ -47,7 +48,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Picture, Share, EditPen } from '@element-plus/icons-vue'
+import { ArrowLeft, Picture, Share, EditPen, VideoPlay } from '@element-plus/icons-vue'
 import { proxyImgSrc } from '@/utils/proxy'
 import { getMessages, resetReadState, markSessionRead, type QuoraMessage } from '@/api/quora'
 
@@ -83,6 +84,10 @@ async function load() {
 function goBack() {
   if (window.history.length > 1) router.back()
   else router.push('/quora')
+}
+
+function openBoardView(m: QuoraMessage) {
+  router.push({ name: 'quora-board-view', params: { sessionId: sessionId.value }, query: { content: m.content, name: `quora-${m.id || 'board'}` } })
 }
 
 function openBoard() {

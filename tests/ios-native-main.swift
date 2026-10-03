@@ -4,6 +4,9 @@ var checks = 0
 func check(_ value: @autoclosure () -> Bool, _ name: String) { precondition(value(), name); checks += 1 }
 for url in ["http://sxz.api.zykj.org/api/test", "https://hagateway.zykj.org/api/discovery/sxz", "https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/test", "https://cloud.linspirer.com:883/public-interface.php"] { check(HostPolicy.remote(URL(string: url)), "Official host allowed") }
 for url in ["https://zykj.org.evil.test", "https://evilzykj.org", "http://127.0.0.1:18765", "file:///etc/passwd", "https://token@zykj.org/test", "https://zykj.org:8888", "https://tbapi.loshop.com.cn/api/login"] { check(!HostPolicy.remote(URL(string: url)), "Unapproved host rejected") }
+check(HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest"), method:"GET"), "Own public release metadata allowed")
+check(!HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest"), method:"POST"), "Release writes rejected")
+check(!HostPolicy.release(URL(string:"https://api.github.com/repos/other/private/releases/latest"), method:"GET"), "Other repositories rejected")
 check(HostPolicy.local(URL(string: HostPolicy.origin)), "Local origin")
 check(!HostPolicy.local(URL(string: "http://127.0.0.1:18766")), "Wrong port")
 check(!HostPolicy.local(URL(string: "http://localhost:18765")), "Wrong hostname")

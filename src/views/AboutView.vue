@@ -1,13 +1,16 @@
 <template>
   <div class="about-page">
-    <el-card class="block" header="aoki fork · 新增功能">
-      <p class="muted">Windows / Android 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
+    <el-card class="block about-heading"><h2>关于应用</h2><p class="muted">版本与下载、支持作者、使用说明与项目致谢。</p><el-tabs v-model="section"><el-tab-pane label="检查更新" name="updates" /><el-tab-pane label="支持作者" name="support" /><el-tab-pane label="使用说明" name="guide" /><el-tab-pane label="说明与致谢" name="credits" /></el-tabs></el-card>
+    <el-card v-show="section === 'updates'" class="block"><AppUpdatePanel /></el-card>
+    <DonateView v-if="section === 'support'" />
+    <el-card v-show="section === 'credits'" class="block" header="aoki fork · 新增功能">
+      <p class="muted">Windows / Android / iOS 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
       <div class="feature-list">
         <section v-for="feature in forkFeatures" :key="feature.title"><h3>{{ feature.title }}</h3><p>{{ feature.description }}</p></section>
       </div>
       <p><a href="https://github.com/nickfox395/ZhongYuToolBox_Web/releases" target="_blank" rel="noopener noreferrer">本 fork 的发布记录</a></p>
     </el-card>
-    <el-card class="block" header="使用说明">
+    <el-card v-show="section === 'guide'" class="block" header="使用说明">
       <section class="usage">
         <h3>云笔记</h3>
         <p class="muted">搜索、预览和下载云笔记中的原始图片和附件。</p>
@@ -46,7 +49,7 @@
           <li>按学科和分类筛选问答列表</li>
           <li>点击问题进入详情，查看图片和回复</li>
           <li>支持 <strong>回复功能</strong>，可直接提交答案</li>
-          <li>支持下载完整图片压缩包</li>
+          <li>支持下载完整图片压缩包</li><li>打开回复画板可导出静态 SVG；录制可选择画质导出 MP4，编码和保存均在本机完成。视频编码需要设备支持 WebCodecs；AAC 不可用时会提示无音轨。</li>
         </ul>
 
         <h3>优课畅学</h3>
@@ -91,7 +94,7 @@
       </section>
     </el-card>
 
-    <el-card class="block" header="致谢">
+    <el-card v-show="section === 'credits'" class="block" header="致谢">
       <p>感谢各位的使用，我们有缘再会。</p>
       <p>开发：Loshop</p>
       <p>Co-author：{{ EDITION.coAuthor }}。本 fork 的贡献见上方独立功能列表。</p>
@@ -102,7 +105,7 @@
       <p><a :href="EDITION.sourceUrl" target="_blank" rel="noopener noreferrer">查看原始项目</a></p>
     </el-card>
 
-    <el-card class="block" header="更新日志">
+    <el-card v-show="section === 'updates'" class="block" header="更新日志">
       <el-timeline v-if="changelog.length">
         <el-timeline-item
           v-for="(log, i) in changelog"
@@ -119,8 +122,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import AppUpdatePanel from '@/components/AppUpdatePanel.vue'
+import DonateView from '@/views/DonateView.vue'
 import { EDITION } from '@/config/edition'
+const route = useRoute()
+const section = ref('updates')
+watch(() => route.query.tab, tab => { section.value = ['updates','support','guide','credits'].includes(String(tab)) ? String(tab) : 'updates' }, { immediate: true })
 const forkFeatures = [
   {title:'iPhone / iPad 原生壳',description:'Swift + UIKit + WKWebView，保留本版本界面；系统导航与文件面板适配 iOS/iPadOS 26 Liquid Glass，支持 iPad 分屏、系统外观及原生文件导出。'},
   {title:'中育学生应用下载',description:'查询官方在线版本；支持本地 APK / ZIP 导入、摘要核对、离线另存为。在线与已导入版本分别显示；图库集成在中育桌面中。'},

@@ -1,6 +1,6 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.12-aoki",
+  "version": "1.1.13-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
   "description": "ZhongYuToolBox aoki Windows WebView2, Android and iOS WKWebView editions, themes, local image/PDF conversion",
@@ -28,7 +28,8 @@
     "test:android": "node scripts/test-android.mjs && node scripts/test-android-oss.mjs",
     "build:ios": "node scripts/build-ios.mjs",
     "dev:ios": "vite --mode ios --host 127.0.0.1",
-    "test:ios": "node scripts/test-ios-bridge.mjs && node scripts/test-ios-oss.mjs && node scripts/test-ios-native.mjs"
+    "test:ios": "node scripts/test-ios-bridge.mjs && node scripts/test-ios-oss.mjs && node scripts/test-ios-native.mjs",
+    "test:update": "node scripts/test-update.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -42,6 +43,7 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "katex": "0.18.10",
+    "mp4-muxer": "^5.2.2",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.4.168",
     "pinia": "^2.1.7",

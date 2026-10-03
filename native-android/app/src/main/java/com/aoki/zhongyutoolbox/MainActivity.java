@@ -185,7 +185,7 @@ public final class MainActivity extends Activity {
         String current=url;JSONObject currentHeaders=headers;
         for(int redirect=0;redirect<6;redirect++){
             boolean authorStats=privileged&&"POST".equals(method)&&"https://tbapi.loshop.com.cn/api/login".equals(current);
-            if(!remoteAllowed(current)&&!authorStats)throw new IOException("请求地址未获允许");
+            if(!remoteAllowed(current)&&!authorStats&&!(privileged&&"GET".equals(method)&&Arrays.asList("https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest","https://api.github.com/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest").contains(current)))throw new IOException("请求地址未获允许");
             HttpURLConnection conn=(HttpURLConnection)new URL(current).openConnection();conn.setInstanceFollowRedirects(false);conn.setConnectTimeout(30000);conn.setReadTimeout(120000);conn.setRequestMethod(method);
             Iterator<String> keys=currentHeaders.keys();
             while(keys.hasNext()){String key=keys.next();if(!Arrays.asList("host","origin","referer","connection","content-length","accept-encoding","cookie").contains(key.toLowerCase(Locale.ROOT)))conn.setRequestProperty(key,currentHeaders.getString(key));}

@@ -1,6 +1,10 @@
 <template>
   <div class="proxy-page">
-    <el-card class="block" header="加速状态">
+    <el-card v-if="!IS_BROWSER" class="block" header="本机网络桥">
+      <p>本客户端通过原生网络桥读取中育接口、图片和文件，无需额外安装下载加速插件。</p>
+      <p class="muted">遇到加载失败时，请检查学校服务地址、登录状态与网络连接。</p>
+    </el-card>
+    <el-card v-else class="block" header="加速状态">
       <div class="proxy-row">
         <span class="muted">当前生效代理：</span>
         <code>{{ proxyBase }}</code>
@@ -11,11 +15,10 @@
       <el-button :icon="Refresh" :loading="detecting" @click="detect">重新探测</el-button>
     </el-card>
 
-    <el-card class="block" header="下载加速插件">
-      <p class="muted">根据系统下载对应版本，运行后保持后台常驻即可。</p>
+    <el-card v-if="IS_BROWSER" class="block" header="下载加速插件">
+      <p class="muted">网页预览需要本机资源代理；旧版安装程序未随本客户端打包。可到原作者的下载页查看插件与使用说明。</p>
       <div class="dl-row">
-        <el-button type="primary" :icon="Download" @click="open(exeUrl)">Windows 版</el-button>
-        <el-button type="primary" :icon="Download" @click="open(apkUrl)">Android 版</el-button>
+        <el-button type="primary" :icon="Download" @click="open(pluginUrl)">打开原作者下载页</el-button>
       </div>
     </el-card>
   </div>
@@ -25,10 +28,9 @@
 import { ref, onMounted } from 'vue'
 import { Refresh, Download } from '@element-plus/icons-vue'
 import { getProxyBaseUrl, detectLocalProxy } from '@/utils/proxy'
-import { PROXY_LOCAL } from '@/config'
+import { PROXY_LOCAL, IS_BROWSER } from '@/config'
 
-const exeUrl = 'tbHelperInstaller.exe'
-const apkUrl = 'https://wumama.lanzouw.com/iG92334tbeeb'
+const pluginUrl = 'https://wumama.lanzouw.com/iG92334tbeeb'
 
 const proxyBase = ref(getProxyBaseUrl())
 const proxyIsLocal = ref(proxyBase.value === PROXY_LOCAL)

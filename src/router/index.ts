@@ -36,6 +36,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/mistake/:itemId', name: 'mistake-detail', component: () => import('@/views/MistakeDetailView.vue'), meta: { title: '错题详情', hideLayoutHeader: true, keepAlive: true } },
   { path: '/quora', name: 'quora', component: () => import('@/views/QuoraView.vue'), meta: { title: '随身答', keepAlive: true } },
   { path: '/quora/:sessionId', name: 'quora-detail', component: () => import('@/views/QuoraDetailView.vue'), meta: { title: '问题详情', hideLayoutHeader: true, keepAlive: true } },
+  { path: '/quora/:sessionId/board-view', name: 'quora-board-view', component: () => import('@/views/QuoraBoardView.vue'), meta: { title: '随身答画板', hideLayoutHeader: true } },
   { path: '/quora/:sessionId/board', name: 'quora-board', component: () => import('@/views/BoardView.vue'), meta: { title: '画板回复', hideLayoutHeader: true } },
   { path: '/exam', name: 'exam', component: () => import('@/views/ExamView.vue'), meta: { title: '新测评', keepAlive: true } },
   { path: '/exam/:taskId', name: 'exam-questions', component: () => import('@/views/ExamQuestionsView.vue'), meta: { title: '试题详情', hideLayoutHeader: true, keepAlive: true } },
@@ -79,8 +80,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/apps', name: 'app-downloads', component: () => import('@/views/AppDownloadsView.vue'), meta: { title: '中育应用下载' } },
   { path: '/dev', name: 'dev', component: () => import('@/views/DevelopView.vue'), meta: { title: '开发工具' } },
   { path: '/share', name: 'share', component: () => import('@/views/ShareView.vue'), meta: { title: '分享' } },
-  { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: '说明&致谢' } },
-  { path: '/donate', name: 'donate', component: () => import('@/views/DonateView.vue'), meta: { title: '支持作者' } },
+  { path: '/about', name: 'about', component: () => import('@/views/AboutView.vue'), meta: { title: '关于应用' } },
+  { path: '/donate', name: 'donate', redirect: { path: '/about', query: { tab: 'support' } }, meta: { title: '支持作者' } },
   { path: '/proxy', name: 'proxy', component: () => import('@/views/ProxyView.vue'), meta: { title: '下载加速插件' } }
 ]
 
