@@ -6,6 +6,7 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/mobile.css'
 import './styles/windows.css'
 import './styles/android.css'
+import './styles/ios.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
@@ -30,6 +31,7 @@ if (IS_AOKI) {
   initializeTheme()
 }
 if (PLATFORM === 'android') document.documentElement.classList.add('android-edition')
+if (PLATFORM === 'ios') document.documentElement.classList.add('ios-edition')
 
 const app = createApp(App)
 
