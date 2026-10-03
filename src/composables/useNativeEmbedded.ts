@@ -14,7 +14,16 @@ export function useNativeEmbedded(args: UseWebviewInjectArgs & { prepareScript?:
   const loading = ref(false), error = ref('')
   function rect() {
     const box = args.hostRef.value?.getBoundingClientRect()
-    return { id, x: box?.x ?? 0, y: box?.y ?? 0, width: box?.width ?? 1, height: box?.height ?? 1, scale: 1 }
+    // Native child views do not inherit CSS clipping/z-index. Confine them below
+    // the app toolbar and above the mobile dock, even during scrolling/resizing.
+    const page = args.hostRef.value?.closest('.iframe-page')?.getBoundingClientRect()
+    const toolbar = args.hostRef.value?.closest('.iframe-page')?.querySelector('.iframe-bar')?.getBoundingClientRect()
+    const dock = document.querySelector('.mobile-tab-dock')?.getBoundingClientRect()
+    const x = Math.max(0, box?.left ?? 0, page?.left ?? 0)
+    const y = Math.max(0, box?.top ?? 0, toolbar?.bottom ?? 0)
+    const right = Math.min(window.innerWidth, box?.right ?? 1, page?.right ?? window.innerWidth)
+    const bottom = Math.min(window.innerHeight, box?.bottom ?? 1, page?.bottom ?? window.innerHeight, dock?.top ?? window.innerHeight)
+    return { id, x, y, width: Math.max(1, right - x), height: Math.max(1, bottom - y), scale: 1 }
   }
   function resize() {
     cancelAnimationFrame(frame)
