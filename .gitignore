@@ -37,6 +37,15 @@ release/
 
 !.env.webview2
 !.env.android
+!.env.ios
+
+# iOS generated output and signing material
+native-ios/WebAssets/
+native-ios/Assets.xcassets/
+native-ios/ZhongYuToolBox.xcodeproj/
+*.p12
+*.mobileprovision
+*.xcuserstate
 
 # Android generated output and private signing material
 native-android/.gradle/

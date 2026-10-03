@@ -4,6 +4,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.9-aoki] - 2026-10-03（开发中）
+
+- 新增 iPhone / iPad Swift + UIKit + WKWebView 壳与 Xcode 工程生成器；原生导航、工具栏、菜单及文件面板采用 iOS/iPadOS 26 系统 Liquid Glass。
+- 沿用 aoki 紫白界面与既有云笔记、图库、新测评、错题本业务；多文件选择、分块导出、官方/OSS 请求通过受限原生桥处理，远端嵌入页不提供本机权限。
+- 新增 `build:ios`、`dev:ios`、`test:ios`；GitHub macOS 工作流生成供爱思重新签名的 arm64 未签名 IPA，不使用个人证书或 Apple ID。
+- 当前为待 Xcode 编译/真机验证的开发版；不能把 Windows 前端构建视为 IPA 发布完成。
+
 ## [1.1.8-aoki] - 2026-10-02
 
 - 更新用户提供的 7 个学生应用目录，按 APK 实际包名识别；中育桌面包含图库，纠正压缩包中在线专栏的错误文件名。
