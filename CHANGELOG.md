@@ -4,6 +4,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.12-aoki] - 2026-10-03
+
+- iOS 底栏改为 Apple UITabBarController / UITab / UISearchTab，返回按钮使用系统玻璃组件；iOS 26 使用原生 Liquid Glass，较早系统使用原生标准样式。
+- iOS 官方图片经过受限 WKURLSchemeHandler 和 URLSession 加载，不发送 Referer / Origin，保留完整图片签名参数。
+- 修复在线专栏列表被搜索栏挤压、正文裁切的问题，底栏占用高度按系统实际布局计算。
+- 修复 iOS 图标透明圆角合成成白边的问题，图标以紫色铺满，由系统裁切圆角。
+- Android 和 H5+ 按平台标签启用四栏目移动布局：资源、测评、问答、我的；安卓使用普通底栏，保留 plus 文件、图片、下载和返回键功能。
+- 安卓选课增加独立返回入口，限制原生内嵌页面的可见区域，防止覆盖应用工具栏与底部导航。
+- 三端版本号统一为 1.1.12-aoki。
+
 ## [1.1.11-aoki] - 2026-10-03
 
 - 改为全屏 WKWebView 加载包内编译资源，移除原生导航条、底栏和 iPad 侧栏；网页统一处理安全区与界面外观。
