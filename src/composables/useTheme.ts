@@ -9,9 +9,9 @@ export const themeMode = ref<ThemeMode>('system')
 let systemTheme: MediaQueryList | null = null
 function applyTheme() {
   const host = (window as any).nativeHost
-  const dark = resolveDarkMode(themeMode.value, host?.kind === 'android' ? host.systemDark : systemTheme?.matches ?? false)
+  const dark = resolveDarkMode(themeMode.value, ['android', 'ios'].includes(host?.kind) ? host.systemDark : systemTheme?.matches ?? false)
   document.documentElement.classList.toggle('dark', dark)
-  ;(window as any).nativeHost?.setThemeDark(dark).catch(() => {})
+  ;(window as any).nativeHost?.setThemeDark(dark, themeMode.value).catch(() => {})
 }
 export function setThemeMode(mode: ThemeMode) {
   if (!['light', 'dark', 'system'].includes(mode)) return
