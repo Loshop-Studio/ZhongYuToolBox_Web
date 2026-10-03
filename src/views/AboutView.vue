@@ -122,6 +122,7 @@
 import { ref, onMounted } from 'vue'
 import { EDITION } from '@/config/edition'
 const forkFeatures = [
+  {title:'iPhone / iPad 原生壳',description:'Swift + UIKit + WKWebView，保留本版本界面；系统导航与文件面板适配 iOS/iPadOS 26 Liquid Glass，支持 iPad 分屏、系统外观及原生文件导出。'},
   {title:'中育学生应用下载',description:'查询官方在线版本；支持本地 APK / ZIP 导入、摘要核对、离线另存为。在线与已导入版本分别显示；图库集成在中育桌面中。'},
   {title:'图库回收站管理',description:'选中图片移至官方回收站，恢复或永久删除回收站图片；提交前确认，并重新核对当前账号的图片状态。'},
   {title:'Windows 原生壳与界面',description:'WPF + 系统 WebView2；得意黑字体、紫白配色、浅色 / 深色 / 跟随系统，侧栏与页面过渡。保留支持原作者入口。'},
