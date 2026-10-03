@@ -3,6 +3,21 @@
 .ios-edition #app { height:100dvh; }
 .ios-shell { height:100dvh; width:100%; overflow:hidden; background:var(--canvas); color:var(--ink); position:relative; }
 .ios-scroll-content { height:100%; box-sizing:border-box; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top) + 18px) max(20px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 120px) max(20px, env(safe-area-inset-left)); scroll-padding-bottom:120px; }
+.ios-native-chrome .ios-scroll-content { padding-bottom:calc(var(--ios-native-bottom, 90px) + 16px); scroll-padding-bottom:calc(var(--ios-native-bottom, 90px) + 16px); }
+.ios-native-back-space { display:inline-block; width:40px; min-width:40px; height:32px; }
+.ios-native-chrome .appbar .back { display:none !important; }
+.ios-shell .ios-scroll-content:has(.ios-fixed-feature) { display:flex; flex-direction:column; overflow:hidden; }
+.ios-shell .ios-scroll-content:has(.ios-fixed-feature) > .ios-page-heading,
+.ios-shell .ios-scroll-content:has(.ios-fixed-feature) > .ios-section-nav { width:100%; flex-shrink:0; }
+.ios-shell .ios-page-stage.ios-fixed-feature { flex:1; width:100%; min-height:0; height:auto; overflow:hidden; }
+.ios-shell .ios-page-stage.ios-fixed-feature > .column-page,
+.ios-shell .ios-page-stage.ios-fixed-feature > .detail-page { position:relative; inset:auto; height:100%; min-height:0; }
+.ios-shell .column-page .col-side { border-color:var(--line); }
+.ios-shell .column-page .col-col-item { white-space:normal; overflow-wrap:anywhere; }
+.ios-shell .column-page .col-header { padding:12px 12px 0; }
+.ios-shell .column-page .col-header-right { margin-bottom:8px; }
+.ios-shell .column-page .col-body { overflow:hidden; }
+.ios-shell .column-page .col-tab { white-space:nowrap; }
 .ios-page-heading, .ios-section-nav, .ios-page-stage { max-width:1080px; margin-left:auto; margin-right:auto; }
 .ios-page-heading { margin-bottom:24px; }
 .ios-heading-kicker { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--muted); margin-bottom:18px; min-height:28px; }
