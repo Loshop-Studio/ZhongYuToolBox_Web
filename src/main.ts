@@ -12,7 +12,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { IS_BROWSER, PLATFORM, IS_AOKI } from './config'
+import { IS_BROWSER, PLATFORM, IS_AOKI, IS_MOBILE } from './config'
 import { setupPlusBackButton } from './utils/plusBack'
 import { logError } from './utils/errorText'
 import { ElMessage } from 'element-plus'
@@ -30,8 +30,9 @@ if (!IS_BROWSER) {
 if (IS_AOKI) {
   initializeTheme()
 }
-if (PLATFORM === 'android') document.documentElement.classList.add('android-edition')
+if (PLATFORM === 'android' || PLATFORM === 'plus') document.documentElement.classList.add('android-edition')
 if (PLATFORM === 'ios') document.documentElement.classList.add('ios-edition')
+if (IS_MOBILE) document.documentElement.classList.add('mobile-edition')
 
 const app = createApp(App)
 
