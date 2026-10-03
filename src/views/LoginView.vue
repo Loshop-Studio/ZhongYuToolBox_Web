@@ -66,7 +66,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { blockState } from '@/stores/block'
-import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
+import { IS_BROWSER, PLATFORM, IS_WINDOWS, IS_MOBILE } from '@/config'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -97,8 +97,8 @@ async function onLogin() {
     ElMessage.success(`你好，${info.realName || auth.userName}`)
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     // Only known local routes may resume after authentication; never redirect to an external URL.
-    const safeRedirect = PLATFORM === 'ios' && /^\/(note|column|lesson|course|exam|mistake|quora|picture|linspirer|advance|apps|dev|share|proxy)(\/|\?|$)/.test(redirect)
-    if (PLATFORM === 'ios') router.replace(safeRedirect ? redirect : '/note')
+    const safeRedirect = IS_MOBILE && /^\/(note|column|lesson|course|exam|mistake|quora|picture|linspirer|advance|apps|dev|share|proxy)(\/|\?|$)/.test(redirect)
+    if (IS_MOBILE) router.replace(safeRedirect ? redirect : '/note')
     else router.push('/note')
   } catch (e: any) {
     ElMessage.error(e.message || '登录失败')
