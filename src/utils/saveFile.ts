@@ -26,7 +26,7 @@ import { formatError, logError } from '@/utils/errorText'
  * 5+ 下优先直传 OSS 拿到公开 URL，再走系统下载器（可靠、不丢字节）；
  * OSS 不可用（未登录/无网络等）时回退到直写 SAF 兜底。
  */
-export async function saveBlobFile(blob: Blob, filename: string): Promise<void> {
+export async function saveBlobFile(blob: Blob, filename: string, options: { localOnly?: boolean } = {}): Promise<void> {
   // 空内容直接判失败，避免在各平台写出 0 字节文件（尤其 5+ 下难以察觉）
   if (!blob || blob.size === 0) {
     throw new Error('待保存的文件内容为空（0 字节），未写入')
@@ -34,6 +34,7 @@ export async function saveBlobFile(blob: Blob, filename: string): Promise<void> 
   // 文件名缺扩展名时按真实 MIME 补一个，避免保存出无后缀文件
   const safeName = ensureExtension(filename, blob)
   if (PLATFORM === 'plus') {
+    if (options.localOnly) { await saveBlobOnPlus(blob, safeName); return }
     // 无现成 URL：先直传 OSS 拿公开地址，再交给系统下载器下载到本地并走 SAF 保存。
     try {
       const url = await uploadBlobToOss(blob, safeName)
@@ -94,6 +95,8 @@ function blobToArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
 const SAVE_EXT: Record<string, string> = {
   'application/pdf': 'pdf',
   'application/zip': 'zip',
+  'image/svg+xml': 'svg',
+  'video/mp4': 'mp4',
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/gif': 'gif',
@@ -333,6 +336,8 @@ function copyBinaryStringToStream(bin: string, os: any): void {
 /** SAF 对话框允许保存的类型（扩展名 -> MIME） */
 const SAF_MIME: Record<string, string> = {
   zip: 'application/zip',
+  svg: 'image/svg+xml',
+  mp4: 'video/mp4',
   png: 'image/png',
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',

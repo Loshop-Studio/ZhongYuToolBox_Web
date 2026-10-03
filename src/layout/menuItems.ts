@@ -28,7 +28,6 @@ export interface MenuItem {
 }
 
 export const MENU_ITEMS: MenuItem[] = [
-  { index: '/donate', title: '支持作者', icon: Coffee },
   { index: '/login', title: '用户中心', icon: User },
   { index: '/picture', title: '图库', icon: Picture },
   { index: '/note', title: '云笔记', icon: Document },
@@ -41,5 +40,5 @@ export const MENU_ITEMS: MenuItem[] = [
   { index: '/apps', title: '中育应用下载', icon: Download },
   { index: '/lesson', title: '优客畅学', icon: Reading },
   { index: '/dev', title: '开发工具', icon: Tools },
-  { index: '/about', title: '说明&致谢', icon: InfoFilled }
+  { index: '/about', title: '关于应用', icon: InfoFilled }
 ]

@@ -74,22 +74,24 @@ function disposeAll() {
 async function load() {
   if (typeof window === 'undefined') return
   const my = ++token
-  disposeAll(); kind.value = ''; errMsg.value = ''
+  cancelExport(); disposeAll(); kind.value = ''; errMsg.value = ''
   if (!props.source) { phase.value = 'idle'; return }
   phase.value = 'loading'
   try {
-    zip = await openSource(props.source, props.fetchOptions)
-    const why = props.mode === 'auto' ? await detect(zip) : []
+    const sourceZip = await openSource(props.source, props.fetchOptions)
+    if (my !== token) return
+    zip = sourceZip
+    const why = props.mode === 'auto' ? await detect(sourceZip) : []
     const isRec = props.mode === 'recording' || (props.mode === 'auto' && why.length > 0)
     if (my !== token) return
     if (isRec) {
-      const R = await loadRec(zip)
+      const R = await loadRec(sourceZip)
       if (my !== token) { R.clips.forEach(c => URL.revokeObjectURL(c.url)); return }
       R.clips.forEach(c => { c.t0 = props.audioAnchor === 'segment' ? c.tb : c.ta })
       els = R.clips.map(c => { const a = new Audio(c.url); a.preload = 'auto'; a.muted = isMuted.value; return a })
       rec.value = R; kind.value = 'recording'; cdim.w = R.P[0].W; cdim.h = R.P[0].H
     } else {
-      const res = await convert(zip)
+      const res = await convert(sourceZip)
       if (my !== token) return
       pages.value = res.map(r => {
         if (r.err) return { err: r.err, w: 600, h: 80 }
@@ -232,9 +234,11 @@ async function renderMp4(opts = {}) {
   const q = opts.quality && typeof opts.quality === 'object' ? { key: 'custom', ...opts.quality } : MP4_QUALITY[opts.quality || 'mid']
   if (!q) throw Error('未知画质：' + opts.quality)
   if (exporting.value) throw Error('正在导出')
-  const was = playing.value; setPlaying(false)
+  const was = playing.value, exportToken = token; setPlaying(false)
   const ctl = new AbortController(); abortCtl = ctl
-  if (opts.signal) opts.signal.addEventListener('abort', () => ctl.abort())
+  const abort = () => ctl.abort()
+  if (opts.signal?.aborted) ctl.abort()
+  opts.signal?.addEventListener('abort', abort, { once: true })
   exporting.value = { stage: 'encode', frac: 0 }
   try {
     const blob = await encodeMp4(rec.value, q, (stage, frac) => {
@@ -244,13 +248,17 @@ async function renderMp4(opts = {}) {
     }, ctl.signal)
     if (opts.download) download(blob, `${props.fileName}-${q.key}.mp4`)
     return blob
-  } finally { exporting.value = null; abortCtl = null; needDraw = true; if (was) setPlaying(true) }
+  } finally {
+    opts.signal?.removeEventListener('abort', abort)
+    if (abortCtl === ctl) { exporting.value = null; abortCtl = null }
+    if (exportToken === token) { needDraw = true; if (was && !ctl.signal.aborted) setPlaying(true) }
+  }
 }
 async function saveSvg() {
   try { await renderSvg({ download: true }); ElMessage.success('已保存为 SVG') } catch (e) { ElMessage.error('导出 SVG 失败：' + e.message) }
 }
 async function saveMp4(q) {
-  try { await renderMp4({ quality: q.key, download: true }); ElMessage.success('已保存为 MP4') } catch (e) { if (e.message !== '已取消') ElMessage.error('导出 MP4 失败：' + e.message) }
+  try { await renderMp4({ quality: q.key, download: true }); ElMessage.success('已保存为 MP4') } catch (e) { if (e.name !== 'AbortError' && e.message !== '已取消') ElMessage.error('导出 MP4 失败：' + e.message) }
 }
 const cancelExport = () => abortCtl && abortCtl.abort()
 function onCommand(cmd) {

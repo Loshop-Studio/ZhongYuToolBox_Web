@@ -26,6 +26,11 @@ const A = (m, n) => ((m && m[n]) || []).map(e => pb(e.v));
 
 /* ---------- 最小 zip 读取（deflate 用浏览器自带的 DecompressionStream） ---------- */
 async function readZip(buf) {
+  try { new DecompressionStream('deflate-raw'); } catch {
+    const { default: JSZip } = await import('jszip');
+    const archive = await JSZip.loadAsync(buf);
+    return { names: Object.keys(archive.files).filter(n => !archive.files[n].dir), read: async name => archive.file(name)?.async('uint8array') ?? null };
+  }
   const u8 = new Uint8Array(buf), dv = new DataView(buf);
   let e = u8.length - 22;
   while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
@@ -310,8 +315,8 @@ function shape(ctx, o) {
 }
 function paintPage(ctx, P, lt, s) {
   const st = stateAt(P, lt);
-  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, P.W * s, P.H * s);
-  ctx.setTransform(s, 0, 0, s, 0, 0); ctx.fillStyle = rgba(st.bg); ctx.fillRect(0, 0, P.W, P.H);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  ctx.setTransform(s, 0, 0, s, (ctx.canvas.width - P.W * s) / 2, (ctx.canvas.height - P.H * s) / 2); ctx.fillStyle = rgba(st.bg); ctx.fillRect(0, 0, P.W, P.H);
   const lc = st.line;
   if (lc && F(lc, 2) > 0 && ((I(lc, 1) >>> 24) & 255) > 0) {          // 背景线：横线 / 交错（按网格画）🔶
     const sp = F(lc, 2); ctx.save(); ctx.strokeStyle = rgba(I(lc, 1)); ctx.lineWidth = F(lc, 4) || 1; ctx.setLineDash([]); ctx.beginPath();
@@ -331,47 +336,65 @@ const pageAt = (R, gt) => { const p = R.P.find(x => gt < x.off + x.len) || R.P[R
 /* ---------- MP4 导出（WebCodecs，离线逐帧渲染，时间戳 = 文件时间轴） ---------- */
 async function exportMp4(R, q, log = () => {}, signal) {
   if (!globalThis.VideoEncoder) throw Error('当前浏览器不支持 WebCodecs，请使用最新版 Chrome / Edge');
+  const check = () => { if (signal?.aborted) throw new DOMException('已取消', 'AbortError'); };
+  check();
+  if (!R.P.length || !Number.isFinite(R.total) || R.total <= 0) throw Error('录制时长无效');
+  if (!q || !Number.isFinite(q.long) || q.long < 2 || q.long > 4096 || !Number.isFinite(q.kbps) || q.kbps <= 0) throw Error('导出画质参数无效');
   const { Muxer, ArrayBufferTarget } = await import('mp4-muxer');
   const p0 = R.P[0], k = q.long / Math.max(p0.W, p0.H), w = Math.round(p0.W * k / 2) * 2, h = Math.round(p0.H * k / 2) * 2, fps = 30;
   const vcfg = { codec: 'avc1.640032', width: w, height: h, bitrate: q.kbps * 1000, framerate: fps };
-  if (!(await VideoEncoder.isConfigSupported(vcfg)).supported) throw Error('浏览器不支持该分辨率的 H.264 编码，请选更低画质');
+  let supported = false;
+  for (const codec of ['avc1.640032', 'avc1.4d0028', 'avc1.420028']) {
+    vcfg.codec = codec;
+    try { if ((await VideoEncoder.isConfigSupported(vcfg)).supported) { supported = true; break; } } catch {}
+  }
+  check();
+  if (!supported) throw Error('当前设备不支持该画质的 H.264 编码，请降低画质或使用 Windows 版');
   let audio = null;
   if (R.clips.length) {
     const acfg = { codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2, bitrate: 128000 };
     if (globalThis.AudioEncoder && (await AudioEncoder.isConfigSupported(acfg)).supported) {
       log('mix', 0);
       const oc = new OfflineAudioContext(2, Math.ceil(R.total / 1000 * 48000), 48000);
-      for (const c of R.clips) { const s = oc.createBufferSource(); s.buffer = await oc.decodeAudioData(c.buf.slice().buffer); s.connect(oc.destination); s.start(c.t0 / 1000); }   // 起点 = 文件里的开始时间
+      for (const c of R.clips) { const s = oc.createBufferSource(); check(); s.buffer = await oc.decodeAudioData(c.buf.slice().buffer); check(); s.connect(oc.destination); s.start(c.t0 / 1000); }   // 起点 = 文件里的开始时间
       audio = { buf: await oc.startRendering(), cfg: acfg };
     } else log('noaudio', 0);
   }
   const mux = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: w, height: h }, ...(audio ? { audio: { codec: 'aac', numberOfChannels: 2, sampleRate: 48000 } } : {}), fastStart: 'in-memory' });
-  let err = null;
-  const venc = new VideoEncoder({ output: (c, m) => mux.addVideoChunk(c, m), error: e => err = e }); venc.configure(vcfg);
+  check();
+  let err = null, aenc = null, venc = null;
+  const ready = () => { check(); if (err) throw err; };
+  const drain = async encoder => { while (encoder.encodeQueueSize > 8) { ready(); await new Promise(r => setTimeout(r, 4)); } ready(); };
+  try {
+  venc = new VideoEncoder({ output: (c, m) => mux.addVideoChunk(c, m), error: e => err = e }); venc.configure(vcfg);
   if (audio) {
-    const aenc = new AudioEncoder({ output: (c, m) => mux.addAudioChunk(c, m), error: e => err = e }); aenc.configure(audio.cfg);
+    aenc = new AudioEncoder({ output: (c, m) => mux.addAudioChunk(c, m), error: e => err = e }); aenc.configure(audio.cfg);
     const a0 = audio.buf.getChannelData(0), a1 = audio.buf.getChannelData(1);
     for (let i = 0; i < a0.length; i += 48000) {
       const n = Math.min(48000, a0.length - i), d = new Float32Array(n * 2); d.set(a0.subarray(i, i + n)); d.set(a1.subarray(i, i + n), n);
       const ad = new AudioData({ format: 'f32-planar', sampleRate: 48000, numberOfFrames: n, numberOfChannels: 2, timestamp: Math.round(i / 48000 * 1e6), data: d });
-      aenc.encode(ad); ad.close();
+      try { ready(); aenc.encode(ad); } finally { ad.close(); }
+      await drain(aenc);
     }
     await aenc.flush();
   }
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const cx = cv.getContext('2d');
   const N = Math.ceil(R.total / 1000 * fps);
   for (let i = 0; i < N; i++) {
-    if (err) throw err;
-    if (signal && signal.aborted) throw Error('已取消');
+    ready();
     const [p, lt] = pageAt(R, i * 1000 / fps);
     paintPage(cx, p, lt, Math.min(w / p.W, h / p.H));
     const fr = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
-    venc.encode(fr, { keyFrame: i % (fps * 2) === 0 }); fr.close();
-    while (venc.encodeQueueSize > 8) await new Promise(r => setTimeout(r, 4));
+    try { venc.encode(fr, { keyFrame: i % (fps * 2) === 0 }); } finally { fr.close(); }
+    await drain(venc);
     if (i % 10 === 0) { log('encode', i / N); await new Promise(r => setTimeout(r, 0)); }
   }
-  await venc.flush(); mux.finalize();
+  await venc.flush(); ready(); mux.finalize(); log('encode', 1);
   return new Blob([mux.target.buffer], { type: 'video/mp4' });
+  } finally {
+    if (aenc && aenc.state !== 'closed') aenc.close();
+    if (venc && venc.state !== 'closed') venc.close();
+  }
 }
 
 
