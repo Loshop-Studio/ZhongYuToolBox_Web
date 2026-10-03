@@ -2,21 +2,21 @@
   <div class="ios-shell windows-ui">
     <main ref="scroller" class="ios-scroll-content" :class="{ 'ios-detail-page': detail }">
       <header class="ios-page-heading">
-        <div class="ios-heading-kicker"><button v-if="backAvailable" class="ios-back-button" aria-label="返回上一页" @click="back"><el-icon><ArrowLeft /></el-icon></button><span v-else class="ios-brand-icon"><img :src="`${baseUrl}icon.svg`" alt=""/></span><span>{{ detail ? currentGroup.label : '中育工具箱' }}</span><span class="ios-school-badge">{{ auth.isLoggedIn ? auth.schoolCode.toUpperCase() : '学习工作空间' }}</span></div>
+        <div class="ios-heading-kicker"><span v-if="nativeNavigation && backAvailable" class="ios-native-back-space" aria-hidden="true"></span><button v-else-if="backAvailable" class="ios-back-button" aria-label="返回上一页" @click="back"><el-icon><ArrowLeft /></el-icon></button><span v-else class="ios-brand-icon"><img :src="`${baseUrl}icon.svg`" alt=""/></span><span>{{ detail ? currentGroup.label : '中育工具箱' }}</span><span class="ios-school-badge">{{ auth.isLoggedIn ? auth.schoolCode.toUpperCase() : '学习工作空间' }}</span></div>
         <h1>{{ heading }}</h1><p v-if="!detail">{{ currentGroup.description }}</p>
       </header>
       <nav v-if="sections.length && !detail" class="ios-section-nav" :aria-label="`${currentGroup.label}分类`">
         <button v-for="item in sections" :key="item.key" :class="{ active: currentSection === item.key }" :aria-current="currentSection === item.key ? 'page' : undefined" @click="section(item)">{{ item.label }}</button>
         <button v-if="activeGroup === 'resources' && currentSection === 'lesson' && auth.isLoggedIn" class="ios-course-shortcut" @click="router.push('/course')">选课 <el-icon><TopRight /></el-icon></button>
       </nav>
-      <div class="ios-page-stage" :class="{ embedded: route.path === '/course' }">
+      <div class="ios-page-stage" :class="{ embedded: route.path === '/course', 'ios-fixed-feature': ['/column', '/course'].includes(route.path) || detail }">
         <router-view v-slot="{ Component, route: pageRoute }">
           <keep-alive><component :is="Component" v-if="pageRoute.meta.keepAlive" :key="String(pageRoute.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" /></keep-alive>
           <component :is="Component" v-if="!pageRoute.meta.keepAlive" :key="String(pageRoute.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
         </router-view>
       </div>
     </main>
-    <MobileGlassDock :active="activeGroup" @select="selectGroup" @search="searchOpen = true" />
+    <MobileGlassDock v-if="!nativeNavigation" :active="activeGroup" @select="selectGroup" @search="searchOpen = true" />
     <el-dialog v-model="searchOpen" title="查找功能" class="ios-search-dialog" width="min(520px, calc(100% - 28px))" @opened="searchInput?.focus()">
       <el-input ref="searchInput" v-model="searchQuery" placeholder="搜索笔记、错题本、选课…" clearable aria-label="搜索功能名称"><template #prefix><el-icon><Search /></el-icon></template></el-input>
       <div class="ios-search-results"><button v-for="item in searchResults" :key="item.path" :aria-label="item.label" @click="openSearchResult(item.path)"><span>{{ item.label }}</span><small>{{ item.category }}</small><el-icon><TopRight /></el-icon></button><p v-if="!searchResults.length" class="ios-search-empty">没有找到这个功能，换个关键词试试。</p></div>
@@ -32,6 +32,7 @@ import { mobileGroups, mobileGroupForPath, mobileSectionForPath, resourceSection
 import { setThemeMode } from '@/composables/useTheme'
 const route = useRoute(), router = useRouter(), auth = useAuthStore()
 const baseUrl = import.meta.env.BASE_URL, scroller = ref<HTMLElement>()
+const nativeNavigation = (window as any).nativeHost?.kind === 'ios'
 const searchOpen = ref(false), searchQuery = ref(''), searchInput = ref<{ focus: () => void }>()
 const activeGroup = computed(() => mobileGroupForPath(route.path))
 const currentGroup = computed(() => mobileGroups.find(g => g.key === activeGroup.value)!)
@@ -58,6 +59,7 @@ watch(() => route.fullPath, async (value, previous) => {
   if (mobileGroups.some(g => g.path === route.path)) guestRemembered[group] = route.fullPath
   if (group === 'resources' && !['/resources', '/course'].includes(route.path)) remembered.resources = '/' + route.path.split('/')[1]
   if (group === 'assessment' && route.path !== '/assessment') remembered.assessment = '/' + route.path.split('/')[1]
+  ;(window as any).nativeHost?.syncNavigation({ path: route.path, title: heading.value, group, canGoBack: backAvailable.value }).catch(() => {})
   await nextTick(); if (scroller.value) scroller.value.scrollTop = scrollPositions.get(value) || 0
 }, { immediate: true })
 watch(() => auth.userId, () => scrollPositions.clear())
@@ -72,6 +74,7 @@ function section(item: { key: string; path: string }) {
 function back() { if (router.options.history.state.back) router.back(); else router.replace(currentGroup.value.path) }
 function openSearchResult(path: string) { searchOpen.value = false; router.push(path) }
 ;(window as any).__zytbNavigate = (path: string) => router.push(path)
+;(window as any).__zytbSelectGroup = selectGroup
 ;(window as any).__zytbSetThemeMode = setThemeMode
 ;(window as any).__zytbBack = () => { if (searchOpen.value) { searchOpen.value = false; return true }; if (mobileGroups.some(g => g.path === route.path)) return false; back(); return true }
 function openTools() { searchOpen.value = true }
