@@ -1,10 +1,12 @@
 # iPhone / iPad · aoki iOS edition
 
-Swift + UIKit + WKWebView 原生壳，保留 aoki 的紫白配色、得意黑与既有业务界面。原作者 Loshop；co-author aoki；“支持作者”和致谢入口保留。适配 iPhone / iPad、横竖屏及 iPad 分屏；不捆绑 Electron / Node。
+全屏 Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；WKWebView 四边贴合窗口，网页处理安全区。保留 aoki 的紫白配色、得意黑与既有业务界面。原作者 Loshop；co-author aoki；“支持作者”和致谢入口保留。适配 iPhone / iPad、横竖屏及 iPad 分屏；不捆绑 Electron / Node。
 
-## Liquid Glass
+## 全屏界面与四组导航
 
-使用 Xcode 26+ SDK 编译。在 iOS/iPadOS 26+，导航栏、工具栏、菜单和文件面板使用 UIKit 自带的 Liquid Glass；内容卡片保持清晰、不叠加网页模拟玻璃。旧系统显示其原生常规样式。尊重系统减少动态效果设置。iPad 保留侧栏；iPhone / iPad 底部使用一个完整的系统 UISegmentedControl 导航面，拖动时滑动选区，松手后进入对应功能；取消拖动恢复原位置，返回与登录拦截按实际路由同步。底栏不是四个分离的玻璃按钮；不叠加自制背景，采用 UIKit 的原生玻璃与无障碍行为。其余功能放在“更多”菜单。菜单提供浅色、深色、跟随系统。
+1.1.11 起移除原生顶部 / 底部栏和 iPad 侧栏，页面与导航都在同一个 100% 宽高的 WKWebView 内绘制。资源包含笔记、专栏、课程与选课；测评包含作业和官方错题本；问答进入随身答；我的包含账号、外观、图库、下载、其他工具及支持作者。分类、返回、滚动位置与登录后目标恢复由网页路由管理。
+
+底栏参考用户提供的样式：图标加文字、一个完整的悬浮玻璃面、可连续拖动的选中区、独立圆形功能搜索。玻璃外观由 CSS backdrop-filter、半透明材质和高光模拟，**不是 UIKit 的原生 Liquid Glass 控件**；系统文件选择 / 保存面板仍使用 UIKit。iPhone / iPad 的状态栏和主页指示条由系统保留，内容使用 viewport-fit 与 safe-area-inset 避让。支持浅色、深色、跟随系统；尊重减少动态效果、减少透明效果，旧 WebKit 保留颜色回退。
 
 ## 功能与接口
 

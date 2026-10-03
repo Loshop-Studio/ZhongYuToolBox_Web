@@ -2,10 +2,6 @@ import UIKit
 import WebKit
 import UniformTypeIdentifiers
 
-private extension NSLayoutConstraint {
-    func withPriority(_ priority: UILayoutPriority) -> NSLayoutConstraint { self.priority = priority; return self }
-}
-
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, configurationForConnecting session: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
@@ -21,20 +17,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let scene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: scene)
         let controller = ToolboxController()
-        let navigation = UINavigationController(rootViewController: controller)
-        navigation.navigationBar.prefersLargeTitles = false
-        navigation.setToolbarHidden(true, animated: false)
-        #if targetEnvironment(simulator)
-        if ProcessInfo.processInfo.arguments.contains("--navigation-ui-test") {
-            navigation.setViewControllers([NavigationTestController()], animated: false)
-        }
-        #endif
-        window.rootViewController = navigation; self.window = window; window.makeKeyAndVisible()
+        window.rootViewController = controller; self.window = window; window.makeKeyAndVisible()
     }
 }
 
-/// UIKit owns navigation / toolbar / document panels so iOS 26 provides real Liquid Glass.
-/// The web content retains aoki's original UI and account-scoped workflows.
+/// The WKWebView fills the entire window; navigation and learning UI live in bundled web assets.
+/// UIKit is reserved for system file panels; URLSession handles restricted official networking.
 final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply, UIDocumentPickerDelegate {
     private var main: WKWebView!, guest: WKWebView?
     private var server: LocalAssetServer!, transport: NativeTransport!, bridge = ""
@@ -43,28 +31,10 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
     private var openReply: (([URL]?) -> Void)?
     private var importedFiles: [URL] = []
     private let status = UILabel()
-    private let bottomNavigation = SlidingToolNavigation()
     private var systemDark: Bool { UIScreen.main.traitCollection.userInterfaceStyle == .dark }
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "中育工具箱"; view.backgroundColor = .systemBackground
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "chevron.backward"), style: .plain, target: self, action: #selector(back))
-        navigationItem.leftBarButtonItem?.accessibilityLabel = "返回"
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "ellipsis"), menu: menu())
-        navigationItem.rightBarButtonItem?.accessibilityLabel = "更多工具与外观设置"
-        bottomNavigation.translatesAutoresizingMaskIntoConstraints = false
-        bottomNavigation.onCommit = { [weak self] index in self?.navigate(SlidingToolNavigation.paths[index]) }
-        view.addSubview(bottomNavigation)
-        NSLayoutConstraint.activate([
-            bottomNavigation.centerXAnchor.constraint(equalTo: view.safeAreaLayoutGuide.centerXAnchor),
-            bottomNavigation.widthAnchor.constraint(equalTo: view.safeAreaLayoutGuide.widthAnchor, constant: -32).withPriority(.defaultHigh),
-            bottomNavigation.widthAnchor.constraint(lessThanOrEqualToConstant: 440),
-            bottomNavigation.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -10),
-            bottomNavigation.heightAnchor.constraint(greaterThanOrEqualToConstant: 52)
-        ])
-        // Do not install an opaque bar background; UIKit applies Liquid Glass on iOS 26.
-        navigationController?.navigationBar.tintColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0.80, green: 0.70, blue: 0.83, alpha: 1) : UIColor(red: 0.44, green: 0.34, blue: 0.46, alpha: 1) }
-        bottomNavigation.tintColor = navigationController?.navigationBar.tintColor
         status.text = "正在启动中育工具箱…"; status.textAlignment = .center; status.numberOfLines = 0
         status.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(status)
         NSLayoutConstraint.activate([status.centerXAnchor.constraint(equalTo: view.centerXAnchor), status.centerYAnchor.constraint(equalTo: view.centerYAnchor), status.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -36)])
@@ -78,8 +48,7 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
             transport = NativeTransport(cache: cache); server = LocalAssetServer(root: web, cache: cache)
             main = makeWebView(privileged: true)
             main.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(main)
-            NSLayoutConstraint.activate([main.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor), main.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor), main.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor), main.bottomAnchor.constraint(equalTo: bottomNavigation.topAnchor, constant: -10)])
-            view.bringSubviewToFront(bottomNavigation)
+            NSLayoutConstraint.activate([main.leadingAnchor.constraint(equalTo: view.leadingAnchor), main.trailingAnchor.constraint(equalTo: view.trailingAnchor), main.topAnchor.constraint(equalTo: view.topAnchor), main.bottomAnchor.constraint(equalTo: view.bottomAnchor)])
             server.start { [weak self] result in DispatchQueue.main.async {
                 guard let self else { return }
                 switch result { case .success(let url): self.main.load(URLRequest(url: url)); case .failure(let error): self.main.isHidden = true; self.status.text = "本地界面启动失败：\(error.localizedDescription)" }
@@ -98,22 +67,7 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
         web.scrollView.bounces = false
         return web
     }
-    private func navigate(_ path: String) {
-        guard let data = try? JSONSerialization.data(withJSONObject: [path]), let encoded = String(data: data, encoding: .utf8) else { return }
-        main?.evaluateJavaScript("window.__zytbNavigate && window.__zytbNavigate(\(encoded)[0])", completionHandler: nil)
-    }
-    @objc private func back() {
-        if let guest, guest.canGoBack { guest.goBack() }
-        else { main?.evaluateJavaScript("window.__zytbBack && window.__zytbBack()", completionHandler: nil) }
-    }
-    private func menu() -> UIMenu {
-        let tools = [("用户中心", "person.crop.circle", "/login"), ("在线专栏", "newspaper", "/column"), ("选课", "graduationcap", "/course"), ("优客畅学", "play.rectangle", "/lesson"), ("随身答", "bubble.left.and.bubble.right", "/quora"), ("领创", "square.stack", "/linspirer"), ("中育应用下载", "arrow.down.circle", "/apps"), ("高级选项", "gearshape", "/advance"), ("分享", "square.and.arrow.up", "/share"), ("支持作者", "heart", "/donate"), ("关于与致谢", "info.circle", "/about")]
-        let actions = tools.map { name, icon, path in UIAction(title: name, image: UIImage(systemName: icon)) { [weak self] _ in self?.navigate(path) } }
-        let appearance = [("浅色", "light"), ("深色", "dark"), ("跟随系统", "system")].map { label, mode in
-            UIAction(title: label) { [weak self] _ in self?.main?.evaluateJavaScript("window.__zytbSetThemeMode && window.__zytbSetThemeMode('\(mode)')", completionHandler: nil) }
-        }
-        return UIMenu(children: [UIMenu(title: "学习工具", options: .displayInline, children: actions), UIMenu(title: "外观", children: appearance)])
-    }
+    override var preferredStatusBarStyle: UIStatusBarStyle { traitCollection.userInterfaceStyle == .dark ? .lightContent : .darkContent }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         let privileged = message.webView === main && message.frameInfo.isMainFrame && HostPolicy.local(message.frameInfo.request.url)
         let networkOnly = message.webView === guest && message.frameInfo.isMainFrame && HostPolicy.remote(message.frameInfo.request.url)
@@ -128,12 +82,11 @@ final class ToolboxController: UIViewController, WKNavigationDelegate, WKUIDeleg
         case "getDeviceId": reply(UIDevice.current.identifierForVendor?.uuidString ?? "", nil)
         case "syncNavigation":
             route = args["path"] as? String ?? "/login"; title = args["title"] as? String ?? "中育工具箱"
-            navigationItem.leftBarButtonItem?.isEnabled = route != "/login"
-            bottomNavigation.sync(path: route)
             reply(true, nil)
         case "setThemeDark":
             let mode = args["mode"] as? String ?? "system"
-            navigationController?.overrideUserInterfaceStyle = mode == "system" ? .unspecified : (mode == "dark" ? .dark : .light)
+            overrideUserInterfaceStyle = mode == "system" ? .unspecified : (mode == "dark" ? .dark : .light)
+            setNeedsStatusBarAppearanceUpdate()
             reply(true, nil)
         case "openExternal":
             guard let value = args["url"] as? String, let url = URL(string: value), HostPolicy.external(url) else { reply(nil, "不支持的外部链接"); return }

@@ -82,7 +82,7 @@
   };
   Object.assign(window.XMLHttpRequest,{UNSENT:0,OPENED:1,HEADERS_RECEIVED:2,LOADING:3,DONE:4});
   if (!local) return; // Guest pages have networking only, never file/device/window capabilities.
-  const markChrome=()=>document.documentElement?.classList.add('ios-native-chrome');
+  const markChrome=()=>document.documentElement?.classList.add('ios-web-chrome');
   if(document.documentElement)markChrome();else document.addEventListener('DOMContentLoaded',markChrome,{once:true});
   const host={
     kind:'ios', get systemDark(){return systemDark;},
