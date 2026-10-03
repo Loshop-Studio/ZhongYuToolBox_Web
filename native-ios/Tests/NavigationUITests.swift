@@ -30,8 +30,13 @@ final class NavigationUITests: XCTestCase {
         let right = web.buttons["我的"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         left.press(forDuration: 0.1, thenDragTo: right)
         XCTAssertTrue(web.buttons["账号与登录"].exists, "Sliding to My must show the account hub")
-        web.buttons["深色"].tap()
-        web.buttons["跟随系统"].tap()
+        // WebKit exposes aria-pressed controls as toggle elements, not regular buttons.
+        let dark = web.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "深色")).firstMatch
+        let system = web.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "跟随系统")).firstMatch
+        XCTAssertTrue(dark.waitForExistence(timeout: 5))
+        dark.tap()
+        XCTAssertTrue(system.waitForExistence(timeout: 5))
+        system.tap()
         right.press(forDuration: 0.1, thenDragTo: left)
         XCTAssertTrue(web.buttons["进入学校选课"].exists)
         let shot = XCTAttachment(screenshot: app.screenshot())
