@@ -5,7 +5,7 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'), project=join(r
 const version=JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version.split('-')[0]
 if(!/^\d+\.\d+\.\d+$/.test(version))throw Error('无效 iOS 版本号')
 const id=n=>n.toString(16).padStart(24,'0').toUpperCase()
-const sources=['App.swift','HostPolicy.swift','LocalAssetServer.swift','NativeTransport.swift','SlidingToolNavigation.swift']
+const sources=['App.swift','HostPolicy.swift','LocalAssetServer.swift','NativeTransport.swift']
 const resources=[['bridge.js','sourcecode.javascript'],['WebAssets','folder'],['Assets.xcassets','folder.assetcatalog']]
 let entries=[]
 sources.forEach((name,i)=>{entries.push(`${id(100+i)} = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ${name}; sourceTree = "<group>"; };`);entries.push(`${id(200+i)} = {isa = PBXBuildFile; fileRef = ${id(100+i)}; };`)})
