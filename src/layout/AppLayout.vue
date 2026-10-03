@@ -83,7 +83,7 @@
               <component :is="Component" v-else :key="String(route.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
             </transition>
           </router-view>
-          <footer v-if="showEditionUI && !hideHeader" class="edition-footer"><span>作者 {{ EDITION.originalAuthor }}</span><el-button text @click="router.push('/about')">关于与致谢</el-button></footer>
+          <footer v-if="showEditionUI && !hideHeader" class="edition-footer"><span>作者 {{ EDITION.originalAuthor }}</span><el-button text @click="router.push('/about')">关于应用</el-button></footer>
         </el-main>
       </el-container>
     </el-container>

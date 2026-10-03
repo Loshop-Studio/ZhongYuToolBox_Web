@@ -20,7 +20,8 @@
     "build:ww2": "node scripts/build-windows.mjs",
     "dev:ww2": "node scripts/dev-windows.mjs",
     "test:windows": "node scripts/build-windows.mjs --qa",
-    "build:installer": "node scripts/build-installer.mjs"
+    "build:installer": "node scripts/build-installer.mjs",
+    "test:update": "node scripts/test-update.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

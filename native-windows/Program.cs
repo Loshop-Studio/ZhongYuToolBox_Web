@@ -136,7 +136,9 @@ internal sealed class ToolboxWindow : Window {
         core.WebResourceRequested += Network;
     }
     async void Network(object sender, CoreWebView2WebResourceRequestedEventArgs e) {
-        if (!IsRemote(e.Request.Uri)) return;
+        bool releaseCheck = sender == main.CoreWebView2 && IsTrusted(main.CoreWebView2.Source) &&
+            e.Request.Method == "GET" && new[] { "https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "https://api.github.com/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest" }.Contains(e.Request.Uri);
+        if (!IsRemote(e.Request.Uri) && !releaseCheck) return;
         // Let the browser stream media/documents and load its own page assets.
         // CORS adaptation is needed for API calls and canvas-readable images.
         if (new[] { CoreWebView2WebResourceContext.Media, CoreWebView2WebResourceContext.Document,
