@@ -35,11 +35,16 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
     private var groupControllers: [UIViewController] = []
     private let groups = ["resources", "assessment", "questions", "me"]
     private var currentWebGroup = "resources"
-    private var systemDark: Bool { UIScreen.main.traitCollection.userInterfaceStyle == .dark }
+    private var systemDark: Bool { (view.window?.windowScene?.traitCollection ?? traitCollection).userInterfaceStyle == .dark }
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "中育工具箱"; view.backgroundColor = .systemBackground
         configureNavigation()
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (controller: ToolboxController, _: UITraitCollection) in
+                controller.updateSystemAppearance()
+            }
+        }
         status.text = "正在启动中育工具箱…"; status.textAlignment = .center; status.numberOfLines = 0
         status.translatesAutoresizingMaskIntoConstraints = false; view.addSubview(status)
         NSLayoutConstraint.activate([status.centerXAnchor.constraint(equalTo: view.centerXAnchor), status.centerYAnchor.constraint(equalTo: view.centerYAnchor), status.widthAnchor.constraint(lessThanOrEqualTo: view.widthAnchor, constant: -36)])
@@ -244,6 +249,9 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
     }
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
+        updateSystemAppearance()
+    }
+    private func updateSystemAppearance() {
         main?.evaluateJavaScript("window.__zytbSetSystemDark && window.__zytbSetSystemDark(\(systemDark))", completionHandler: nil)
     }
     func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
