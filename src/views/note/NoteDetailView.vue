@@ -218,16 +218,16 @@ import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Document, Download, Picture, PictureFilled, MoreFilled, Loading, InfoFilled } from '@element-plus/icons-vue'
 import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
-import { NoteViewer, type NoteViewerInstance } from 'ezy-board-viewer'
+import {
+  NoteViewer, createNoteVfs, drawSvgToPdf,
+  type NoteViewerInstance, type NoteVfs, type NotePage, type NoteImage
+} from 'ezy-board-viewer'
 import { getNoteResources, getNoteResourcesForZip, type NoteResource } from '@/api/note'
 import { proxyUrl, proxyImgSrc, resourceFetchUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
-import { drawSvgToPdf } from '@/utils/svgToPdf'
 import { ensureCjkPdfFont } from '@/utils/pdfFont'
 import { formatError, logError } from '@/utils/errorText'
 import { useIsMobile } from '@/composables/useIsMobile'
-import { createNoteVfs, type NoteVfs, type NotePage, type NoteImage } from '@/utils/noteVfs'
-import { detectBgLines } from '@/utils/noteBackground'
 
 const { isMobile } = useIsMobile()
 
@@ -444,11 +444,9 @@ async function loadResources() {
         if (img.naturalWidth > 1 && img.naturalHeight > 1) {
           np.width = img.naturalWidth
           np.height = img.naturalHeight
-          // 从截图左上角 32x32 区域采样主色作为画布底色（drawable bg）
-          np.bgcolor = sampleCornerColor(img)
-          // 背景网格/横线的权威来源是该页 mdb 的 BackgroundLineConfigEntity（noteVfs 合成
-          // header 时会优先用它）；这里按截图推断一份仅作兜底，mdb 缺失或解析失败时仍有背景
-          np.bgLines = detectBgLines(img) || undefined
+          // 底色与背景网格/横线一律由 noteVfs 从该页 mdb 读取
+          //（HeaderEntity.defaultBackgroundColor / BackgroundLineConfigEntity），
+          // 这里不再做任何截图采样 / 图像推断。
         }
         notePageMap.set(page, np)
       } else if (item.resourceType === 0) {
@@ -475,7 +473,13 @@ async function loadResources() {
     if (validPages.length) {
       vfs.value = await createNoteVfs({
         pages: validPages,
-        images: Array.from(noteImages.values())
+        images: Array.from(noteImages.values()),
+        // 资源统一走项目代理（npm 包默认直连 fetch）
+        fetchBlob: async (url: string) => {
+          const res = await fetch(resourceFetchUrl(url))
+          if (!res.ok) throw new Error('资源下载失败：HTTP ' + res.status)
+          return await res.blob()
+        }
       })
     }
   } catch (e: any) {
@@ -494,38 +498,6 @@ async function loadImageAsDataURL(url: string): Promise<string> {
     reader.onloadend = () => resolve(reader.result as string)
     reader.readAsDataURL(blob)
   })
-}
-
-/**
- * 从已加载的 Image 中提取左上角 32x32 区域的主色，编码为 protobuf int32（0xAARRGGBB）。
- * 失败或全透明返回 -1（不透明白）。
- */
-function sampleCornerColor(img: HTMLImageElement): number {
-  try {
-    const SZ = 32
-    const cv = document.createElement('canvas')
-    cv.width = SZ
-    cv.height = SZ
-    const cx = cv.getContext('2d')
-    if (!cx) return -1
-    cx.drawImage(img, 0, 0, SZ, SZ)
-    const { data } = cx.getImageData(0, 0, SZ, SZ)
-    let r = 0, g = 0, b = 0, a = 0, n = 0
-    for (let i = 0; i < data.length; i += 4) {
-      // 跳过全透明像素
-      if (data[i + 3] === 0) continue
-      r += data[i]
-      g += data[i + 1]
-      b += data[i + 2]
-      a += data[i + 3]
-      n++
-    }
-    if (!n) return -1
-    r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n); a = Math.round(a / n)
-    return ((a << 24) | (r << 16) | (g << 8) | b) | 0
-  } catch {
-    return -1
-  }
 }
 
 /** PDF 页脚：右下角一行说明 */
