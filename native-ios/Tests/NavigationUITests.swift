@@ -43,7 +43,12 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(web.buttons["账号与登录"].waitForExistence(timeout: 5))
         capture("iPad-landscape-my-light")
         let dark = web.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "深色")).firstMatch
-        XCTAssertTrue(dark.isHittable); dark.tap()
+        XCTAssertTrue(dark.isHittable)
+        // WebKit exposes aria-pressed buttons as switches. Use an actual touch
+        // at the button centre, and wait for its DOM-selected accessibility value.
+        dark.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "1"), object: dark)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 10), .completed, "Dark mode must actually become selected before capture")
         capture("iPad-landscape-my-dark")
     }
     func testBoardReplyFitsPhoneAndSupportsEditing() {
