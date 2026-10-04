@@ -26,7 +26,7 @@ if (!dev && !process.argv.includes('--skip-frontend')) {
 }
 // Fresh output per build; no deleting or overwriting a running client's files.
 const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
-const output = path.join(root, 'release', `${dev ? 'webview2-dev' : qa ? 'webview2-qa' : 'windows-webview2'}-${stamp}`)
+const output = path.join(root, 'release', `${dev ? 'webview2-dev' : qa ? 'webview2-qa' : 'windows-webview2'}`)
 fs.mkdirSync(output, { recursive: true })
 const framework = path.join(process.env.WINDIR, 'Microsoft.NET/Framework64/v4.0.30319')
 const exe = path.join(output, '中育Toolbox.exe')
