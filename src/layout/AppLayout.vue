@@ -31,7 +31,7 @@
       </div>
     </header>
 
-    <el-container class="main-container" :class="{ 'is-mobile': isMobile }">
+    <el-container class="main-container" :class="{ 'is-mobile': isMobile, 'no-topbar': hideHeader }">
       <!-- 侧边栏（桌面端常驻） -->
       <el-aside v-if="!isMobile" :width="collapsed ? '72px' : '220px'" class="aside" :class="{ 'is-collapsed': collapsed, 'instant-collapse': instantCollapse }">
         <div class="brand">
@@ -237,6 +237,7 @@ function onOpenDrawer() {
 <style scoped>
 .layout-root {
   height: 100vh;
+  height: 100dvh; /* 移动端用动态视口高度，避免浏览器 UI 造成内容溢出/裁切 */
   overflow: hidden;
   position: relative;
 }
@@ -378,9 +379,13 @@ function onOpenDrawer() {
   align-items: center;
   gap: 4px;
 }
-/* 移动端主容器占满高度 */
+/* 移动端主容器占满高度（仅在有移动端顶栏时扣掉其高度） */
 .main-container.is-mobile {
   height: calc(100% - 50px);
+}
+/* 二级页面接管顶栏（顶栏已隐藏）时不要再扣减，否则白白少 50px */
+.main-container.no-topbar {
+  height: 100%;
 }
 /* 移动端抽屉宽度：按比例并限制最大宽度，避免在大屏手机上过宽 */
 .mobile-drawer.el-drawer {
