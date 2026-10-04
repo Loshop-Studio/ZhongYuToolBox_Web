@@ -11,8 +11,7 @@ export default defineConfig(function (_a) {
         plugins: [vue()],
         resolve: {
             alias: {
-                '@': fileURLToPath(new URL('./src', import.meta.url)),
-                'ezy-board-viewer': fileURLToPath(new URL('./packages/ezy-board-viewer/src/index.js', import.meta.url))
+                '@': fileURLToPath(new URL('./src', import.meta.url))
             }
         },
         server: {
@@ -23,7 +22,7 @@ export default defineConfig(function (_a) {
         // （否则私有 # 字段不互通，报 "Cannot read from private field"）。
         // 因此将 pdfjs-dist 排除出依赖预构建，让主包与 worker 都从原始 .mjs 加载。
         optimizeDeps: {
-            exclude: ['pdfjs-dist']
+            exclude: ['pdfjs-dist', 'ezy-board-viewer']
         },
         worker: {
             format: 'es'

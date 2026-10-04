@@ -4,6 +4,7 @@ import { convertPdfToImages } from '../src/utils/pdf'
 import { initializeTheme, setThemeMode, resolveDarkMode } from '../src/composables/useTheme'
 import { buildInjectJS } from '../src/composables/useWebviewInject'
 import { featureQa } from './features-qa'
+import { notePreviewQa } from './note-preview-qa'
 import { boardCodecQa } from './board-codec-qa'
 import { boardReplyQa } from './board-reply-qa'
 import { fetchLatestRelease } from '../src/utils/appUpdate'
@@ -86,6 +87,7 @@ async function main() {
   check(writes === settled && settled > 0, '样式监听收敛，无自身触发循环')
   observer.disconnect(); frame.remove()
 
+  const notePdf = await notePreviewQa(check)
   const exportedBoard = await boardCodecQa(check)
   await boardReplyQa(check)
   const host = (window as any).nativeHost
@@ -96,6 +98,7 @@ async function main() {
     check(denied, '原生桥拒绝任意路径')
     const bytes = new Uint8Array(2 * 1024 * 1024 + 7); bytes.forEach((_, i) => { bytes[i] = i % 251 })
     const saved = await host.saveFile(bytes.buffer, 'qa.bin'); check(!saved.canceled, '真实原生分块保存大于 2 MB 文件')
+    await host.saveFile(await notePdf.arrayBuffer(), 'qa-note-preview.pdf')
     await host.saveFile(await exportedBoard.svg.arrayBuffer(), 'qa-board.svg')
     await host.saveFile(await exportedBoard.mp4.arrayBuffer(), 'qa-board.mp4')
     check(true, 'SVG / MP4 由真实原生桥本地保存')

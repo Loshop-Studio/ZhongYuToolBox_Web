@@ -4,6 +4,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased] - 2026-10-04
+
+- 同步上游笔记高清预览和中文矢量 PDF 导出；截图页与画板页混合时保留全部页序，并提供明确的逐页降级/失败结果。
+- 使用 npm ezy-board-viewer 0.1.1，保留导出、取消、编码器清理等兼容补丁；去除本地组件别名与内嵌源码。
+- 笔记任务在离开、切换笔记或账号时取消；资源失败可重试，MDB 背景与笔迹共享下载缓存。
+- 保留 aoki UI、Windows/Android/iOS 原生壳、作者统计默认关闭及全部既有功能。
+
 ## [1.1.12-aoki] - 2026-10-03
 
 - iOS 底栏改为 Apple UITabBarController / UITab / UISearchTab，返回按钮使用系统玻璃组件；iOS 26 使用原生 Liquid Glass，较早系统使用原生标准样式。

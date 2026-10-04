@@ -54,10 +54,20 @@ iPhone / iPad 使用 **Swift + UIKit + WKWebView**。业务前端从包内资源
 
 `npm run test:ios` 验证桥接与 OSS；`npm run build:ios` 在 macOS / Xcode 26+ 生成未签名 IPA；Windows 可运行 `npm run build:ios -- --web-only` 检查前端。云端构建见 **Build iOS IPA**。完整构建与签名步骤见 [iOS 说明](https://github.com/nickfox395/ZhongYuToolBox_Web/blob/feature/ios-liquid-glass-1.1.9/native-ios/README.md)。
 
+## 开发分支：同步上游笔记预览
+
+以下更新位于 `feature/ios-liquid-glass-1.1.9` 源码分支，尚未包含在已有 1.1.13 Release 安装包中。
+
+- 适配上游 npm `ezy-board-viewer@0.1.1`，替代仓库内嵌源码；安装依赖时自动应用兼容补丁，保留随身答 SVG / MP4 导出、取消和重试能力。
+- 云笔记可切换截图预览与高清矢量预览；旧版笔触、新版 MDB、文字与页内图片按需读取。混合笔记保留全部页序，移动端使用一个翻页栏。
+- 新增笔记矢量 PDF 导出，随包提供 HarmonyOS Sans SC 中文字体；不可渲染的矢量页回退到官方截图，缺失整页时明确报错，不静默漏页。
+- 保留 aoki 界面、浅色/深色/跟随系统、三端原生壳及全部既有功能；错题本继续使用思源宋体与原有题目/答案分区排版。
+- 作者用户量统计仍默认关闭；开启后的接口合约不变，统计失败不影响登录。
+
 ## 1.1.13 新增：随身答画板与关于应用
 
 - 在随身答回复下打开「查看 / 导出画板」。静态画板可在本地导出 SVG，多页纵向合并且图片内联；录制可回放，并选择 960p / 1280p / 1920p 长边导出 MP4。录制也可导出最终画面 SVG。
-- 沿用原作者最新 `ezy-board-viewer` 源码，MP4 使用 WebCodecs / H.264，本地处理后进入系统保存流程，不为了导出重新上传 OSS。没有视频编码能力时仍可导出 SVG；没有 AAC 编码能力时会提示视频无音轨。实际音画同步仍取决于原始录制时间轴。
+- 沿用原作者 `ezy-board-viewer` 组件，MP4 使用 WebCodecs / H.264，本地处理后进入系统保存流程，不为了导出重新上传 OSS。没有视频编码能力时仍可导出 SVG；没有 AAC 编码能力时会提示视频无音轨。实际音画同步仍取决于原始录制时间轴。
 - 导出可取消，离开页面会停止下载与编码；多页不同尺寸会居中留白，编码器在成功、失败和取消后释放。
 - 修复 iOS 画板回复出现负缩放值、绘图区只剩横条：有效容器尺寸才参与缩放，画布尺寸同步更新，并提供移动触摸绘图区域；文字编辑与颜色变化进入撤销历史，重做恢复实际内容。
 - 桌面「关于应用」合并检查更新、支持作者、使用说明、功能说明与致谢；移动端在「我的 → 关于应用」。保留 Loshop 的支持入口与原有捐赠对象。
@@ -136,3 +146,5 @@ PDF 数学排版使用 KaTeX（Khan Academy and other contributors），渲染�
 Windows 安装程序完成首次安装、197 个载荷摘要、覆盖修复和卸载检查。iOS 26 模拟器完成 3 项 iPhone 测试与 1 项 iPad 横屏测试，包含实际 WKWebView 输入、文章图片、原生返回和导航。模拟器验证不等同于所有真机、所有学校接口均已联调。
 
 本地界面、格式转换与导出可在本机运行；云笔记、图库、测评、错题本、随身答和课程仍依赖学校中育服务器与 OSS。GitHub 不可达时检查更新会报错，并保留发布页入口；不影响已安装应用的学习功能。iOS 原生构建由 GitHub macOS 工作流核查，Windows 环境不冒充 iPhone 真机验证。
+
+笔记矢量 PDF 的 HarmonyOS Sans SC Regular 字体沿用上游原始 TTF；来源说明见 public/fonts/HarmonyOS_Sans_LICENSE.txt，按需载入，不改变应用界面或错题本字体。

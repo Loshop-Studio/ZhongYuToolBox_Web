@@ -176,18 +176,18 @@ export async function searchNotes(fileName: string): Promise<NoteItem[]> {
 }
 
 /** 按 fileId 获取笔记的图片资源列表（复刻 noteDownload 取数部分） */
-export async function getNoteResources(fileId: string): Promise<NoteResource[]> {
+export async function getNoteResources(fileId: string, signal?: AbortSignal): Promise<NoteResource[]> {
   const url = resourcesPath('GetByFileId', aesEncrypt('fileId=' + fileId))
-  const res = await fetch(url, { method: 'GET', headers: authHeaders() })
+  const res = await fetch(url, { method: 'GET', signal, headers: authHeaders() })
   check401(res.status)
   const data = await res.json()
   return (JSON.parse(aesDecrypt(data.data)).resourceList || []) as NoteResource[]
 }
 
 /** 获取全部资源用于打包下载（复刻 noteDownload2 取数部分，路径自适应 special / 直连） */
-export async function getNoteResourcesForZip(fileId: string): Promise<NoteResource[]> {
+export async function getNoteResourcesForZip(fileId: string, signal?: AbortSignal): Promise<NoteResource[]> {
   const url = resourcesPath('GetByFileId', aesEncrypt('fileId=' + fileId))
-  const res = await fetch(url, { method: 'GET', headers: authHeaders() })
+  const res = await fetch(url, { method: 'GET', signal, headers: authHeaders() })
   check401(res.status)
   const data = await res.json()
   return (JSON.parse(aesDecrypt(data.data)).resourceList || []) as NoteResource[]

@@ -1,7 +1,7 @@
 import { createApp, h, ref } from 'vue'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import { EzyBoardViewer } from '../packages/ezy-board-viewer/src/index.js'
+import { EzyBoardViewer } from 'ezy-board-viewer'
 import { boardCodecQa } from './board-codec-qa'
 import { boardReplyQa } from './board-reply-qa'
 const source=ref<any>(null), result=ref('点击开始测试'), links=ref<{url:string,name:string}[]>([])

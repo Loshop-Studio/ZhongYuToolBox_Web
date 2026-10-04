@@ -1,4 +1,5 @@
 // Disposable localhost fixture. Every remote fetch is intercepted; no official writes.
+import { createBoard } from 'ezy-board-viewer'
 import { aesEncrypt, aesDecrypt } from '../src/utils/crypto'
 const base = 'http://sxz.api.zykj.org'
 localStorage.setItem('token','test.'+btoa(JSON.stringify({sub:'QA_UI_ONLY',exp:Math.floor(Date.now()/1000)+3600}))+'.test')
@@ -11,6 +12,15 @@ Object.defineProperty(window,'electronAPI',{value:{saveFile:async(bytes:ArrayBuf
 const canvas=document.createElement('canvas');canvas.width=720;canvas.height=450
 const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,720,450);ctx.fillStyle='#705776';ctx.font='30px sans-serif';ctx.fillText('x² + y² = 1',60,70);ctx.strokeStyle='#a693ac';ctx.lineWidth=4;ctx.beginPath();ctx.arc(360,240,130,0,2*Math.PI);ctx.stroke()
 const image=canvas.toDataURL('image/png')
+const previewBoard=createBoard({width:720,height:450,screenshot:false})
+previewBoard.page().text('数学 · 几何复习',{x:40,y:55,size:32})
+previewBoard.page().stroke([[60,180],[280,120],[600,280]],{lineWidth:5,color:'#705776'})
+previewBoard.addPage({width:450,height:720}).text('竖版矢量页',{x:30,y:70,size:28})
+const previewFiles=await previewBoard.toFiles(), previewDirs=[...new Set(previewFiles.filter(f=>f.path.endsWith('snapshot.bin')).map(f=>f.path.split('/')[0]))]
+const previewBytes=new Map<string,Blob>(), previewResources:any[]=[]
+for(const file of previewFiles){const idx=previewDirs.indexOf(file.path.split('/')[0]);if(idx<0)continue;const url=location.origin+'/fixture-note/'+file.path+'?signature=QA';previewBytes.set(url,file.blob);previewResources.push({pageIndex:idx*2,resourceType:1,ossImageUrl:url})}
+previewBytes.set(location.origin+'/fixture-note/preview.png',await (await fetch(image)).blob())
+previewResources.push({pageIndex:1,resourceType:2,ossImageUrl:location.origin+'/example/a888b5fb-e65d-4611-a3af-1f80a0fb6ced/screenshot.png'})
 const noteTemplate={type:1,fileUrl:'https://fixture.invalid/note',parentId:'0',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,updateTime:'2026-10-01'}
 let notes=[{...noteTemplate,fileId:'QA_NOTE',fileName:'数学 · 几何复习'},{...noteTemplate,fileId:'QA_NOTE_2',fileName:'物理 · 力学复习'},{...noteTemplate,type:0,fileId:'QA_FOLDER',fileName:'归档'},{...noteTemplate,fileId:'QA_RECYCLE',fileName:'已废弃 · 几何草稿',isRecycleBin:true}]
 const task={id:77,examTaskId:77,examId:991,examName:'数学 · 单元测评（离线演示）',topicName:'数学',enableScore:true,groups:[{questions:[{id:11,originScore:2,myScore:10,score:10,completed:false,number:'1'},{id:12,originScore:1,score:5,number:'2'}]}]}
@@ -25,7 +35,9 @@ window.fetch=async(url,options)=>{
     const params = new URL(address).searchParams, id = Number(params.get('id') ?? params.get('examId'))
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error('无效的测评编号：'+String(id))
   }
-  if(address.startsWith('data:')||address.startsWith('blob:')||address.startsWith('/')||address.startsWith('http://127.0.0.1:5175/'))return originalFetch(url,options)
+  if(previewBytes.has(address))return new Response(previewBytes.get(address))
+  if(address.includes('/CloudNotes/api/Resources/'))return json({code:0,data:aesEncrypt(JSON.stringify({resourceList:previewResources}))})
+  if(address.startsWith('data:')||address.startsWith('blob:')||address.startsWith('/')||address.startsWith(location.origin+'/'))return originalFetch(url,options)
   if(address.includes('/CloudNotes/api/Notes/Update')){const payload=JSON.parse(aesDecrypt(String(options?.body)));const note=notes.find(n=>n.fileId===payload.fileId)!;Object.assign(note,payload);note.version++;return json({code:0,data:aesEncrypt(JSON.stringify({version:note.version}))})}
   if(address.includes('/CloudNotes/api/Notes/MoveToRecycleBin')){notes[0].isRecycleBin=true;return json({code:0})}
   if(address.includes('/CloudNotes/api/Notes/Delete')){if(new URL(location.href).searchParams.get('deleteFailure')==='1')return json({code:1001,msg:'离线模拟：官方拒绝删除'});const ids=JSON.parse(aesDecrypt(String(options?.body)));notes=notes.filter(n=>!ids.includes(n.fileId));return json({code:0})}
