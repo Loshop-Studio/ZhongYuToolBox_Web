@@ -16,7 +16,17 @@
 .ios-shell .ios-page-stage.ios-fixed-feature > .column-page,
 .ios-shell .ios-page-stage.ios-fixed-feature > .iframe-page,
 .ios-shell .ios-page-stage.ios-fixed-feature > .note-detail,
+.ios-shell .ios-page-stage.ios-fixed-feature > .board-page,
+.ios-shell .ios-page-stage.ios-fixed-feature > .board-view,
 .ios-shell .ios-page-stage.ios-fixed-feature > .detail-page { position:relative; inset:auto; height:100%; min-height:0; }
+.ios-shell .board-page .board-wrap { height:auto; flex:1 1 auto; min-height:0; }
+.ios-shell .note-detail .appbar,
+.ios-shell .note-detail .pager-bar { flex-shrink:0; }
+.ios-shell .note-detail .pager-bar { position:relative; inset:auto; padding-bottom:8px; flex-wrap:wrap; }
+.ios-shell .note-detail .preview-body { margin-bottom:0; min-height:0; }
+.ios-shell .note-detail .thumb-board { height:100%; min-height:0; }
+.ios-shell .mistake-detail { height:100%; min-height:0; overflow:auto; }
+.ios-native-chrome .actions-sheet { bottom:var(--ios-native-bottom, 90px); }
 .ios-shell .column-page .col-side { border-color:var(--line); }
 .ios-shell .column-page .col-col-item { white-space:normal; overflow-wrap:anywhere; }
 .ios-shell .column-page .col-header { padding:12px 12px 0; }

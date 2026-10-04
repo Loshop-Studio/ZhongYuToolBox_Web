@@ -82,6 +82,8 @@ function openSearchResult(path: string) { searchOpen.value = false; router.push(
 ;(window as any).__zytbSetThemeMode = setThemeMode
 ;(window as any).__zytbBack = () => {
   if (searchOpen.value) { searchOpen.value = false; return true }
+  const sheet = Array.from(document.querySelectorAll<HTMLElement>('.actions-mask')).find(mask => mask.getClientRects().length > 0)
+  if (sheet) { sheet.click(); return true }
   const close = Array.from(document.querySelectorAll<HTMLElement>('.el-overlay-dialog .el-dialog__headerbtn, .el-message-box__headerbtn')).find(button => button.getClientRects().length > 0 && getComputedStyle(button).visibility !== 'hidden')
   if (close) { close.click(); return true }
   if (mobileGroups.some(g => g.path === route.path) || ['/note', '/exam', '/quora'].includes(route.path)) return false

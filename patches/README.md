@@ -20,4 +20,3 @@ check whether these fixes are included and remove or regenerate the patch.
 Run `/tests/board-export.html` under `npm run dev` for synthetic SVG/MP4,
 audio, cancellation/retry and actual Fabric editing checks. These tests do not
 write to a school account.
-
