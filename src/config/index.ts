@@ -17,14 +17,18 @@
 export const IS_BROWSER: boolean =
   (import.meta.env.VITE_IS_BROWSER as string | undefined) !== 'false'
 
-export type Platform = 'browser' | 'electron' | 'webview2' | 'plus'
+export type Platform = 'browser' | 'electron' | 'webview2' | 'plus' | 'android' | 'ios'
 
 export const PLATFORM: Platform = IS_BROWSER
   ? 'browser'
+  : (import.meta.env.VITE_PLATFORM as string | undefined) === 'ios' ? 'ios'
+  : (import.meta.env.VITE_PLATFORM as string | undefined) === 'android' ? 'android'
   : (import.meta.env.VITE_PLATFORM as string | undefined) === 'plus'
     ? 'plus'
     : (import.meta.env.VITE_PLATFORM as string | undefined) === 'webview2' ? 'webview2' : 'electron'
 
+// Native mobile builds use the four-group layout. Existing H5+ stays unchanged.
+export const IS_MOBILE = PLATFORM === 'android' || PLATFORM === 'ios'
 export const IS_WINDOWS = PLATFORM === 'electron' || PLATFORM === 'webview2'
 
 /** 是否走资源代理：仅浏览器模式走代理，内嵌 App 直接请求 */

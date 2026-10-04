@@ -60,3 +60,17 @@ PDF 正文使用思源宋体 CN Regular（Adobe / Google），按 SIL Open Font 
 验证：`npm run test:update`；`npm run dev` 后打开 `/tests/board-export.html`，点击「开始导出验证」检查多页 SVG、录制编码、音轨与取消。测试仅使用合成资料。
 
 画板沿用上游 npm 依赖 `ezy-board-viewer@0.1.1`，不恢复已删除的本地组件目录。`npm ci` 自动应用导出取消、编码器释放、不同尺寸页面居中及旧 WebView ZIP 兼容补丁，说明见 [patches/README.md](patches/README.md)；升级该依赖时需核对并移除或更新补丁。保留上游新增的云笔记预览、PDF 导出与中文字体功能。
+
+## Android / iPhone / iPad 原生构建
+
+新增平台标签 `android`、`ios`，采用资源、测评、问答、我的四组移动导航；原有浏览器、Electron、WebView2、H5+ 布局及作者最新业务页面保留。原登录统计与支持作者入口继续使用。
+
+```sh
+npm ci
+npm run build:android
+npm run build:ios
+```
+
+Android 需要 JDK 17、SDK 35 / build-tools 35.0.0、Gradle 8.14.3；产物在 `release/android`。[Android 构建与签名说明](native-android/README.md)。iOS 需要 macOS / Xcode 26+，可使用 GitHub Actions 的 Build iOS IPA 获取未签名 IPA 和模拟器截图；Windows 仅能 `npm run build:ios -- --web-only`，产物在 `release/ios`。[iOS 构建与安装说明](native-ios/README.md)。构建不会自动发布 Release。
+
+开发预览：`npm run dev:android`、`npm run dev:ios`；桥接测试：`npm run test:android`、`npm run test:ios`。预览中的网页底栏仅是回退，iOS 设备使用苹果原生底栏及返回按钮。新壳使用独立包名，不自动继承旧 H5+ 版本或 fork 的登录资料。

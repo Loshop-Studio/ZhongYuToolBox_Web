@@ -22,7 +22,13 @@
     "test:windows": "node scripts/build-windows.mjs --qa",
     "build:installer": "node scripts/build-installer.mjs",
     "test:update": "node scripts/test-update.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "dev:android": "vite --mode android",
+    "build:android": "node scripts/build-android.mjs",
+    "test:android": "node scripts/test-android.mjs && node scripts/test-android-oss.mjs",
+    "dev:ios": "vite --mode ios",
+    "build:ios": "node scripts/build-ios.mjs",
+    "test:ios": "node scripts/test-ios-bridge.mjs && node scripts/test-ios-oss.mjs && node scripts/test-ios-native.mjs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

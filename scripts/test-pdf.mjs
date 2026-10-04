@@ -29,16 +29,18 @@ for (const [index, [width, height, rotation]] of definitions.entries()) {
 }
 const inputBytes = await document.save()
 const input = new File([inputBytes], 'mixed.pdf', {type: 'application/pdf'})
-const result = await prepareLandscapePdf(input)
-assert.deepEqual(result.rotatedPages, [1, 3, 6, 8])
+assert.equal((await prepareLandscapePdf(input)).file, input, 'upstream default keeps the selected no-rotation mode')
+const result = await prepareLandscapePdf(input, 'ccw90')
+assert.deepEqual(result.rotatedPages, [1, 2, 3, 4, 5, 6, 7, 8])
 assert.equal(result.totalPages, 8)
 assert.deepEqual(new Uint8Array(await input.arrayBuffer()), inputBytes, 'input must remain unchanged')
 const converted = await PDFDocument.load(await result.file.arrayBuffer())
-assert.deepEqual(converted.getPages().map(page => page.getRotation().angle), [270, 0, 0, 90, 0, 270, 0, 270])
+assert.deepEqual(converted.getPages().map(page => page.getRotation().angle), [270, 270, 0, 0, 270, 270, 270, 270])
 assert.deepEqual(converted.getPages().map(page => page.getSize()), definitions.map(([width,height]) => ({width,height})))
 for (const page of converted.getPages()) {
-  const box = page.getCropBox(), sideways = [90,270].includes(page.getRotation().angle)
-  assert.ok((sideways ? box.height : box.width) >= (sideways ? box.width : box.height))
+  const box = page.getCropBox(), size = page.getSize()
+  assert.equal(box.width, size.width, 'rotation must not crop the page')
+  assert.equal(box.height, size.height, 'rotation must not crop the page')
   assert.ok(page.node.Contents(), 'vector content remains present')
 }
 assert.equal((await prepareLandscapePdf(result.file)).file, result.file, 'already landscape: no rewrite')
@@ -82,7 +84,7 @@ const {uploadPdfAsNote} = await import(pathToFileURL(output + '/upload.mjs'))
 await assert.rejects(() => uploadPdfAsNote({file:input,noteName:'TEST_ONLY'}), /template failure/)
 assert.equal(uploads.length,0)
 const progress=[]
-await uploadPdfAsNote({file:input,noteName:'TEST_ONLY',onProgress:p=>progress.push(p)})
+await uploadPdfAsNote({file:input,noteName:'TEST_ONLY',rotationMode:'ccw90',onProgress:p=>progress.push(p)})
 assert.equal(uploads.length,18)
 const resources = saves[0].body
 assert.equal(resources.length,18)
@@ -113,4 +115,4 @@ for (let attempt=0;attempt<2;attempt++) {
   assert.equal(saves[1].body.fileId,stableId, 'batch retry reuses the same note identity')
 }
 await assert.rejects(()=>uploadPdfAsNote({file:input,noteName:'BAD_ID',fileId:'../../invalid',images:[{pageNum:1,blob:new Blob(['TEST']),url:''}]}),/文件 ID/)
-console.log('PASS: portrait/landscape/pre-rotated/square pages, original preserved, invalid PDF rejected; offline upload hashes, SHA chains, actual URLs, monotonic progress, retry and repeated upload. No real network requests.')
+console.log('PASS: explicit upstream rotation modes, portrait/landscape/pre-rotated/square pages, original preserved, invalid PDF rejected; offline upload hashes, SHA chains, actual URLs, monotonic progress, retry and repeated upload. No real network requests.')

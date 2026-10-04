@@ -1,7 +1,7 @@
-# ezy-board-viewer 0.1.1 compatibility patch
+# ezy-board-viewer 0.1.2 compatibility patch
 
 The application continues to import the upstream npm package and its public API.
-`npm ci` applies `ezy-board-viewer+0.1.1.patch` through `patch-package`.
+`npm ci` applies `ezy-board-viewer+0.1.2.patch` through `patch-package`.
 No deleted `packages/ezy-board-viewer` source tree is restored.
 
 The patch carries the export fixes from the previous application PR:
@@ -14,7 +14,7 @@ The patch carries the export fixes from the previous application PR:
 - Ignore stale component loads and avoid restarting playback after cancellation.
 
 It does not replace the package's new note viewer, MDB parser or PDF APIs.
-The patch targets the locked 0.1.1 distribution; when upgrading the dependency,
+The patch targets the locked 0.1.2 distribution; when upgrading the dependency,
 check whether these fixes are included and remove or regenerate the patch.
 
 Run `/tests/board-export.html` under `npm run dev` for synthetic SVG/MP4,

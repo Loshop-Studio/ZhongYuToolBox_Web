@@ -1,6 +1,7 @@
 <template>
   <div class="iframe-page">
     <div class="iframe-bar">
+      <el-button v-if="PLATFORM === 'android'" text :icon="ArrowLeft" aria-label="返回资源" @click="router.push('/lesson')">返回</el-button>
       <span class="iframe-bar-title">{{ kindLabel }}</span>
       <div class="iframe-bar-right">
         <span v-if="embedded?.loading.value">正在加载…</span>
@@ -34,8 +35,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { TopRight } from '@element-plus/icons-vue'
-import { getIframeBase } from '@/config'
+import { TopRight, ArrowLeft } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { getIframeBase, PLATFORM } from '@/config'
 import { useAuthStore } from '@/stores/auth'
 import { useIframeInject } from '@/composables/useIframeInject'
 import { isElectron, useWebviewInject } from '@/composables/useWebviewInject'
@@ -45,6 +47,7 @@ import { officialEmbedUrl, officialUserBootstrap } from '@/utils/officialEmbed'
 
 const props = defineProps<{ kind: 'column' | 'course' }>()
 const auth = useAuthStore()
+const router = useRouter()
 
 const kindLabel = computed(
   () => ({ column: '在线专栏', course: '选课' }[props.kind])

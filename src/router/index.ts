@@ -1,10 +1,18 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { IS_MOBILE } from '@/config'
 
 const Placeholder = () => import('@/views/PlaceholderView.vue')
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: IS_MOBILE ? '/resources' : '/login' },
+  ...(IS_MOBILE ? [
+    { path: '/resources', name: 'mobile-resources', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'resources' }, meta: { title: '资源' } },
+    { path: '/assessment', name: 'mobile-assessment', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'assessment' }, meta: { title: '测评' } },
+    { path: '/questions', name: 'mobile-questions', component: () => import('@/views/mobile/MobileHubView.vue'), props: { group: 'questions' }, meta: { title: '问答' } },
+    { path: '/me', name: 'mobile-me', component: () => import('@/views/mobile/MobileMeView.vue'), meta: { title: '我的' } }
+  ] : []),
+
   {
     path: '/login',
     name: 'login',
@@ -88,7 +96,11 @@ const router = createRouter({
 // 3. /login、/about、/donate、/apps 公开可访问，不强制登录。
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
-  const publicPages = ['/login', '/about', '/donate', '/apps']
+  const publicPages = ['/login', '/about', '/donate', '/apps', ...(IS_MOBILE ? ['/resources', '/assessment', '/questions', '/me'] : [])]
+  if (IS_MOBILE && auth.isLoggedIn && ['/resources', '/assessment', '/questions'].includes(to.path)) {
+    const sections: Record<string, string> = to.path === '/resources' ? { note: '/note', column: '/column', lesson: '/lesson' } : { exam: '/exam', mistake: '/mistake' }
+    return { path: to.path === '/questions' ? '/quora' : sections[String(to.query.section)] || (to.path === '/resources' ? '/note' : '/exam') }
+  }
   const isPublic = publicPages.includes(to.path)
   if (auth.isLoggedIn) return true
   if (isPublic) return true
@@ -97,7 +109,7 @@ router.beforeEach(async (to) => {
     const ok = await auth.autoRelogin()
     if (ok) return true
   }
-  return { path: '/login' }
+  return IS_MOBILE ? { path: '/login', query: { redirect: to.fullPath } } : { path: '/login' }
 })
 
 export default router

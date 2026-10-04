@@ -46,7 +46,7 @@ export async function saveBlobFile(blob: Blob, filename: string, options: { loca
       return
     }
   }
-  if (IS_WINDOWS) {
+  if (IS_WINDOWS || PLATFORM === 'android' || PLATFORM === 'ios') {
     const ab = await blobToArrayBuffer(blob)
     await saveByElectron(ab, safeName)
     return
@@ -500,7 +500,7 @@ async function saveBlobOnIOS(blob: Blob, filename: string): Promise<void> {
 
 async function saveByElectron(ab: ArrayBuffer, filename: string): Promise<void> {
   // 优先使用宿主桥接 API（推荐在主进程 contextBridge 暴露 saveFile）
-  const bridge = (window as any).electronAPI
+  const bridge = (window as any).nativeHost || (window as any).electronAPI
   if (bridge && typeof bridge.saveFile === 'function') {
     const result = await bridge.saveFile(ab, filename)
     if (result?.canceled || result === false) throw new Error('已取消保存')
