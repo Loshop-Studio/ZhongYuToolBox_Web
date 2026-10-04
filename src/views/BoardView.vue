@@ -80,6 +80,7 @@ const innerStyle = reactive({ width: '0px', height: '0px' })
 let fc: InstanceType<typeof fabric.Canvas> | null = null
 let undoStack: string[] = []
 let redoStack: string[] = []
+let restoringHistory = false
 const MAX_HISTORY = 50
 
 function applyZoom() {
@@ -88,6 +89,7 @@ function applyZoom() {
   const height = Math.max(1, Math.round(CANVAS_H * zoomLevel.value))
   fc.setDimensions({ width, height })
   fc.setZoom(zoomLevel.value)
+  fc.renderAll()
   innerStyle.width = Math.round(CANVAS_W * zoomLevel.value) + 'px'
   innerStyle.height = Math.round(CANVAS_H * zoomLevel.value) + 'px'
 }
@@ -103,30 +105,38 @@ function fitZoom() {
 }
 
 function saveState() {
-  if (!fc) return
-  undoStack.push(JSON.stringify(fc.toJSON(['id'])))
+  if (!fc || restoringHistory) return
+  const state = JSON.stringify(fc.toJSON(['id']))
+  if (state === undoStack[undoStack.length - 1]) return
+  undoStack.push(state)
   if (undoStack.length > MAX_HISTORY) undoStack.shift()
   redoStack = []
 }
 function undo() {
-  if (!fc || undoStack.length < 2) return
+  if (!fc || restoringHistory || undoStack.length < 2) return
   redoStack.push(undoStack.pop()!)
   const prev = undoStack[undoStack.length - 1]
-  fc.loadFromJSON(prev, () => fc!.renderAll())
+  const canvas = fc
+  restoringHistory = true
+  canvas.loadFromJSON(prev, () => { if (fc === canvas) canvas.renderAll(); restoringHistory = false })
 }
 function redo() {
-  if (!fc || redoStack.length === 0) return
+  if (!fc || restoringHistory || redoStack.length === 0) return
   const next = redoStack.pop()!
   undoStack.push(next)
-  fc.loadFromJSON(next, () => fc!.renderAll())
+  const canvas = fc
+  restoringHistory = true
+  canvas.loadFromJSON(next, () => { if (fc === canvas) canvas.renderAll(); restoringHistory = false })
 }
 function clearAll() {
-  if (!fc) return
+  if (!fc || restoringHistory) return
+  restoringHistory = true
   fc.clear()
   fc.backgroundColor = '#FFFFFF'
   fc.renderAll()
   undoStack = []
   redoStack = []
+  restoringHistory = false
   saveState()
 }
 
@@ -170,6 +180,7 @@ function setColor(c: string) {
       ;(active as any).set('stroke', c)
     }
     fc!.renderAll()
+    saveState()
   }
 }
 function zoomIn() {
@@ -177,7 +188,7 @@ function zoomIn() {
   applyZoom()
 }
 function zoomOut() {
-  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.2)
+  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.05)
   applyZoom()
 }
 function pickImage() {
@@ -186,6 +197,7 @@ function pickImage() {
 function insertImage(dataUrl: string) {
   if (!fc) return
   fabric.Image.fromURL(dataUrl, (img) => {
+    if (!fc || !img) return
     const maxW = CANVAS_W * 0.8
     const maxH = CANVAS_H * 0.8
     if (img.width! > maxW || img.height! > maxH) {
@@ -264,6 +276,7 @@ function initCanvas() {
   })
   fc.on('object:modified', saveState)
   fc.on('path:created', saveState)
+  fc.on('text:changed', saveState)
   setTool('select')
   fitZoom()
   saveState()

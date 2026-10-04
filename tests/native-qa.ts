@@ -5,6 +5,7 @@ import { initializeTheme, setThemeMode, resolveDarkMode } from '../src/composabl
 import { buildInjectJS } from '../src/composables/useWebviewInject'
 import { featureQa } from './features-qa'
 import { boardCodecQa } from './board-codec-qa'
+import { boardReplyQa } from './board-reply-qa'
 import { fetchLatestRelease } from '../src/utils/appUpdate'
 
 const checks: string[] = []
@@ -86,6 +87,7 @@ async function main() {
   observer.disconnect(); frame.remove()
 
   const exportedBoard = await boardCodecQa(check)
+  await boardReplyQa(check)
   const host = (window as any).nativeHost
   if (host) {
     check(host.kind === 'webview2' && !(window as any).require, '真实 WebView2 壳，无 Node')
