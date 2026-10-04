@@ -52,7 +52,7 @@ function copyDirectory(source, destination) {
 copyDirectory(dev ? 'public' : 'dist', path.join(output, 'dist'))
 if (qa && !fs.existsSync(path.join(output, 'dist/tests/native-qa.html'))) throw new Error('QA entry missing from build')
 if (!qa && fs.existsSync(path.join(output, 'dist/tests'))) throw new Error('QA pages leaked into production build')
-fs.mkdirSync(path.join(output, 'LICENSES'))
+fs.mkdirSync(path.join(output, 'LICENSES'), { recursive: true })
 fs.copyFileSync(path.join(sdk, 'LICENSE.txt'), path.join(output, 'LICENSES/WebView2-LICENSE.txt'))
 fs.copyFileSync(path.join(sdk, 'NOTICE.txt'), path.join(output, 'LICENSES/WebView2-NOTICE.txt'))
 for (const name of ['vue', 'pinia', 'element-plus', 'pdf-lib', 'pdfjs-dist', 'html2canvas', 'katex', 'crypto-js', 'jszip', 'ali-oss', 'mp4-muxer']) {

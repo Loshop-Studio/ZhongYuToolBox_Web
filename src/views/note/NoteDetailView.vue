@@ -418,6 +418,11 @@ async function loadResources() {
           const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
           np.mdbUrl = full
           notePageMap.set(page, np)
+        } else if (/header\.bin$/i.test(item.ossImageUrl)) {
+          // 老格式笔记不上传 mdb，底色 / 背景线存在这里；新版可省，NoteViewer 会从 mdb 读
+          const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
+          np.headerUrl = full
+          notePageMap.set(page, np)
         } else if (/_touch\.bin$/i.test(item.ossImageUrl)) {
           const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
           if (!np.touchUrls) np.touchUrls = []
