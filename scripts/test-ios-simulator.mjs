@@ -33,17 +33,24 @@ for(const kind of ['iPhone','iPad']) {
   }
   if(!changed)throw Error(`${kind} did not redraw after the system appearance changed`)
   console.log(`Launched ${device.name}; screenshots require visual inspection`)
-  if(kind === 'iPhone') {
+  {
+   const bundle=join(output,kind === 'iPhone' ? 'NavigationUI.xcresult' : 'iPadLandscapeUI.xcresult')
+   const cases=kind === 'iPhone'
+    ? ['testBoardReplyFitsPhoneAndSupportsEditing','testNativeGroupsAndSystemGlass','testColumnLayoutImagesAndNativeBack']
+    : ['testIPadLandscapeContentFitsScreen']
    const test=spawnSync('xcodebuild',[
     '-project','native-ios/ZhongYuToolBox.xcodeproj','-scheme','ZhongYuToolBox',
     '-configuration','Release','-destination',`platform=iOS Simulator,id=${device.udid}`,
     '-derivedDataPath','.local/ios-simulator',
-    '-resultBundlePath',join(output,'NavigationUI.xcresult'),
-    '-parallel-testing-enabled','NO','-only-testing:NavigationUITests',
+    '-resultBundlePath',bundle,
+    '-parallel-testing-enabled','NO',...cases.map(name=>`-only-testing:NavigationUITests/NavigationUITests/${name}`),
     'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','test'
    ],{stdio:'inherit'})
    if(test.error)throw test.error
    if(test.status!==0)throw Error(`Navigation UI test failed (${test.status}, ${test.signal})`)
+   const attachments=spawnSync('xcrun',['xcresulttool','export','attachments','--path',bundle,'--output-path',join(output,`${kind}-attachments`)],{stdio:'inherit'})
+   if(attachments.error)throw attachments.error
+   if(attachments.status!==0)throw Error('Could not export actual XCTest screenshots')
   }
  } finally { run(['shutdown',device.udid]) }
 }

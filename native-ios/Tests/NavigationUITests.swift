@@ -1,6 +1,47 @@
 import XCTest
 
 final class NavigationUITests: XCTestCase {
+    func testIPadLandscapeContentFitsScreen() {
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let app = XCUIApplication()
+        app.launchArguments = ["--ios-ui-fixtures"]
+        app.launch()
+        let web = app.webViews.firstMatch
+        let first = web.staticTexts["测试文章 1"]
+        XCTAssertTrue(first.waitForExistence(timeout: 20))
+        XCTAssertGreaterThan(app.frame.width, app.frame.height, "The simulator must really be in landscape")
+        XCTAssertGreaterThan(web.frame.width, app.frame.width * 0.98, "WKWebView must fill the horizontal window")
+        XCTAssertGreaterThan(web.frame.height, app.frame.height * 0.85, "No empty lower fifth of the screen")
+        XCTAssertLessThanOrEqual(web.frame.maxX, app.frame.maxX + 1)
+        XCTAssertLessThanOrEqual(web.frame.maxY, app.frame.maxY + 1)
+        let tabs = app.tabBars.firstMatch
+        XCTAssertTrue(tabs.exists)
+        XCTAssertGreaterThan(tabs.frame.maxY, app.frame.maxY - 50)
+        for label in ["资源", "测评", "问答", "我的"] { XCTAssertTrue(tabs.buttons[label].isHittable) }
+        let second = web.staticTexts["测试文章 2"]
+        XCTAssertTrue(first.isHittable)
+        XCTAssertTrue(second.isHittable)
+        XCTAssertLessThan(second.frame.maxY, tabs.frame.minY, "Column rows must remain above the dock")
+        XCTAssertTrue(web.staticTexts["测试专栏"].isHittable, "The column sidebar must be visible")
+        func capture(_ name: String) {
+            let shot = XCTAttachment(screenshot: app.screenshot())
+            shot.name = name; shot.lifetime = .keepAlways; add(shot)
+        }
+        capture("iPad-landscape-column-light")
+        first.tap()
+        XCTAssertTrue(web.staticTexts["图片原生加载通过"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["native-back"].isHittable)
+        capture("iPad-landscape-article-light")
+        app.buttons["native-back"].tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 10))
+        tabs.buttons["我的"].tap()
+        XCTAssertTrue(web.buttons["账号与登录"].waitForExistence(timeout: 5))
+        capture("iPad-landscape-my-light")
+        let dark = web.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "深色")).firstMatch
+        XCTAssertTrue(dark.isHittable); dark.tap()
+        capture("iPad-landscape-my-dark")
+    }
     func testBoardReplyFitsPhoneAndSupportsEditing() {
         let app = XCUIApplication()
         app.launchArguments = ["--ios-ui-fixtures", "--ios-board-fixtures"]
