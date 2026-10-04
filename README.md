@@ -22,15 +22,15 @@
 
 <p><img src="docs/screenshots/iphone-light.png" alt="iPhone 浅色模式与系统 Liquid Glass 底栏" width="260"> <img src="docs/screenshots/iphone-dark.png" alt="iPhone 深色模式" width="260"> <img src="docs/screenshots/android-light.png" alt="Android 四栏布局" width="260"></p>
 
-**iPhone 画板回复：**实际输入文字、撤销并重做后的画布，缩放为正数。
+**iPhone 画板回复**：实际输入文字、撤销并重做后的画布，缩放为正数。
 
 <p><img src="docs/screenshots/iphone-board-reply.png" alt="iPhone 实际 WKWebView 画板回复与文字编辑" width="300"></p>
 
-**iPad 竖屏：**完整资源页及 Apple 原生底栏。
+**iPad 竖屏**：完整资源页及 Apple 原生底栏。
 
 <p><img src="docs/screenshots/ipad-light.png" alt="iPad 竖屏资源页" width="620"></p>
 
-**iPad 横屏：**截取整个模拟器屏幕，分别核查专栏列表、文章图片和“我的”页面；内容可正常滚动，四个原生标签在屏幕底部。浅色和深色截图独立标注，避免将 Windows 界面误认为 iPad。
+**iPad 横屏**：截取整个模拟器屏幕，分别核查专栏列表、文章图片和“我的”页面；内容可正常滚动，四个原生标签在屏幕底部。浅色和深色截图独立标注，避免将 Windows 界面误认为 iPad。
 
 <p><img src="docs/screenshots/ipad-landscape-column-light.png" alt="iPad 横屏浅色专栏列表，完整屏幕" width="900"></p>
 
@@ -40,7 +40,7 @@
 
 <p><img src="docs/screenshots/ipad-landscape-my-dark.png" alt="iPad 横屏深色我的页面与原生底栏" width="900"></p>
 
-**Windows：**云笔记与关于应用，重新拍摄完整视口。
+**Windows**：云笔记与关于应用，重新拍摄完整视口；检查更新截图显示已发布的 1.1.13-aoki 正式版。
 
 <p><img src="docs/screenshots/windows-notes.jpg" alt="Windows 云笔记与批量整理入口，离线演示数据" width="900"></p>
 

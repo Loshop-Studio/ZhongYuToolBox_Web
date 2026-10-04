@@ -7,7 +7,7 @@
 - Windows 原生 WebView2 实际运行：**160 条断言通过**（144 种不同检查，部分查询按七个应用重复验证），包含本地图片/PDF 转换、业务错误处理、路由生命周期、原生分块保存、实际公开接口读取和随身答编码。原始结果见 [windows-qa.json](verification/windows-qa.json)。
 - 9 组命令测试通过：`test:pdf`、`test:linspirer`、`test:apps`、`test:picture`、`test:stats`、`test:official-apks`、`test:android`、`test:ios`、`test:update`。Windows 上的 `test:ios` 原生 Swift 部分跳过，不能当作 iOS 编译通过。
 - 新随身答浏览器测试：多页 SVG 640 × 1016，H.264 MP4 640 × 360 / 1.2 秒，视频和 AAC 音轨存在；预取消、中途取消、取消后重试通过。使用合成画板与 440Hz 音频。
-- 更新页面实际查询 GitHub，显示 1.1.12-aoki 正式版、更新说明和 Windows 下载链接；1.1.13-aoki 源码版正确提示高于当前正式版。
+- 更新页面实际查询 GitHub：发布前显示 1.1.12-aoki、更新说明和 Windows 下载链接，1.1.13-aoki 源码版正确提示高于当时正式版；发布后再次查询，正确显示 1.1.13-aoki 和“当前已是最新正式版”，并重新拍摄截图。
 - iOS 前端生产构建通过。390 × 844 的浏览器布局测试中，画板缩放为正数，绘图区约 350 × 380；文字输入和撤销/重做入口可操作。这不是 iOS 真机触摸测试。
 - 上游 [PR #10](https://github.com/Loshop-Studio/ZhongYuToolBox_Web/pull/10) 生产构建通过，沿用原作者 UI/UX 和统计代码；作者统计实现和登录调用相对当前上游没有改动。本 fork 正式包统计默认关闭。
 - 实际 Fabric 回复编辑器新增 12 条断言通过：文字确实绘制到像素画布；两次撤销恢复空白；两次重做恢复编辑后的文字并仍可编辑；颜色撤销/重做正确；手机缩小不会反向放大；清空保留白色背景。
