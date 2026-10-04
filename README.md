@@ -6,7 +6,7 @@
 
 [最新正式版与全部下载文件](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/latest) · [开发中的三端源码](https://github.com/nickfox395/ZhongYuToolBox_Web/tree/feature/ios-liquid-glass-1.1.9) · [原作者项目](https://github.com/Loshop-Studio/ZhongYuToolBox_Web)
 
-当前正式版为 **1.1.12-aoki**。本分支的 **1.1.13-aoki** 是后续改动源码，新增随身答导出、关于应用和检查更新，并修复移动画板布局；只有发布页实际出现新包后，下载才包含这些改动。
+当前正式版为 **1.1.13-aoki**，三端版本号统一。新增随身答 SVG / MP4 导出、关于应用和检查更新，并修复移动画板布局、文字与颜色撤销/重做。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 提供未签名 IPA。
 
 | 平台 | 下载文件 | 安装方式 |
 | --- | --- | --- |
@@ -18,11 +18,29 @@
 
 ## 实际运行界面
 
-以下是实际应用和测试环境截图，不是设计稿。iPhone / iPad 来自 iOS 模拟器运行，Android 来自 Android 模拟器运行；Windows 网页资源以 WebView2 模式运行，列表使用离线演示数据。截图未展示真实账号和学习资料。移动截图为 1.1.12，Windows 的关于应用截图展示本分支新增界面。
+以下是实际应用和测试环境截图，不是设计稿。iPhone / iPad 的 1.1.13 截图来自 iOS 26 模拟器中运行的 UIKit + WKWebView 应用；Android 截图来自 1.1.12 模拟器，导航布局沿用至当前版本。Windows 的 1.1.13 网页资源以 WebView2 模式运行，列表使用离线演示数据。专栏和画板测试使用合成资料，截图未展示真实账号和学习资料。
 
 <p><img src="docs/screenshots/iphone-light.png" alt="iPhone 浅色模式与系统 Liquid Glass 底栏" width="260"> <img src="docs/screenshots/iphone-dark.png" alt="iPhone 深色模式" width="260"> <img src="docs/screenshots/android-light.png" alt="Android 四栏布局" width="260"></p>
 
-<p><img src="docs/screenshots/ipad-light.png" alt="iPad 运行界面" width="820"></p>
+**iPhone 画板回复：**实际输入文字、撤销并重做后的画布，缩放为正数。
+
+<p><img src="docs/screenshots/iphone-board-reply.png" alt="iPhone 实际 WKWebView 画板回复与文字编辑" width="300"></p>
+
+**iPad 竖屏：**完整资源页及 Apple 原生底栏。
+
+<p><img src="docs/screenshots/ipad-light.png" alt="iPad 竖屏资源页" width="620"></p>
+
+**iPad 横屏：**截取整个模拟器屏幕，分别核查专栏列表、文章图片和“我的”页面；内容可正常滚动，四个原生标签在屏幕底部。浅色和深色截图独立标注，避免将 Windows 界面误认为 iPad。
+
+<p><img src="docs/screenshots/ipad-landscape-column-light.png" alt="iPad 横屏浅色专栏列表，完整屏幕" width="900"></p>
+
+<p><img src="docs/screenshots/ipad-landscape-article-light.png" alt="iPad 横屏文章及通过原生网络加载的图片" width="900"></p>
+
+<p><img src="docs/screenshots/ipad-landscape-my-light.png" alt="iPad 横屏浅色我的页面，长列表可滚动" width="900"></p>
+
+<p><img src="docs/screenshots/ipad-landscape-my-dark.png" alt="iPad 横屏深色我的页面与原生底栏" width="900"></p>
+
+**Windows：**云笔记与关于应用，重新拍摄完整视口。
 
 <p><img src="docs/screenshots/windows-notes.jpg" alt="Windows 云笔记与批量整理入口，离线演示数据" width="900"></p>
 
@@ -36,12 +54,12 @@ iPhone / iPad 使用 **Swift + UIKit + WKWebView**。业务前端从包内资源
 
 `npm run test:ios` 验证桥接与 OSS；`npm run build:ios` 在 macOS / Xcode 26+ 生成未签名 IPA；Windows 可运行 `npm run build:ios -- --web-only` 检查前端。云端构建见 **Build iOS IPA**。完整构建与签名步骤见 [iOS 说明](https://github.com/nickfox395/ZhongYuToolBox_Web/blob/feature/ios-liquid-glass-1.1.9/native-ios/README.md)。
 
-## 本分支新增：随身答画板与关于应用
+## 1.1.13 新增：随身答画板与关于应用
 
 - 在随身答回复下打开「查看 / 导出画板」。静态画板可在本地导出 SVG，多页纵向合并且图片内联；录制可回放，并选择 960p / 1280p / 1920p 长边导出 MP4。录制也可导出最终画面 SVG。
 - 沿用原作者最新 `ezy-board-viewer` 源码，MP4 使用 WebCodecs / H.264，本地处理后进入系统保存流程，不为了导出重新上传 OSS。没有视频编码能力时仍可导出 SVG；没有 AAC 编码能力时会提示视频无音轨。实际音画同步仍取决于原始录制时间轴。
 - 导出可取消，离开页面会停止下载与编码；多页不同尺寸会居中留白，编码器在成功、失败和取消后释放。
-- 修复 iOS 画板回复出现负缩放值、绘图区只剩横条：有效容器尺寸才参与缩放，画布尺寸同步更新，并提供移动触摸绘图区域；撤销后的重做也恢复。
+- 修复 iOS 画板回复出现负缩放值、绘图区只剩横条：有效容器尺寸才参与缩放，画布尺寸同步更新，并提供移动触摸绘图区域；文字编辑与颜色变化进入撤销历史，重做恢复实际内容。
 - 桌面「关于应用」合并检查更新、支持作者、使用说明、功能说明与致谢；移动端在「我的 → 关于应用」。保留 Loshop 的支持入口与原有捐赠对象。
 - 手动查询本 fork 的 GitHub 最新正式版，显示版本功能说明和对应平台下载文件，跳转 GitHub 完成下载。上游版本查询上游仓库。不会自动下载安装，也不会把学校账号或 Token 发给 GitHub。
 
@@ -68,11 +86,15 @@ iPhone / iPad 使用 **Swift + UIKit + WKWebView**。业务前端从包内资源
 
 ## 运行与构建
 
+当前三端代码位于 `feature/ios-liquid-glass-1.1.9`；默认 `main` 的 README 已更新，但仍保留较早代码历史。构建当前版本前请先切换到开发分支。
+
 Windows 10/11 x64，.NET Framework 4.8，Microsoft Edge WebView2 Runtime。解压后在完整目录运行“中育工具箱-aoki.exe”，不要只复制 exe。程序未签名。
 
 账号缓存位于 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2`，同一 Windows 用户打开不同版本的便携包会复用登录状态。此目录不在发布包内；当前实现会在本地保存 Token 和用于自动重登的账号、密码，用户中心退出登录会移除这些登录凭据。
 
 ```powershell
+git fetch origin
+git checkout feature/ios-liquid-glass-1.1.9
 npm ci
 npm run test:pdf
 npm run test:linspirer
@@ -109,6 +131,8 @@ PDF 数学排版使用 KaTeX（Khan Academy and other contributors），渲染�
 
 ## 验证范围与依赖
 
-本次回归包括 148 项真实 Windows WebView2 检查，以及 PDF、图库、应用下载、领创、统计开关、Android/iOS 桥接与检查更新的自动化测试；另用合成录制实际编码并解码 MP4，验证多页 SVG。测试不向真实账号新增、删除或发送资料。报告见 [功能核查](docs/FEATURE_VERIFICATION.md)。
+本次回归包括 160 条真实 Windows WebView2 断言（144 种不同检查），以及 PDF、图库、应用下载、领创、统计开关、Android/iOS 桥接与检查更新的自动化测试；另用合成录制实际编码并解码 MP4，验证多页 SVG。测试不向真实账号新增、删除或发送资料。报告见 [功能核查](docs/FEATURE_VERIFICATION.md)。
+
+Windows 安装程序完成首次安装、197 个载荷摘要、覆盖修复和卸载检查。iOS 26 模拟器完成 3 项 iPhone 测试与 1 项 iPad 横屏测试，包含实际 WKWebView 输入、文章图片、原生返回和导航。模拟器验证不等同于所有真机、所有学校接口均已联调。
 
 本地界面、格式转换与导出可在本机运行；云笔记、图库、测评、错题本、随身答和课程仍依赖学校中育服务器与 OSS。GitHub 不可达时检查更新会报错，并保留发布页入口；不影响已安装应用的学习功能。iOS 原生构建由 GitHub macOS 工作流核查，Windows 环境不冒充 iPhone 真机验证。

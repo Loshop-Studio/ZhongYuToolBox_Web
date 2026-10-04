@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "installer": "ZhongYuToolBox-aoki-1.1.13-Windows-x64-Setup.exe",
+  "sha256": "F0408D9DEA77811441346C003BE88F3E2CFFA2440EC0B74022E56A3E1863B002",
+  "files": 197,
+  "checks": [
+    "Fresh installation and all payload SHA-256 hashes",
+    "Current-user uninstall registration and version",
+    "Start menu shortcut target; desktop shortcut preserved",
+    "Installed native executable self-test",
+    "Installed production WPF/WebView2 window renders Vue login UI in an isolated profile",
+    "Cover installation repairs payload and retains user files/cache",
+    "Installed WebView2 Runtime detected without downloading",
+    "Uninstall removes payload, shortcuts and registry, retains user files/account cache"
+  ]
+}

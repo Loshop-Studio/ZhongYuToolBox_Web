@@ -1,0 +1,15 @@
+{
+  "version": "1.1.13",
+  "build": "10113",
+  "bundle": "com.aoki.zhongyutoolbox.ios",
+  "minimum": "16.0",
+  "devices": [
+    1,
+    2
+  ],
+  "files": 193,
+  "size": 17539158,
+  "sha256": "7ccec9315a15fe73d38796cf914f67201f478acd1b3f404f2d7ea810e112a506",
+  "device_arch": "arm64",
+  "simulator_test_host_in_ipa": false
+}

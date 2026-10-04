@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "source": "53dba893e22f0a5e82802e4df1b47fd638e8d2c9",
+  "workflow": "https://github.com/nickfox395/ZhongYuToolBox_Web/actions/runs/37169435503",
+  "tests": [
+    {"device": "iPhone 17 Pro", "name": "testBoardReplyFitsPhoneAndSupportsEditing", "passed": true},
+    {"device": "iPhone 17 Pro", "name": "testColumnLayoutImagesAndNativeBack", "passed": true},
+    {"device": "iPhone 17 Pro", "name": "testNativeGroupsAndSystemGlass", "passed": true},
+    {"device": "iPad Pro 13-inch (M5)", "name": "testIPadLandscapeContentFitsScreen", "passed": true}
+  ],
+  "ipadLandscape": {
+    "webViewPoints": [1376, 1032],
+    "capture": "XCUIScreen.main.screenshot()",
+    "cropped": false,
+    "darkModeSelectedValueVerified": true,
+    "screenshotsVisuallyInspected": ["column-light", "article-light", "my-light", "my-dark"]
+  },
+  "physicalDeviceVerification": false,
+  "realOfficialWritesPerformed": false
+}
