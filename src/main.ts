@@ -5,15 +5,18 @@ import 'element-plus/dist/index.css'
 import 'element-plus/theme-chalk/dark/css-vars.css'
 import './styles/mobile.css'
 import './styles/windows.css'
+import './styles/android.css'
+import './styles/ios.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
-import { IS_BROWSER, PLATFORM, IS_WINDOWS } from './config'
+import { IS_BROWSER, PLATFORM, IS_WINDOWS, IS_MOBILE } from './config'
 import { setupPlusBackButton } from './utils/plusBack'
 import { logError } from './utils/errorText'
 import { ElMessage } from 'element-plus'
+import { initializeMobileTheme } from './composables/useMobileTheme'
 import { initializeTheme } from './composables/useTheme'
 
 // 内嵌 App（electron / plus）直接请求资源与接口，不需要、也不应发送 Referer 头
@@ -27,6 +30,11 @@ if (!IS_BROWSER) {
 
 if (IS_WINDOWS) {
   initializeTheme()
+}
+
+if (IS_MOBILE) {
+  initializeMobileTheme()
+  document.documentElement.classList.add('mobile-edition', PLATFORM === 'ios' ? 'ios-edition' : 'android-edition')
 }
 
 const app = createApp(App)

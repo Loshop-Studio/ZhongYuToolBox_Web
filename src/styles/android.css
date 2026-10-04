@@ -1,0 +1,38 @@
+/* aoki's existing theme on phones/tablets; desktop rules stay unchanged. */
+.android-edition .ios-scroll-content { padding-top:18px; padding-bottom:calc(86px + env(safe-area-inset-bottom)); scroll-padding-bottom:86px; }
+.android-edition .ios-back-button { width:40px; height:40px; min-height:40px; border-radius:50%; background:var(--surface); border:1px solid var(--line); }
+.android-edition .ios-shell .col-mobile-bar { display:none !important; }
+.android-edition .iframe-back { flex-shrink:0; }
+.android-edition .ios-page-heading h1 { font-size:32px; }
+.android-edition body { overscroll-behavior: none; }
+.android-edition .layout-root { height: 100dvh; }
+.android-edition .el-dialog { max-width: calc(100vw - 24px); }
+.android-edition .el-overlay-dialog { padding: 0 12px; }
+.android-edition .el-message { max-width: calc(100vw - 24px); word-break: break-word; }
+.android-edition #app .windows-ui .mobile-topbar .mb-title { color: var(--ink); }
+.android-edition .mobile-drawer.el-drawer,
+.android-edition .mobile-drawer .el-drawer__header,
+.android-edition .mobile-drawer .el-drawer__body,
+.android-edition .mobile-drawer .el-menu,
+.android-edition .mobile-drawer .el-menu-item { background: var(--surface) !important; color: var(--ink) !important; }
+.android-edition .mobile-drawer .el-drawer__close-btn { color: var(--ink) !important; }
+.android-edition .mobile-drawer .el-menu-item { margin: 4px 12px; border-radius: 12px; }
+.android-edition .mobile-drawer .el-menu-item.is-active { background: var(--accent-soft) !important; color: var(--accent) !important; }
+@media (max-width: 767px) {
+  .android-edition #app .windows-ui .mobile-topbar { background: var(--surface); color: var(--ink); border-bottom: 1px solid var(--line); min-height: 56px; }
+  .android-edition #app .windows-ui .content { padding: 16px 12px 24px !important; }
+  .android-edition #app .windows-ui .content.flush { padding: 0 !important; }
+  .android-edition .edition-page-heading { margin-bottom: 20px; gap: 12px; }
+  .android-edition .edition-page-heading h1 { font-size: 28px; }
+  .android-edition .edition-page-heading p { font-size: 14px; }
+  .android-edition #app .windows-ui .el-card { border-radius: 20px !important; }
+  .android-edition #app .windows-ui .el-card__header { padding: 20px 18px 0; font-size: 21px; }
+  .android-edition #app .windows-ui .el-card__body { padding: 20px 18px; }
+  .android-edition #app .windows-ui .el-button { min-height: 40px; font-size: 14px; }
+  .android-edition .pdf-queue-row, .android-edition .image-selection-row,
+  .android-edition .selection-bar { flex-wrap: wrap; gap: 8px; }
+  .android-edition .pdf-queue-row .queue-file, .android-edition .image-file-name { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+  .android-edition .edition-footer { flex-wrap: wrap; margin-top: 24px; }
+  .android-edition .note-tabs { border-radius: 20px !important; }
+  .android-edition .el-pagination { flex-wrap: wrap; gap: 8px; }
+}

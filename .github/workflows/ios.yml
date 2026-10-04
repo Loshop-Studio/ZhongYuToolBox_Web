@@ -1,0 +1,38 @@
+name: Build iOS IPA
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ["native-ios/**", "scripts/*ios*", "src/**", "package*.json", ".github/workflows/ios.yml", ".env.ios", "vite.config.*"]
+  push:
+    branches: [main, feature/mobile-native-build-upstream]
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  ipa:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:ios
+      - run: npm run build:ios
+      - run: npm run build:ios -- --simulator --skip-web
+      - run: node scripts/test-ios-simulator.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ZhongYuToolBox-iPhone-iPad-unsigned-IPA
+          path: |
+            release/ios/*.ipa
+            release/ios/*.txt
+            release/ios/*.md
+            release/ios/test-evidence/
+          if-no-files-found: error
+          retention-days: 30
