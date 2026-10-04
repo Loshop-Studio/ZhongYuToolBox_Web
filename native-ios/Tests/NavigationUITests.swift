@@ -25,7 +25,11 @@ final class NavigationUITests: XCTestCase {
         XCTAssertLessThan(second.frame.maxY, tabs.frame.minY, "Column rows must remain above the dock")
         XCTAssertTrue(web.staticTexts["测试专栏"].isHittable, "The column sidebar must be visible")
         func capture(_ name: String) {
-            let shot = XCTAttachment(screenshot: app.screenshot())
+            // Capture the display rather than cropping UIApplication's frame in
+            // portrait coordinates while the simulator is rotated.
+            let screenshot = XCUIDevice.shared.screenshot()
+            XCTAssertGreaterThan(screenshot.image.size.width, screenshot.image.size.height)
+            let shot = XCTAttachment(screenshot: screenshot)
             shot.name = name; shot.lifetime = .keepAlways; add(shot)
         }
         capture("iPad-landscape-column-light")

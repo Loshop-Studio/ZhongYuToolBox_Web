@@ -33,6 +33,7 @@ for(const kind of ['iPhone','iPad']) {
   }
   if(!changed)throw Error(`${kind} did not redraw after the system appearance changed`)
   console.log(`Launched ${device.name}; screenshots require visual inspection`)
+  run(['ui',device.udid,'appearance','light'])
   {
    const bundle=join(output,kind === 'iPhone' ? 'NavigationUI.xcresult' : 'iPadLandscapeUI.xcresult')
    const cases=kind === 'iPhone'
