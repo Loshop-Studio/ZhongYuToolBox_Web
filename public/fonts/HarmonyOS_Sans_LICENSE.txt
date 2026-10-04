@@ -1,0 +1,8 @@
+PDF CJK font: HarmonyOS Sans SC Regular
+File: HarmonyOS_Sans_SC_Regular.ttf
+State: unmodified upstream TTF (TrueType/glyf outlines); no glyph subsetting or format conversion by this fork.
+Source: HarmonyOS Sans, published by Huawei — https://developer.harmonyos.com/cn/design/resource
+Note: HarmonyOS Sans 由华为发布并提供免费使用（含商用）。本仓库仅做原样搬运，
+      再次分发或商用前请自行核对官方最新许可条款。
+Used by: 笔记详情页「高清 PDF 导出」——中文以矢量文字嵌入 PDF
+        （jsPDF 只嵌入实际用到的字形，一份多页 PDF 通常仅增加几百 KB）
