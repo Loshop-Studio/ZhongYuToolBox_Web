@@ -1,6 +1,6 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.13-aoki",
+  "version": "1.1.14-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
   "description": "ZhongYuToolBox aoki Windows WebView2, Android and iOS WKWebView editions, themes, local image/PDF conversion",
@@ -39,6 +39,7 @@
     "crypto-js": "^4.2.0",
     "dplayer": "^1.27.1",
     "element-plus": "^2.7.6",
+    "ezy-board-viewer": "0.1.2",
     "fabric": "^5.3.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
@@ -49,17 +50,16 @@
     "pdfjs-dist": "^4.4.168",
     "pinia": "^2.1.7",
     "vue": "^3.4.31",
-    "vue-router": "^4.4.0",
-    "ezy-board-viewer": "0.1.1"
+    "vue-router": "^4.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
     "@vitejs/plugin-vue": "^5.0.5",
     "electron": "^30.5.1",
     "electron-builder": "^24.13.3",
+    "patch-package": "^8.0.1",
     "typescript": "^5.4.5",
     "vite": "^5.3.3",
-    "vue-tsc": "^2.0.26",
-    "patch-package": "^8.0.1"
+    "vue-tsc": "^2.0.26"
   }
 }

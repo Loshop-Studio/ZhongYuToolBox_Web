@@ -17,14 +17,16 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-button
-          type="success"
-          :loading="exporting"
-          :title="renderer === 'hd' ? '导出高清 PDF（矢量）' : '导出 PDF（页面截图）'"
-          @click="exportPdf"
-        >
-          <el-icon><Document /></el-icon>
-        </el-button>
+        <el-dropdown trigger="click" :disabled="loading || exporting || downloading || !pages.length" @command="onActionCommand">
+          <el-button type="success" :loading="exporting" :disabled="loading || downloading || !pages.length" title="导出 PDF / SVG" aria-label="导出笔记">
+            <el-icon><Document /></el-icon>
+          </el-button>
+          <template #dropdown><el-dropdown-menu>
+            <el-dropdown-item command="pdf">{{ renderer === 'hd' ? '高清矢量 PDF' : '页面截图 PDF' }}</el-dropdown-item>
+            <el-dropdown-item command="svg">当前页 SVG</el-dropdown-item>
+            <el-dropdown-item command="svgs">全部页面 SVG（ZIP）</el-dropdown-item>
+          </el-dropdown-menu></template>
+        </el-dropdown>
         <el-button type="info" :loading="downloading" @click="downloadZip">
           <el-icon><Download /></el-icon>
         </el-button>
@@ -43,6 +45,12 @@
             </div>
             <div class="actions-item" @click="onActionCommand('zip')">
               <el-icon><Download /></el-icon><span>下载笔记</span>
+            </div>
+            <div class="actions-item" @click="onActionCommand('svg')">
+              <el-icon><Picture /></el-icon><span>导出当前页 SVG</span>
+            </div>
+            <div class="actions-item" @click="onActionCommand('svgs')">
+              <el-icon><Download /></el-icon><span>导出全部页面 SVG（ZIP）</span>
             </div>
             <div class="actions-item" @click="onActionCommand('renderer')">
               <el-icon><Picture /></el-icon>
@@ -180,7 +188,7 @@
           </span>
           <span class="renderer-card-list">
             <span class="renderer-card-item">矢量重建笔迹，放大也不发虚</span>
-            <span class="renderer-card-item">可导出高清矢量 PDF</span>
+            <span class="renderer-card-item">可导出高清矢量 PDF 与 SVG</span>
             <span class="renderer-card-item">笔迹、文字、图片完整还原</span>
           </span>
         </button>
@@ -218,7 +226,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Document, Download, Picture, PictureFilled, MoreFilled, Loading, InfoFilled } from '@element-plus/icons-vue'
 import JSZip from 'jszip'
-import { NoteViewer, noteToSvgs, type NoteViewerInstance } from 'ezy-board-viewer'
+import { NoteViewer, noteToSvgs, notePageSvg, type NoteViewerInstance } from 'ezy-board-viewer'
 import { getNoteResources, getNoteResourcesForZip } from '@/api/note'
 import { resourceFetchUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
@@ -228,6 +236,7 @@ import { createNoteVfs, type NoteVfs } from '@/utils/noteVfs'
 import { detectBgLines } from '@/utils/noteBackground'
 import { accountKey } from '@/utils/localData'
 import { buildNotePdf, loadNoteImage } from '@/utils/notePdf'
+import { buildNoteSvgPage, buildNoteSvgArchive } from '@/utils/noteSvg'
 import { collectNoteResources, noteResourceUrl, NOTE_IMAGE_EXT, type NotePageData } from '@/utils/noteResourceModel'
 const { isMobile } = useIsMobile()
 const PDF_FOOTER = 'Loshop / aoki · https://github.com/nickfox395/ZhongYuToolBox_Web'
@@ -255,6 +264,7 @@ function goBack() { if (window.history.state?.back) router.back(); else router.p
 function onActionCommand(cmd: string) {
   showSheet.value = false
   if (cmd === 'pdf') exportPdf()
+  else if (cmd === 'svg' || cmd === 'svgs') exportSvg(cmd === 'svgs')
   else if (cmd === 'zip') downloadZip()
   else if (cmd === 'renderer') setRenderer(renderer.value === 'hd' ? 'classic' : 'hd')
 }
@@ -327,6 +337,41 @@ async function exportPdf() {
     task.ensure(); await saveBlobFile(result.blob, name + '.pdf', { localOnly: true }); task.ensure()
     ElMessage.success(result.fallbackPages.length ? `PDF 导出完成（${result.fallbackPages.length} 页使用截图）` : 'PDF 导出完成')
   } catch (error: any) { if (error.name !== 'AbortError') { logError('exportPdf', error); ElMessage.error('导出 PDF 失败：' + formatError(error)) } }
+  finally { if (!task.signal.aborted) exporting.value = progressVisible.value = false }
+}
+async function exportSvg(allPages: boolean) {
+  if (loading.value || !pages.value.length || exporting.value || downloading.value) return
+  const task = scope(), name = fileName.value || 'note'
+  const keys = allPages ? [...pages.value] : [pages.value[currentPage.value - 1]]
+  const vectorKeys = [...hdPages.value], source = vfs.value, data = pageMap.value
+  exporting.value = progressVisible.value = true; progressPercent.value = 0
+  progressText.value = '正在重建 SVG（笔迹与文字保留矢量，原始图片保留位图）…'
+  try {
+    let vectors: Array<{ svg?: string }> = []
+    if (source) {
+      if (allPages) vectors = await noteToSvgs(source)
+      else {
+        const index = vectorKeys.indexOf(keys[0])
+        if (index >= 0) vectors[index] = { svg: await notePageSvg(source, index, { fetchOptions: { signal: task.signal } }) || undefined }
+      }
+    }
+    task.ensure()
+    const jobs = keys.map(key => ({ key, svg: vectors[vectorKeys.indexOf(key)]?.svg, thumbnail: data[key]?.thumbnail?.raw }))
+    let blob: Blob, fallbackPages: number[]
+    if (allPages) {
+      progressText.value = '正在打包每页 SVG…'
+      const result = await buildNoteSvgArchive(jobs, { signal: task.signal, onProgress(done, total) { task.ensure(); progressPercent.value = Math.round(done / total * 100) } })
+      blob = result.blob; fallbackPages = result.fallbackPages
+    } else {
+      const result = await buildNoteSvgPage(jobs[0], { signal: task.signal })
+      blob = new Blob([result.svg], { type: 'image/svg+xml;charset=utf-8' }); fallbackPages = result.fallback ? keys : []
+      progressPercent.value = 100
+    }
+    task.ensure()
+    await saveBlobFile(blob, allPages ? name + '-SVG.zip' : `${name}-第${keys[0]}页.svg`, { localOnly: true })
+    task.ensure()
+    ElMessage.success(fallbackPages.length ? `SVG 导出完成（${fallbackPages.length} 页仅有截图，已标注为位图）` : 'SVG 导出完成')
+  } catch (error: any) { if (error.name !== 'AbortError') { logError('exportSvg', error); ElMessage.error('导出 SVG 失败：' + formatError(error)) } }
   finally { if (!task.signal.aborted) exporting.value = progressVisible.value = false }
 }
 async function downloadZip() {

@@ -18,6 +18,8 @@ Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；业务页面共
 
 账号凭据保存在本机 WKWebsiteDataStore，沿用已有自动重登行为，退出登录可清除；不复制进 IPA。iOS 的 identifierForVendor 不是中育平板的 swdid，不可替代领创绑定设备号。
 
+1.1.14 新增云笔记高清预览与矢量 PDF / SVG 导出，移动端预览页右上角「⋯」可导出当前页 SVG 或全部页 SVG ZIP；笔迹、文字保持矢量，截图页和原始图片保持位图。导出经系统文件面板保存。
+
 ## 构建
 
 ```sh

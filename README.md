@@ -6,7 +6,7 @@
 
 [最新正式版与全部下载文件](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/latest) · [开发中的三端源码](https://github.com/nickfox395/ZhongYuToolBox_Web/tree/feature/ios-liquid-glass-1.1.9) · [原作者项目](https://github.com/Loshop-Studio/ZhongYuToolBox_Web)
 
-当前正式版为 **1.1.13-aoki**，三端版本号统一。新增随身答 SVG / MP4 导出、关于应用和检查更新，并修复移动画板布局、文字与颜色撤销/重做。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 提供未签名 IPA。
+当前正式版为 **1.1.14-aoki**，三端版本号统一。新增云笔记高清矢量 PDF、当前页 SVG 与全部页面 SVG（ZIP）导出，沿用 npm 画板组件。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 提供未签名 IPA。
 
 | 平台 | 下载文件 | 安装方式 |
 | --- | --- | --- |
@@ -40,11 +40,13 @@
 
 <p><img src="docs/screenshots/ipad-landscape-my-dark.png" alt="iPad 横屏深色我的页面与原生底栏" width="900"></p>
 
-**Windows**：云笔记与关于应用，重新拍摄完整视口；检查更新截图显示已发布的 1.1.13-aoki 正式版。
+**Windows**：云笔记与关于应用，重新拍摄完整视口；检查更新截图摄于 1.1.13 正式版；下方新增 1.1.14 笔记导出实测截图。
 
 <p><img src="docs/screenshots/windows-notes.jpg" alt="Windows 云笔记与批量整理入口，离线演示数据" width="900"></p>
 
 <p><img src="docs/screenshots/about-update.jpg" alt="关于应用与 GitHub 检查更新" width="900"></p>
+
+<p><img src="docs/screenshots/note-vector-export.png" alt="1.1.14 云笔记高清预览与 SVG / PDF 导出菜单，离线测试笔记" width="900"></p>
 
 ## 移动端导航
 
@@ -54,12 +56,13 @@ iPhone / iPad 使用 **Swift + UIKit + WKWebView**。业务前端从包内资源
 
 `npm run test:ios` 验证桥接与 OSS；`npm run build:ios` 在 macOS / Xcode 26+ 生成未签名 IPA；Windows 可运行 `npm run build:ios -- --web-only` 检查前端。云端构建见 **Build iOS IPA**。完整构建与签名步骤见 [iOS 说明](https://github.com/nickfox395/ZhongYuToolBox_Web/blob/feature/ios-liquid-glass-1.1.9/native-ios/README.md)。
 
-## 开发分支：同步上游笔记预览
+## 1.1.14 新增：云笔记矢量导出
 
-以下更新位于 `feature/ios-liquid-glass-1.1.9` 源码分支，尚未包含在已有 1.1.13 Release 安装包中。
+Windows / Android / iPhone / iPad 版本统一为 1.1.14-aoki，源码位于 `feature/ios-liquid-glass-1.1.9`。
 
-- 适配上游 npm `ezy-board-viewer@0.1.1`，替代仓库内嵌源码；安装依赖时自动应用兼容补丁，保留随身答 SVG / MP4 导出、取消和重试能力。
+- 适配上游 npm `ezy-board-viewer@0.1.2`，替代仓库内嵌源码；安装依赖时自动应用兼容补丁，保留随身答 SVG / MP4 导出、取消和重试能力。
 - 云笔记可切换截图预览与高清矢量预览；旧版笔触、新版 MDB、文字与页内图片按需读取。混合笔记保留全部页序，移动端使用一个翻页栏。
+- 笔记预览页点击导出按钮（移动端右上角「⋯」），可保存当前页 SVG、全部页面 SVG（ZIP）或高清矢量 PDF。SVG 保留笔迹路径和文字，图片内联以便离线打开；截图页明确标注为位图，混合笔记保留全部页序和原始页面尺寸。
 - 新增笔记矢量 PDF 导出，随包提供 HarmonyOS Sans SC 中文字体；不可渲染的矢量页回退到官方截图，缺失整页时明确报错，不静默漏页。
 - 保留 aoki 界面、浅色/深色/跟随系统、三端原生壳及全部既有功能；错题本继续使用思源宋体与原有题目/答案分区排版。
 - 作者用户量统计仍默认关闭；开启后的接口合约不变，统计失败不影响登录。

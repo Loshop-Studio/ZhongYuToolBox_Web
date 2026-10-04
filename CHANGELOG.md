@@ -4,10 +4,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased] - 2026-10-04
+## [1.1.14-aoki] - 2026-10-04
 
+- 新增云笔记当前页 SVG 与全部页面 SVG ZIP 导出，笔迹/文字保留矢量，图片内联、页序与尺寸保留；截图页明确标为位图，不静默漏页。
+- Windows 安装程序/便携包、Android APK 与 iPhone/iPad IPA 统一为 1.1.14-aoki。
 - 同步上游笔记高清预览和中文矢量 PDF 导出；截图页与画板页混合时保留全部页序，并提供明确的逐页降级/失败结果。
-- 使用 npm ezy-board-viewer 0.1.1，保留导出、取消、编码器清理等兼容补丁；去除本地组件别名与内嵌源码。
+- 使用 npm ezy-board-viewer 0.1.2，保留导出、取消、编码器清理等兼容补丁；去除本地组件别名与内嵌源码。
 - 笔记任务在离开、切换笔记或账号时取消；资源失败可重试，MDB 背景与笔迹共享下载缓存。
 - 保留 aoki UI、Windows/Android/iOS 原生壳、作者统计默认关闭及全部既有功能。
 

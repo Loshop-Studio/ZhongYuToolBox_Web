@@ -3,6 +3,8 @@ import { PDFDocument } from 'pdf-lib'
 import { collectNoteResources } from '../src/utils/noteResourceModel'
 import { createNoteVfs } from '../src/utils/noteVfs'
 import { buildNotePdf } from '../src/utils/notePdf'
+import { buildNoteSvgPage, buildNoteSvgArchive } from '../src/utils/noteSvg'
+import JSZip from 'jszip'
 
 export async function notePreviewQa(check: (ok: boolean, name: string) => void) {
   const board = createBoard({ width: 640, height: 360, screenshot: false })
@@ -62,5 +64,33 @@ export async function notePreviewQa(check: (ok: boolean, name: string) => void) 
   const abort = new AbortController(); abort.abort(); failed = false
   try { await buildNotePdf([{ key:1, svg:vector[0].svg }], { signal:abort.signal }) } catch(error) { failed = (error as Error).name === 'AbortError' }
   check(failed, '取消笔记导出不生成文件')
+  const svgPage = await buildNoteSvgPage({ key:1, svg:vector[0].svg })
+  const parsed = new DOMParser().parseFromString(svgPage.svg, 'image/svg+xml')
+  check(!svgPage.fallback && !!parsed.querySelector('path') && !!parsed.querySelector('text') && !parsed.querySelector('parsererror'), '当前页 SVG 保留真实笔迹路径和中文文字')
+  const svgZip = await buildNoteSvgArchive([{ key:1, svg:vector[0].svg }, { key:2, thumbnail:screenshot }, { key:3, svg:vector[1].svg }])
+  const archive = await JSZip.loadAsync(await svgZip.blob.arrayBuffer())
+  const manifest = JSON.parse(await archive.file('pages.json')!.async('string'))
+  check(manifest.map((p:any)=>p.page).join(',') === '1,2,3' && manifest[1].rendering === 'screenshot' && svgZip.fallbackPages.join(',') === '2', 'SVG ZIP 保留混合笔记全部页序并明确标注截图页')
+  const last = new DOMParser().parseFromString(await archive.file(manifest[2].file)!.async('string'), 'image/svg+xml').documentElement
+  check(last.getAttribute('width') === '360' && last.getAttribute('height') === '640', 'SVG 保留竖版页面原始尺寸不裁切')
+  const raster = await archive.file(manifest[1].file)!.async('string')
+  const rasterDoc = new DOMParser().parseFromString(raster, 'image/svg+xml')
+  check(rasterDoc.querySelector('image')!.getAttribute('href')!.startsWith('data:image/png;') && rasterDoc.documentElement.getAttribute('width') === '720', '截图页图片内联，离线可读取且保留完整尺寸')
+  const imageUrl = URL.createObjectURL(new Blob([raster], { type:'image/svg+xml' }))
+  try {
+    const image = new Image(); image.src = imageUrl; await image.decode()
+    const render = document.createElement('canvas'); render.width = 720; render.height = 450
+    render.getContext('2d')!.drawImage(image,0,0)
+    check(render.getContext('2d')!.getImageData(700,430,1,1).data[3] === 255, '离线 SVG 实际解码渲染完整页面右下角')
+  } finally { URL.revokeObjectURL(imageUrl) }
+  failed = false
+  try { await buildNoteSvgArchive([{ key:9 }]) } catch(error) { failed = String(error).includes('第 9 页') }
+  check(failed, 'SVG 缺失页面时停止打包，不静默漏页')
+  failed = false
+  try { await buildNoteSvgArchive([{ key:1, svg:vector[0].svg }], {signal:abort.signal}) } catch(error) { failed = (error as Error).name === 'AbortError' }
+  check(failed, 'SVG 取消任务不保存文件')
+  failed = false
+  try { await buildNoteSvgPage({key:1,svg:'<svg xmlns="http://www.w3.org/2000/svg"><image href="blob:expired"/></svg>'}) } catch { failed = true }
+  check(failed, 'SVG 不输出依赖过期 blob 或远程图片的文件')
   return result.blob
 }
