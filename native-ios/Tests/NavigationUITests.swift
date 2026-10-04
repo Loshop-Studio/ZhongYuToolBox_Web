@@ -27,7 +27,7 @@ final class NavigationUITests: XCTestCase {
         func capture(_ name: String) {
             // Capture the display rather than cropping UIApplication's frame in
             // portrait coordinates while the simulator is rotated.
-            let screenshot = XCUIDevice.shared.screenshot()
+            let screenshot = XCUIScreen.main.screenshot()
             XCTAssertGreaterThan(screenshot.image.size.width, screenshot.image.size.height)
             let shot = XCTAttachment(screenshot: screenshot)
             shot.name = name; shot.lifetime = .keepAlways; add(shot)
