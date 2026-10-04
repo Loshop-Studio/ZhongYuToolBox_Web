@@ -64,6 +64,7 @@ export async function getNotesByParentId(parentId = '0'): Promise<NoteItem[]> {
     throw new Error(json.msg || '获取笔记失败')
   }
   const data = JSON.parse(aesDecrypt(json.data))
+  console.log('[cloud-notes] noteList', data?.noteList)
   return (data.noteList || []).filter((item: NoteItem) => !item.isRecycleBin) as NoteItem[]
 }
 
@@ -78,6 +79,7 @@ export async function getAllNoteNodes(signal?: AbortSignal, recycle = false): Pr
   if (!res.ok || json.code !== 0) throw new Error(json.msg || '获取笔记失败')
   // 响应体的 data 字段为 AES 加密内容，需解密后才能取 noteList
   const data = JSON.parse(aesDecrypt(json.data))
+  console.log('[cloud-notes] noteList', data?.noteList)
   const list: NoteItem[] = data.noteList || []
   return list.filter((item) => !!item.isRecycleBin === recycle)
 }
@@ -171,6 +173,7 @@ export async function searchNotes(fileName: string): Promise<NoteItem[]> {
   check401(res.status)
   let data = await res.json()
   data = JSON.parse(aesDecrypt(data.data))
+  console.log('[cloud-notes] noteList', data?.noteList)
   const list: NoteItem[] = data.noteList || []
   return list.filter((item) => !item.isRecycleBin && (item.type === 1 || item.type === 12))
 }
@@ -181,8 +184,9 @@ export async function getNoteResources(fileId: string): Promise<NoteResource[]> 
   const res = await fetch(url, { method: 'GET', headers: authHeaders() })
   check401(res.status)
   const data = await res.json()
-  const resourceList = JSON.parse(aesDecrypt(data.data)).resourceList || []
-  console.log('[cloud-notes] resourceList', resourceList)
+  const decrypted = JSON.parse(aesDecrypt(data.data))
+  console.log('[cloud-notes] GetByFileId decrypted', decrypted)
+  const resourceList = decrypted.resourceList || []
   return resourceList as NoteResource[]
 }
 
@@ -192,7 +196,8 @@ export async function getNoteResourcesForZip(fileId: string): Promise<NoteResour
   const res = await fetch(url, { method: 'GET', headers: authHeaders() })
   check401(res.status)
   const data = await res.json()
-  const resourceList = JSON.parse(aesDecrypt(data.data)).resourceList || []
-  console.log('[cloud-notes] resourceList', resourceList)
+  const decrypted = JSON.parse(aesDecrypt(data.data))
+  console.log('[cloud-notes] GetByFileId decrypted', decrypted)
+  const resourceList = decrypted.resourceList || []
   return resourceList as NoteResource[]
 }

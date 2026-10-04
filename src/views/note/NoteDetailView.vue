@@ -17,7 +17,12 @@
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-button type="success" :loading="exporting" @click="exportPdf">
+        <el-button
+          type="success"
+          :loading="exporting"
+          :title="renderer === 'hd' ? '导出高清 PDF（矢量）' : '导出 PDF（页面截图）'"
+          @click="exportPdf"
+        >
           <el-icon><Document /></el-icon>
         </el-button>
         <el-button type="info" :loading="downloading" @click="downloadZip">
@@ -33,7 +38,8 @@
           <div v-if="showSheet" class="actions-mask" @click="showSheet = false" />
           <div v-if="showSheet" class="actions-sheet">
             <div class="actions-item" @click="onActionCommand('pdf')">
-              <el-icon><Document /></el-icon><span>导出为PDF</span>
+              <el-icon><Document /></el-icon>
+              <span>{{ renderer === 'hd' ? '导出为PDF（高清矢量）' : '导出为PDF（图片）' }}</span>
             </div>
             <div class="actions-item" @click="onActionCommand('zip')">
               <el-icon><Download /></el-icon><span>下载笔记</span>
@@ -48,9 +54,9 @@
       </template>
     </div>
 
-    <div v-loading="loading" class="preview-body">
+    <div v-loading="loading" class="preview-body" :class="{ 'preview-body--hd': renderer === 'hd' }">
       <el-empty v-if="!loading && pages.length === 0" description="该笔记没有可预览的内容" />
-      <div v-else-if="currentPageData" class="page-content">
+      <div v-else-if="currentPageData" class="page-content" :class="{ 'page-content--hd': renderer === 'hd' }">
         <!-- 页面总览：传统渲染器直接显示笔记截图，高清渲染器渲染真实画板 -->
         <div class="thumb-wrap">
           <el-image
@@ -70,20 +76,27 @@
               </div>
             </template>
           </el-image>
-          <EzyBoardViewer
-            v-else-if="boardSource"
-            :source="boardSource"
-            :file-name="`${fileName || 'note'}-${currentPage}`"
+          <NoteViewer
+            v-else-if="vfs"
+            ref="noteViewerRef"
+            :source="vfs"
+            :initial-page="currentPage"
+            :show-pages="false"
+            :show-meta="false"
+            :file-name="fileName || 'note'"
+            :context-menu="false"
             class="thumb-board"
+            @pagechange="onPageChange"
+            @error="onViewerError"
           />
           <div v-else class="img-error">
             <el-icon><Loading /></el-icon>
-            <span>{{ boardLoading ? '正在渲染画板…' : boardError || '该页没有可渲染的画板' }}</span>
+            <span>{{ loading ? '正在加载笔记…' : viewerError || '该笔记没有可渲染的画板' }}</span>
           </div>
         </div>
 
-        <!-- 页内插入的图片（水平滚动） -->
-        <div v-if="currentPageData.originals.length" class="originals-block">
+        <!-- 页内插入的图片（水平滚动）：仅传统渲染器需要，高清画板里已包含这些内容 -->
+        <div v-if="renderer === 'classic' && currentPageData.originals.length" class="originals-block">
           <div class="originals-label">页内图片（{{ currentPageData.originals.length }}）</div>
           <div class="originals-row">
             <el-image
@@ -109,25 +122,80 @@
     </div>
 
     <div v-if="pages.length" class="pager-bar">
-      <el-button :disabled="currentPage <= 1" @click="currentPage--">
+      <el-button :disabled="currentPage <= 1" @click="gotoPage(currentPage - 1)">
         <el-icon><ArrowLeft /></el-icon>
         <span v-if="!isMobile">上一页</span>
       </el-button>
       <el-input-number
-        v-model="currentPage"
+        :model-value="currentPage"
         :min="1"
         :max="pages.length"
         controls-position="right"
         class="page-input"
+        @change="gotoPage"
       />
       <span class="page-info">
         / {{ pages.length }} 页（第 {{ pages[currentPage - 1] }} 页）
       </span>
-      <el-button :disabled="currentPage >= pages.length" @click="currentPage++">
+      <el-button :disabled="currentPage >= pages.length" @click="gotoPage(currentPage + 1)">
         <span v-if="!isMobile">下一页</span>
         <el-icon><ArrowRight /></el-icon>
       </el-button>
     </div>
+
+    <!-- 首次进入笔记预览：引导选择渲染方式（结果记入本地存储，之后可在右上角随时切换） -->
+    <el-dialog
+      v-model="rendererPickerVisible"
+      title="选择笔记渲染方式"
+      :width="isMobile ? '92%' : '640px'"
+      align-center
+      class="renderer-picker"
+      @close="markRendererAsked"
+    >
+      <div class="renderer-options">
+        <button type="button" class="renderer-card" @click="chooseRenderer('classic')">
+          <span class="renderer-card-head">
+            <el-icon class="renderer-card-icon"><Picture /></el-icon>
+            <span class="renderer-card-titles">
+              <span class="renderer-card-title">传统渲染</span>
+              <span class="renderer-card-sub">页面截图</span>
+            </span>
+          </span>
+          <span class="renderer-card-list">
+            <span class="renderer-card-item">秒开，不必先解析画板数据</span>
+            <span class="renderer-card-item">与手机端看到的画面完全一致</span>
+            <span class="renderer-card-item">占用更低，老设备更流畅</span>
+          </span>
+        </button>
+
+        <button type="button" class="renderer-card" @click="chooseRenderer('hd')">
+          <span class="renderer-card-badge">默认</span>
+          <span class="renderer-card-head">
+            <el-icon class="renderer-card-icon"><PictureFilled /></el-icon>
+            <span class="renderer-card-titles">
+              <span class="renderer-card-title">高清渲染</span>
+              <span class="renderer-card-sub">矢量画板</span>
+            </span>
+          </span>
+          <span class="renderer-card-list">
+            <span class="renderer-card-item">矢量重建笔迹，放大也不发虚</span>
+            <span class="renderer-card-item">可导出高清矢量 PDF</span>
+            <span class="renderer-card-item">笔迹、文字、图片完整还原</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="renderer-hint">
+        <el-icon><InfoFilled /></el-icon>
+        <span>
+          {{
+            isMobile
+              ? '以后可在预览页右上角「⋯」菜单里随时切换'
+              : '以后可在预览页右上角的「图片」按钮里随时切换'
+          }}
+        </span>
+      </div>
+    </el-dialog>
 
     <el-dialog
       v-model="progressVisible"
@@ -144,18 +212,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, shallowRef, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, ArrowRight, Document, Download, Picture, PictureFilled, MoreFilled, Loading } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, Document, Download, Picture, PictureFilled, MoreFilled, Loading, InfoFilled } from '@element-plus/icons-vue'
 import JSZip from 'jszip'
 import { jsPDF } from 'jspdf'
-import { EzyBoardViewer, type BoardFile } from 'ezy-board-viewer'
+import { NoteViewer, type NoteViewerInstance } from 'ezy-board-viewer'
 import { getNoteResources, getNoteResourcesForZip, type NoteResource } from '@/api/note'
 import { proxyUrl, proxyImgSrc, resourceFetchUrl } from '@/utils/proxy'
 import { saveBlobFile } from '@/utils/saveFile'
+import { drawSvgToPdf } from '@/utils/svgToPdf'
+import { ensureCjkPdfFont } from '@/utils/pdfFont'
 import { formatError, logError } from '@/utils/errorText'
 import { useIsMobile } from '@/composables/useIsMobile'
+import { createNoteVfs, type NoteVfs, type NotePage, type NoteImage } from '@/utils/noteVfs'
+import { detectBgLines } from '@/utils/noteBackground'
 
 const { isMobile } = useIsMobile()
 
@@ -230,99 +302,84 @@ function toEntry(item: NoteResource): ResEntry {
   }
 }
 
-/* ===== 渲染器：高清 = 渲染画板，传统 = 直接展示截图 ===== */
-const renderer = ref<'hd' | 'classic'>('hd')
-function setRenderer(v: 'hd' | 'classic') {
-  renderer.value = v
-  // 传统模式下翻页不会更新 boardSource，切回高清时按当前页重新组装
-  if (v === 'hd') loadBoard()
+/* ===== 渲染器：高清 = NoteViewer（画板），传统 = 截图 ===== */
+/** 渲染器偏好：首次进入时引导选择一次，结果记入本地存储 */
+const RENDERER_KEY = 'noteRenderer'
+const RENDERER_ASKED_KEY = 'noteRendererAsked'
+
+function readStoredRenderer(): 'hd' | 'classic' | null {
+  try {
+    const v = localStorage.getItem(RENDERER_KEY)
+    return v === 'hd' || v === 'classic' ? v : null
+  } catch {
+    return null
+  }
+}
+/** 是否已引导过（只打扰一次） */
+function rendererAsked(): boolean {
+  try {
+    return localStorage.getItem(RENDERER_ASKED_KEY) === '1'
+  } catch {
+    return true
+  }
+}
+function markRendererAsked() {
+  try {
+    localStorage.setItem(RENDERER_ASKED_KEY, '1')
+  } catch {
+    /* 隐私模式等写入失败时忽略 */
+  }
 }
 
-/* ===== 画板渲染：用 ezy-board-viewer 的文件列表形式 ===== */
-/** 每页的画板数据：snapshot.bin（渲染用）+ 同名 screenshot（取画布尺寸） */
-const pageBoards = ref<Record<number, { snapshot: string; screenshot: string }>>({})
-/** res/image 下的图片资源，多页共享 */
-const sharedImages = ref<NoteResource[]>([])
-const imageFiles = ref<BoardFile[] | null>(null)
-const boardSource = ref<BoardFile[] | null>(null)
-const boardLoading = ref(false)
-const boardError = ref('')
+const renderer = ref<'hd' | 'classic'>(readStoredRenderer() || 'hd')
+/** 首次进入笔记预览时的渲染器引导弹窗 */
+const rendererPickerVisible = ref(false)
 
-/** 下载资源（走代理或直连） */
-async function fetchResourceBlob(url: string): Promise<Blob> {
-  const res = await fetch(resourceFetchUrl(url))
-  if (!res.ok) throw new Error('资源下载失败：HTTP ' + res.status)
-  return await res.blob()
+function setRenderer(v: 'hd' | 'classic') {
+  renderer.value = v
+  try {
+    localStorage.setItem(RENDERER_KEY, v)
+  } catch {
+    /* ignore */
+  }
+  // 高清模式下数据由 NoteViewer 内部按需加载；切换无须做额外动作
+}
+
+/** 引导弹窗中选定渲染器（是否已引导由弹窗 close 统一记录） */
+function chooseRenderer(v: 'hd' | 'classic') {
+  setRenderer(v)
+  rendererPickerVisible.value = false
+}
+
+/* ===== 画板渲染：交给 NoteViewer，按需拉取 ===== */
+const vfs = shallowRef<NoteVfs | null>(null)
+/** NoteViewer 组件引用，用于在 pager-bar 中调 nextPage/prevPage/gotoPage */
+const noteViewerRef = ref<NoteViewerInstance | null>(null)
+/** NoteViewer 渲染失败时的兜底提示 */
+const viewerError = ref('')
+/** 上次同步给 NoteViewer 的页号（防止 watch 互相触发重复 selectPage） */
+let lastSyncedPage = 1
+
+/** NoteViewer 翻页事件 → 同步到外层 currentPage（pager-bar 显示用） */
+function onPageChange(p: number) {
+  if (typeof p === 'number') {
+    lastSyncedPage = p
+    if (currentPage.value !== p) currentPage.value = p
+  }
+}
+/** NoteViewer 渲染失败 → 显示降级提示 */
+function onViewerError(e: unknown) {
+  viewerError.value = e instanceof Error ? e.message : String(e)
 }
 
 /**
- * 合成最小 header.bin（protobuf：field 2 = 宽、field 3 = 高，均为 varint）。
- * 云笔记的 Resources/GetByFileId 不会返回 header.bin，而 ezy-board-viewer 渲染每页时必须有它。
+ * 统一的翻页入口（pager-bar 按钮与页码输入框共用）。
+ * 只更新 currentPage，再由下方 watch 同步给 NoteViewer ——
+ * 传统渲染器下 NoteViewer 不挂载，翻页不能依赖它，否则按钮会静默失效。
  */
-function makeHeaderBlob(width: number, height: number): Blob {
-  const bytes: number[] = []
-  const vi = (v: number) => {
-    let x = v >>> 0
-    while (x > 0x7f) { bytes.push((x & 0x7f) | 0x80); x >>>= 7 }
-    bytes.push(x)
-  }
-  vi(0x10); vi(width)
-  vi(0x18); vi(height)
-  return new Blob([new Uint8Array(bytes)], { type: 'application/octet-stream' })
-}
-
-/** res/image 多页共享，整篇笔记只下一次 */
-async function ensureImageFiles(): Promise<BoardFile[]> {
-  if (imageFiles.value) return imageFiles.value
-  imageFiles.value = await Promise.all(sharedImages.value.map(async (item) => ({
-    path: 'res/image/' + (item.ossImageUrl.split('/').pop() || item.ossImageUrl),
-    blob: await fetchResourceBlob(fullUrl(item))
-  })))
-  return imageFiles.value
-}
-
-/** 组装某一页的文件列表：该页 header.bin / snapshot.bin + 共享图片 */
-async function buildBoardSource(pageKey: number): Promise<BoardFile[]> {
-  const b = pageBoards.value[pageKey]
-  if (!b?.snapshot) throw new Error('该页缺少 snapshot.bin，无法渲染')
-  const [snapshot, images] = await Promise.all([fetchResourceBlob(b.snapshot), ensureImageFiles()])
-  // 画布尺寸取该页截图的像素尺寸，保证渲染结果与 App 截图同比例
-  let width = 1080, height = 1920
-  if (b.screenshot) {
-    try {
-      const bmp = await createImageBitmap(await fetchResourceBlob(b.screenshot))
-      if (bmp.width > 1 && bmp.height > 1) { width = bmp.width; height = bmp.height }
-      bmp.close()
-    } catch {
-      // 取不到尺寸就按默认画布渲染
-    }
-  }
-  const dir = pageKey + '/'
-  return [
-    { path: dir + 'header.bin', blob: makeHeaderBlob(width, height) },
-    { path: dir + 'snapshot.bin', blob: snapshot },
-    ...images
-  ]
-}
-
-/** 载入当前页的画板 */
-async function loadBoard() {
-  const pageKey = pages.value[currentPage.value - 1]
-  boardSource.value = null
-  boardError.value = ''
-  if (pageKey == null) return
-  if (!pageBoards.value[pageKey]?.snapshot) {
-    boardError.value = '该页没有可用的画板数据'
-    return
-  }
-  boardLoading.value = true
-  try {
-    boardSource.value = await buildBoardSource(pageKey)
-  } catch (e: any) {
-    boardError.value = formatError(e)
-  } finally {
-    boardLoading.value = false
-  }
+function gotoPage(v: number | undefined) {
+  if (!v || !pages.value.length) return
+  currentPage.value = Math.min(Math.max(1, Math.round(v)), pages.value.length)
 }
 
 async function loadResources() {
@@ -331,56 +388,101 @@ async function loadResources() {
   pageMap.value = {}
   pages.value = []
   currentPage.value = 1
-  // 切换笔记时，上一次的共享图片缓存与渲染结果都要失效
-  imageFiles.value = null
-  pageBoards.value = {}
-  sharedImages.value = []
-  boardSource.value = null
-  boardError.value = ''
+  lastSyncedPage = 1
+  vfs.value = null
+  viewerError.value = ''
+  // 解析每个资源：传统渲染器走 pageMap；高清渲染器走 pages[]/images[] 喂给 NoteVFS。
+  const pageMapLocal: Record<number, PageData> = {}
+  // key = pageKey；value = { snapshotUrl?, screenshotUrl?, width?, height?, touchUrls }
+  const notePageMap = new Map<number, NotePage>()
+  // 共享图片（resourceType 0）→ res/image/<fileName>
+  const noteImages = new Map<string, NoteImage>()
   try {
     const list = await getNoteResources(fileId.value)
-    const map: Record<number, PageData> = {}
     for (const item of list) {
       const page = item.pageIndex + 1
+      const full = fullUrl(item)
       if (item.resourceType === 1) {
-        // 画板数据：snapshot.bin 交给 ezy-board-viewer 渲染；
-        // data.mdb / lock.mdb 是 App 自己的增量库，查看器不需要
+        // 画板数据三类：
+        //   snapshot.bin —— 矢量快照，交给 NoteViewer 渲染
+        //   *_touch.bin  —— 旧笔记的笔触（每段一个独立文件）
+        //   page_mdb/data.mdb —— 新笔记的笔触来源（ObjectBox，App 不再单独上传 _touch.bin）
+        // lock.mdb 只是 LMDB 锁页，无需处理
         if (/snapshot\.bin$/i.test(item.ossImageUrl)) {
-          if (!pageBoards.value[page]) pageBoards.value[page] = { snapshot: '', screenshot: '' }
-          pageBoards.value[page].snapshot = fullUrl(item)
+          const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
+          np.snapshotUrl = full
+          notePageMap.set(page, np)
           // 只画了一个形状、没有图片资源的页也要能预览
-          if (!map[page]) map[page] = { originals: [] }
+          if (!pageMapLocal[page]) pageMapLocal[page] = { originals: [] }
+        } else if (/data\.mdb$/i.test(item.ossImageUrl)) {
+          const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
+          np.mdbUrl = full
+          notePageMap.set(page, np)
+        } else if (/_touch\.bin$/i.test(item.ossImageUrl)) {
+          const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
+          if (!np.touchUrls) np.touchUrls = []
+          np.touchUrls.push(full)
+          notePageMap.set(page, np)
         }
         continue
       }
       // 过滤其他模板 bin 等非图片资源
       if (!IMG_EXT_RE.test(item.ossImageUrl)) continue
-      if (!map[page]) map[page] = { originals: [] }
+      if (!pageMapLocal[page]) pageMapLocal[page] = { originals: [] }
       if (item.resourceType === 2) {
         // resourceType 2 为页面总览截图
-        map[page].thumbnail = toEntry(item)
-        // 截图尺寸就是画布尺寸，用它合成渲染所需的 header.bin
-        if (!pageBoards.value[page]) pageBoards.value[page] = { snapshot: '', screenshot: '' }
-        pageBoards.value[page].screenshot = fullUrl(item)
+        pageMapLocal[page].thumbnail = toEntry(item)
+        // 同步记录到 NotePage，方便合成 header.bin 时取画布尺寸
+        const np = notePageMap.get(page) || { pageKey: page, snapshotUrl: '' }
+        const img = new Image()
+        img.src = pageMapLocal[page].thumbnail!.imgSrc
+        await new Promise<void>((resolve) => {
+          if (img.complete && img.naturalWidth) return resolve()
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+        })
+        if (img.naturalWidth > 1 && img.naturalHeight > 1) {
+          np.width = img.naturalWidth
+          np.height = img.naturalHeight
+          // 从截图左上角 32x32 区域采样主色作为画布底色（drawable bg）
+          np.bgcolor = sampleCornerColor(img)
+          // 背景网格/横线的权威来源是该页 mdb 的 BackgroundLineConfigEntity（noteVfs 合成
+          // header 时会优先用它）；这里按截图推断一份仅作兜底，mdb 缺失或解析失败时仍有背景
+          np.bgLines = detectBgLines(img) || undefined
+        }
+        notePageMap.set(page, np)
+      } else if (item.resourceType === 0) {
+        // 共享图片（res/image/*），多页共用
+        pageMapLocal[page].originals.push(toEntry(item))
+        const fileName = item.ossImageUrl.split('/').pop() || item.ossImageUrl
+        if (!noteImages.has(fileName)) noteImages.set(fileName, { fileName, url: full })
       } else {
-        // 其余为页内插入的图片
-        map[page].originals.push(toEntry(item))
-        if (item.resourceType === 0) sharedImages.value.push(item)
+        // 其他图片：作为页内预览图（不进入 VFS 共享池）
+        pageMapLocal[page].originals.push(toEntry(item))
       }
     }
-    pageMap.value = map
+    pageMap.value = pageMapLocal
     // 优先按"有画板数据的页"翻页，没有时退回原来的"有图片的页"
-    const boardPages = Object.keys(pageBoards.value).map(Number).sort((a, b) => a - b)
+    const boardPages = Array.from(notePageMap.values())
+      .filter(p => p.snapshotUrl)
+      .map(p => p.pageKey)
+      .sort((a, b) => a - b)
     pages.value = boardPages.length
       ? boardPages
-      : Object.keys(map).map(Number).sort((a, b) => a - b)
+      : Object.keys(pageMapLocal).map(Number).sort((a, b) => a - b)
+    // 喂给 NoteViewer 的懒加载 VFS
+    const validPages = Array.from(notePageMap.values()).filter(p => p.snapshotUrl)
+    if (validPages.length) {
+      vfs.value = await createNoteVfs({
+        pages: validPages,
+        images: Array.from(noteImages.values())
+      })
+    }
   } catch (e: any) {
     ElMessage.error(e.message || '加载笔记失败')
   } finally {
     loading.value = false
   }
-  // 传统渲染器只看截图，不必去拉画板资源
-  if (renderer.value === 'hd') await loadBoard()
 }
 
 /** 图片转 DataURL（复刻 loadImageAsDataURL） */
@@ -394,49 +496,147 @@ async function loadImageAsDataURL(url: string): Promise<string> {
   })
 }
 
-/** 导出 PDF（复刻 exportPdfBtn 逻辑） */
+/**
+ * 从已加载的 Image 中提取左上角 32x32 区域的主色，编码为 protobuf int32（0xAARRGGBB）。
+ * 失败或全透明返回 -1（不透明白）。
+ */
+function sampleCornerColor(img: HTMLImageElement): number {
+  try {
+    const SZ = 32
+    const cv = document.createElement('canvas')
+    cv.width = SZ
+    cv.height = SZ
+    const cx = cv.getContext('2d')
+    if (!cx) return -1
+    cx.drawImage(img, 0, 0, SZ, SZ)
+    const { data } = cx.getImageData(0, 0, SZ, SZ)
+    let r = 0, g = 0, b = 0, a = 0, n = 0
+    for (let i = 0; i < data.length; i += 4) {
+      // 跳过全透明像素
+      if (data[i + 3] === 0) continue
+      r += data[i]
+      g += data[i + 1]
+      b += data[i + 2]
+      a += data[i + 3]
+      n++
+    }
+    if (!n) return -1
+    r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n); a = Math.round(a / n)
+    return ((a << 24) | (r << 16) | (g << 8) | b) | 0
+  } catch {
+    return -1
+  }
+}
+
+/** PDF 页脚：右下角一行说明 */
+function addPdfFooter(pdf: jsPDF, pageW: number, pageH: number) {
+  pdf.setFontSize(8)
+  pdf.setTextColor(100)
+  pdf.text(PDF_FOOTER, pageW - pdf.getTextWidth(PDF_FOOTER) - 20, pageH - 20)
+}
+
+interface PdfPageJob {
+  /** 矢量 SVG（高清模式取到时） */
+  svg?: string
+  /** 页面截图 dataURL（传统模式，或高清失败后的降级） */
+  dataUrl?: string
+  w?: number
+  h?: number
+}
+
+/**
+ * 准备一页的绘制数据。高清模式优先取矢量 SVG，取不到再回落到截图。
+ * @param order  在查看器内的页序（1-based 连续）—— 用于向 NoteViewer 取矢量页
+ * @param pageNo 原始页号（pageIndex+1）—— 用于取该页截图
+ */
+async function preparePdfPage(order: number, pageNo: number, hd: boolean): Promise<PdfPageJob | null> {
+  if (hd && noteViewerRef.value) {
+    const svg = await noteViewerRef.value.pageSvg(order)
+    if (svg) return { svg }
+  }
+  const pd = pageMap.value[pageNo]
+  if (!pd?.thumbnail) return null
+  const dataUrl = await loadImageAsDataURL(pd.thumbnail.raw)
+  const img = new Image()
+  img.src = dataUrl
+  await new Promise<void>((resolve) => {
+    img.onload = () => resolve()
+    img.onerror = () => resolve()
+  })
+  if (!img.width || !img.height) return null
+  return { dataUrl, w: img.width, h: img.height }
+}
+
+/**
+ * 导出 PDF，两种模式：
+ * - 传统渲染器：把页面截图铺进 PDF（位图）
+ * - 高清渲染器：把该页矢量 SVG 直接绘入 PDF（路径/文字/图片，放大不失真）
+ *   某页若拿不到矢量数据，自动回退为截图，保证导出结果不为空。
+ */
 async function exportPdf() {
   if (pages.value.length === 0) return
+  const hd = renderer.value === 'hd'
   exporting.value = true
   progressVisible.value = true
-  progressText.value = '正在导出 PDF...'
+  progressText.value = hd ? '正在导出高清 PDF（矢量）...' : '正在导出 PDF...'
   progressPercent.value = 0
   try {
-    const pdf = new jsPDF('p', 'pt', 'a4')
-    let added = 0
-    for (let i = 0; i < pages.value.length; i++) {
-      const pageData = pageMap.value[pages.value[i]]
-      if (!pageData?.thumbnail) continue
+    // compress + floatPrecision：矢量页内容流是纯文本坐标，不压缩会到几十 MB
+    const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4', compress: true, floatPrecision: 2 })
+    const pageW = pdf.internal.pageSize.getWidth()
+    const pageH = pdf.internal.pageSize.getHeight()
 
-      const img = await loadImageAsDataURL(pageData.thumbnail.raw)
-      const imgObj = new Image()
-      imgObj.src = img
-      await new Promise((r) => {
-        imgObj.onload = r
-      })
-
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      const ratio = Math.min(pageWidth / imgObj.width, pageHeight / imgObj.height)
-      const imgWidth = imgObj.width * ratio
-      const imgHeight = imgObj.height * ratio
-      const x = (pageWidth - imgWidth) / 2
-      const y = (pageHeight - imgHeight) / 2
-
-      if (added > 0) pdf.addPage()
-      pdf.addImage(img, 'JPEG', x, y, imgWidth, imgHeight)
-      added++
-
-      pdf.setFontSize(8)
-      pdf.setTextColor(100)
-      const textWidth = pdf.getTextWidth(PDF_FOOTER)
-      pdf.text(PDF_FOOTER, pageWidth - textWidth - 20, pageHeight - 20)
-
-      progressPercent.value = Math.round(((i + 1) / pages.value.length) * 100)
+    // 高清模式注册中文字体：中文以矢量文字写入（jsPDF 只嵌入用到的字形，通常几百 KB）；
+    // 字体拉取失败时 cjkFont 为 undefined，中文会自动回退为位图，不影响导出。
+    let cjkFont: string | undefined
+    if (hd) {
+      progressText.value = '正在加载中文字体...'
+      cjkFont = await ensureCjkPdfFont(pdf)
+      progressText.value = cjkFont ? '正在导出高清 PDF（矢量）...' : '正在导出高清 PDF（中文回退位图）...'
     }
+
+    // 1) 先取齐每页数据，避免画到一半才发现缺数据而留下空白页
+    const jobs: PdfPageJob[] = []
+    for (let i = 0; i < pages.value.length; i++) {
+      const job = await preparePdfPage(i + 1, pages.value[i], hd)
+      if (job) jobs.push(job)
+      progressPercent.value = Math.round(((i + 1) / pages.value.length) * 45)
+    }
+    if (!jobs.length) throw new Error('没有可导出的页面')
+
+    // 2) 逐页绘制
+    let added = 0
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i]
+      if (added > 0) pdf.addPage()
+      let drew = false
+      if (job.svg) {
+        const n = await drawSvgToPdf(pdf, job.svg, { x: 0, y: 0, w: pageW, h: pageH }, { cjkFont })
+        drew = n > 0
+      }
+      if (!drew && job.dataUrl && job.w && job.h) {
+        const fmt = /^data:image\/(\w+)/i.exec(job.dataUrl)?.[1]?.toLowerCase() || 'png'
+        const type = fmt === 'jpg' || fmt === 'jpeg' ? 'JPEG' : fmt.toUpperCase()
+        const ratio = Math.min(pageW / job.w, pageH / job.h)
+        const w = job.w * ratio
+        const h = job.h * ratio
+        pdf.addImage(job.dataUrl, type, (pageW - w) / 2, (pageH - h) / 2, w, h)
+        drew = true
+      }
+      if (!drew) {
+        // 两种方式都没画出来：撤掉刚加上的空白页
+        if (added > 0) pdf.deletePage(pdf.getNumberOfPages())
+      } else {
+        addPdfFooter(pdf, pageW, pageH)
+        added++
+      }
+      progressPercent.value = 45 + Math.round(((i + 1) / jobs.length) * 55)
+    }
+    if (!added) throw new Error('没有可导出的页面')
+
     const pdfBlob = pdf.output('blob')
     await saveBlobFile(pdfBlob, (fileName.value || 'note') + '.pdf')
-    ElMessage.success('PDF 导出完成')
+    ElMessage.success(hd ? '高清 PDF 已导出（矢量）' : 'PDF 导出完成')
   } catch (e: any) {
     logError('exportPdf', e)
     ElMessage.error('导出 PDF 失败：' + formatError(e))
@@ -482,15 +682,23 @@ async function downloadZip() {
   }
 }
 
-onMounted(loadResources)
+onMounted(() => {
+  loadResources()
+  // 第一次进入笔记预览：先让用户选一次渲染方式，选择结果记入本地存储
+  if (!rendererAsked()) rendererPickerVisible.value = true
+})
 // keep-alive 会复用同一组件实例，切换不同笔记文件时需重新加载
 watch(
   () => [route.params.fileId, route.query.name],
   () => loadResources()
 )
-// 翻页时渲染对应页的画板
-watch(currentPage, () => {
-  if (renderer.value === 'hd') loadBoard()
+// NoteViewer 内部自己管理翻页；这里只把外部 currentPage 同步给 NoteViewer
+// （传统渲染器下没有 NoteViewer，currentPage 即唯一数据源，这里直接放行）
+watch(currentPage, (v) => {
+  if (!v || v === lastSyncedPage) return
+  lastSyncedPage = v
+  if (!noteViewerRef.value || !pages.value.length) return
+  noteViewerRef.value.gotoPage(v)
 })
 </script>
 
@@ -499,7 +707,10 @@ watch(currentPage, () => {
   padding: 0;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100%;
+  overflow: hidden;
 }
 /* 顶部 sticky 返回栏（参考 Gblox 帖子详情 appbar） */
 .appbar {
@@ -592,7 +803,7 @@ watch(currentPage, () => {
 }
 .preview-body {
   flex: 1 1 auto;
-  min-height: 60vh;
+  min-height: 0;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -600,10 +811,22 @@ watch(currentPage, () => {
   padding: 16px;
   overflow: auto;
 }
+/* 高清渲染器：画板撑满可用高度，外层不再滚动 */
+.preview-body--hd {
+  align-items: stretch;
+  overflow: hidden;
+}
+.preview-body :deep(.el-empty) {
+  align-self: center;
+}
 .page-content {
   width: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+}
+.page-content--hd {
+  height: 100%;
 }
 /* 页面总览：居中 */
 .thumb-wrap {
@@ -611,6 +834,12 @@ watch(currentPage, () => {
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+}
+/* 高清渲染器下画板占满剩余空间 */
+.page-content--hd .thumb-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: 0;
 }
 /* 传统渲染器：截图大图，完整显示不裁剪 */
 .thumb-img {
@@ -629,10 +858,10 @@ watch(currentPage, () => {
   max-height: calc(100vh - 300px);
   min-height: 320px;
 }
-/* 高清渲染器：画板需要显式高度，否则只有组件自带的最小高度 */
+/* 高清渲染器：画板撑满 .thumb-wrap（父级已按 flex 分配好高度） */
 .thumb-board {
   width: 100%;
-  height: calc(100vh - 280px);
+  height: 100%;
   min-height: 320px;
   border-radius: 4px;
   box-shadow: 0 2px 8px #ccc;
@@ -708,6 +937,121 @@ watch(currentPage, () => {
   font-size: 12px;
   line-height: 1.5;
   color: var(--el-text-color-secondary);
+}
+
+/* ===== 首次进入的渲染器选择弹窗 ===== */
+.renderer-options {
+  display: flex;
+  align-items: stretch;
+  gap: 14px;
+}
+/* 两个大卡片：桌面左右并排，手机上下堆叠 */
+.renderer-card {
+  position: relative;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 12px;
+  background: var(--el-fill-color-blank);
+  color: var(--el-text-color-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.renderer-card:hover {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+.renderer-card:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
+.renderer-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.renderer-card-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.renderer-card-icon {
+  font-size: 26px;
+  color: var(--el-color-primary);
+}
+.renderer-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.renderer-card-sub {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+.renderer-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--el-text-color-regular);
+}
+.renderer-card-item {
+  position: relative;
+  padding-left: 14px;
+}
+.renderer-card-item::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--el-color-primary);
+  opacity: 0.65;
+}
+.renderer-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  font-size: 11px;
+  line-height: 18px;
+}
+.renderer-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* 手机端：两个大框改为上下排列 */
+@media (max-width: 767px) {
+  .renderer-options {
+    flex-direction: column;
+  }
+  .renderer-card {
+    padding: 14px;
+  }
+  .renderer-card-icon {
+    font-size: 22px;
+  }
 }
 
 /* ===== 移动端适配 ===== */
