@@ -1,5 +1,5 @@
 diff --git a/node_modules/ezy-board-viewer/dist/index.js b/node_modules/ezy-board-viewer/dist/index.js
-index 3e4aea2..4f9c903 100644
+index 39c315d..b26c327 100644
 --- a/node_modules/ezy-board-viewer/dist/index.js
 +++ b/node_modules/ezy-board-viewer/dist/index.js
 @@ -54,6 +54,11 @@ const M = (m, n) => {
@@ -14,7 +14,7 @@ index 3e4aea2..4f9c903 100644
    const u8 = new Uint8Array(buf), dv = new DataView(buf);
    let e = u8.length - 22;
    while (e >= 0 && dv.getUint32(e, true) !== 101010256) e--;
-@@ -462,8 +467,8 @@ function paintPage(ctx, P, lt, s) {
+@@ -466,8 +471,8 @@ function paintPage(ctx, P, lt, s) {
    const st = stateAt(P, lt);
    ctx.setTransform(1, 0, 0, 1, 0, 0);
    ctx.fillStyle = "#fff";
@@ -25,10 +25,10 @@ index 3e4aea2..4f9c903 100644
    ctx.fillStyle = rgba(st.bg);
    ctx.fillRect(0, 0, P.W, P.H);
    const lc = st.line;
-@@ -513,68 +518,67 @@ const pageAt = (R, gt) => {
-   const p = R.P.find((x) => gt < x.off + x.len) || R.P[R.P.length - 1];
-   return [p, Math.min(Math.max(gt - p.off, 0), p.len)];
- };
+@@ -545,63 +550,68 @@ async function mixAudio(clips, total, signal) {
+   }
+   return await oc.startRendering();
+ }
 -async function exportMp4(R, q, log = () => {
 -}, signal) {
 -  if (!globalThis.VideoEncoder) throw Error("当前浏览器不支持 WebCodecs，请使用最新版 Chrome / Edge");
@@ -57,24 +57,20 @@ index 3e4aea2..4f9c903 100644
 +    const acfg = { codec: 'mp4a.40.2', sampleRate: 48000, numberOfChannels: 2, bitrate: 128000 };
      if (globalThis.AudioEncoder && (await AudioEncoder.isConfigSupported(acfg)).supported) {
 -      log("mix", 0);
--      const oc = new OfflineAudioContext(2, Math.ceil(R.total / 1e3 * 48e3), 48e3);
--      for (const c of R.clips) {
--        const s = oc.createBufferSource();
--        s.buffer = await oc.decodeAudioData(c.buf.slice().buffer);
--        s.connect(oc.destination);
--        s.start(c.t0 / 1e3);
--      }
 +      log('mix', 0);
-+      const oc = new OfflineAudioContext(2, Math.ceil(R.total / 1000 * 48000), 48000);
-+      for (const c of R.clips) { const s = oc.createBufferSource(); check(); s.buffer = await oc.decodeAudioData(c.buf.slice().buffer); check(); s.connect(oc.destination); s.start(c.t0 / 1000); }   // 起点 = 文件里的开始时间
-       audio = { buf: await oc.startRendering(), cfg: acfg };
+       const buf = await withTimeout(mixAudio(R.clips, R.total, signal), MIX_TIMEOUT_MS).catch(() => null);
++      check();
+       if (buf) audio = { buf, cfg: acfg };
+-      else log("noaudio", 0);
 -    } else log("noaudio", 0);
-+    } else log('noaudio', 0);
-   }
+-  }
 -  const mux = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: w, height: h }, ...audio ? { audio: { codec: "aac", numberOfChannels: 2, sampleRate: 48e3 } } : {}, fastStart: "in-memory" });
 -  let err = null;
 -  const venc = new VideoEncoder({ output: (c, m) => mux.addVideoChunk(c, m), error: (e) => err = e });
 -  venc.configure(vcfg);
++      else log('noaudio', 0);
++    } else log('noaudio', 0);
++  }
 +  const mux = new Muxer({ target: new ArrayBufferTarget(), video: { codec: 'avc', width: w, height: h }, ...(audio ? { audio: { codec: 'aac', numberOfChannels: 2, sampleRate: 48000 } } : {}), fastStart: 'in-memory' });
 +  check();
 +  let err = null, aenc = null, venc = null;
@@ -140,7 +136,7 @@ index 3e4aea2..4f9c903 100644
  }
  const normPath = (p) => String(p).replace(/\\/g, "/").replace(/^(\.?\/)+/, "");
  function toVfs(list) {
-@@ -732,6 +736,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -780,6 +790,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
      async function load() {
        if (typeof window === "undefined") return;
        const my = ++token;
@@ -148,7 +144,7 @@ index 3e4aea2..4f9c903 100644
        disposeAll();
        kind.value = "";
        errMsg.value = "";
-@@ -741,12 +746,14 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -789,12 +800,14 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
        }
        phase.value = "loading";
        try {
@@ -166,7 +162,7 @@ index 3e4aea2..4f9c903 100644
            if (my !== token) {
              R.clips.forEach((c) => URL.revokeObjectURL(c.url));
              return;
-@@ -765,7 +772,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -813,7 +826,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
            cdim.w = R.P[0].W;
            cdim.h = R.P[0].H;
          } else {
@@ -175,7 +171,7 @@ index 3e4aea2..4f9c903 100644
            if (my !== token) return;
            pages.value = res.map((r) => {
              if (r.err) return { err: r.err, w: 600, h: 80 };
-@@ -1005,11 +1012,13 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -1058,11 +1071,13 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
        const q = opts.quality && typeof opts.quality === "object" ? { key: "custom", ...opts.quality } : MP4_QUALITY[opts.quality || "mid"];
        if (!q) throw Error("未知画质：" + opts.quality);
        if (exporting.value) throw Error("正在导出");
@@ -191,7 +187,7 @@ index 3e4aea2..4f9c903 100644
        exporting.value = { stage: "encode", frac: 0 };
        try {
          const blob = await exportMp4(rec.value, q, (stage, frac) => {
-@@ -1020,10 +1029,9 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -1073,10 +1088,9 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
          if (opts.download) download(blob, `${props.fileName}-${q.key}.mp4`);
          return blob;
        } finally {
@@ -205,7 +201,7 @@ index 3e4aea2..4f9c903 100644
        }
      }
      async function saveSvg() {
-@@ -1039,7 +1047,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
+@@ -1092,7 +1106,7 @@ const _sfc_main$1 = /* @__PURE__ */ Object.assign({ name: "EzyBoardViewer" }, {
          await renderMp4({ quality: q.key, download: true });
          ElMessage.success("已保存为 MP4");
        } catch (e) {
