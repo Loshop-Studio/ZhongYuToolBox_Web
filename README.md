@@ -48,3 +48,15 @@ npm run build:installer
 得意黑按 SIL Open Font License 1.1 分发，授权见 public/fonts/OFL.txt。设计参考 Emil Kowalski 的 Design Engineering 和 Wise Design，UI 独立实现。
 
 PDF 正文使用思源宋体 CN Regular（Adobe / Google），按 SIL Open Font License 1.1 原样分发；字体来源及 SHA-256 见 public/fonts/PRINT_FONT.txt，授权见 public/fonts/SourceHanSerif-LICENSE.txt。字体只在导出时载入。
+
+## 随身答导出与关于应用
+
+随身答回复中打开画板，可直接导出静态 SVG（多页纵向合并，图片内联）；录制可选择画质导出 MP4，或保存最终画面 SVG。文件在本地生成，通过平台保存入口导出，不需要再上传 OSS。MP4 要求运行设备支持 WebCodecs H.264 编码；AAC 不可用时提示无音轨。可取消导出，离开页面自动停止，编码器及时释放。
+
+移动画板回复修复负缩放值、绘图区域塌缩与缩放尺寸不同步，保留选择、画笔、文字、图片及发送流程。
+
+「关于应用」集中检查更新、支持作者、使用说明与致谢。检查更新查询 Loshop-Studio 上游 GitHub 最新正式版，显示 Release 功能说明并跳转下载；不会发送学校账号或自动安装。作者用户量统计保持原实现。
+
+验证：`npm run test:update`；`npm run dev` 后打开 `/tests/board-export.html`，点击「开始导出验证」检查多页 SVG、录制编码、音轨与取消。测试仅使用合成资料。
+
+画板沿用上游 npm 依赖 `ezy-board-viewer@0.1.1`，不恢复已删除的本地组件目录。`npm ci` 自动应用导出取消、编码器释放、不同尺寸页面居中及旧 WebView ZIP 兼容补丁，说明见 [patches/README.md](patches/README.md)；升级该依赖时需核对并移除或更新补丁。保留上游新增的云笔记预览、PDF 导出与中文字体功能。
