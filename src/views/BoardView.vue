@@ -80,18 +80,20 @@ const innerStyle = reactive({ width: '0px', height: '0px' })
 let fc: InstanceType<typeof fabric.Canvas> | null = null
 let undoStack: string[] = []
 let redoStack: string[] = []
+let restoringHistory = false
 const MAX_HISTORY = 50
 
 function applyZoom() {
   if (!fc) return
-  const z = zoomLevel.value
-  fc.setZoom(z)
-  // 仅缩放 canvas 的“显示尺寸”（cssOnly），逻辑坐标系仍保持 2200×1395，
-  // 否则 canvas 元素始终以原始 2200×1395 像素显示，会比阴影框大一圈、能画到框外。
-  // 注意 cssOnly 模式下不会自动补 px，必须传带单位的字符串。
-  fc.setDimensions({ width: CANVAS_W * z + 'px', height: CANVAS_H * z + 'px' }, { cssOnly: true })
-  innerStyle.width = CANVAS_W * z + 'px'
-  innerStyle.height = CANVAS_H * z + 'px'
+  const width = Math.max(1, Math.round(CANVAS_W * zoomLevel.value))
+  const height = Math.max(1, Math.round(CANVAS_H * zoomLevel.value))
+  // Objects retain their logical coordinates; resize the bitmap as well as CSS
+  // so the viewport transform does not scale the displayed contents twice.
+  fc.setDimensions({ width, height })
+  fc.setZoom(zoomLevel.value)
+  fc.renderAll()
+  innerStyle.width = width + 'px'
+  innerStyle.height = height + 'px'
 }
 function fitZoom() {
   const wrap = wrapRef.value
@@ -105,30 +107,38 @@ function fitZoom() {
 }
 
 function saveState() {
-  if (!fc) return
-  undoStack.push(JSON.stringify(fc.toJSON(['id'])))
+  if (!fc || restoringHistory) return
+  const state = JSON.stringify(fc.toJSON(['id']))
+  if (state === undoStack[undoStack.length - 1]) return
+  undoStack.push(state)
   if (undoStack.length > MAX_HISTORY) undoStack.shift()
   redoStack = []
 }
 function undo() {
-  if (!fc || undoStack.length < 2) return
+  if (!fc || restoringHistory || undoStack.length < 2) return
   redoStack.push(undoStack.pop()!)
   const prev = undoStack[undoStack.length - 1]
-  fc.loadFromJSON(prev, () => fc!.renderAll())
+  const canvas = fc
+  restoringHistory = true
+  canvas.loadFromJSON(prev, () => { if (fc === canvas) canvas.renderAll(); restoringHistory = false })
 }
 function redo() {
-  if (!fc || redoStack.length === 0) return
+  if (!fc || restoringHistory || redoStack.length === 0) return
   const next = redoStack.pop()!
   undoStack.push(next)
-  fc.loadFromJSON(next, () => fc!.renderAll())
+  const canvas = fc
+  restoringHistory = true
+  canvas.loadFromJSON(next, () => { if (fc === canvas) canvas.renderAll(); restoringHistory = false })
 }
 function clearAll() {
-  if (!fc) return
+  if (!fc || restoringHistory) return
+  restoringHistory = true
   fc.clear()
   fc.backgroundColor = '#FFFFFF'
   fc.renderAll()
   undoStack = []
   redoStack = []
+  restoringHistory = false
   saveState()
 }
 
@@ -172,6 +182,7 @@ function setColor(c: string) {
       ;(active as any).set('stroke', c)
     }
     fc!.renderAll()
+    saveState()
   }
 }
 function zoomIn() {
@@ -179,7 +190,7 @@ function zoomIn() {
   applyZoom()
 }
 function zoomOut() {
-  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.2)
+  zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.05)
   applyZoom()
 }
 function pickImage() {
@@ -188,6 +199,7 @@ function pickImage() {
 function insertImage(dataUrl: string) {
   if (!fc) return
   fabric.Image.fromURL(dataUrl, (img) => {
+    if (!fc || !img) return
     const maxW = CANVAS_W * 0.8
     const maxH = CANVAS_H * 0.8
     if (img.width! > maxW || img.height! > maxH) {
@@ -266,6 +278,7 @@ function initCanvas() {
   })
   fc.on('object:modified', saveState)
   fc.on('path:created', saveState)
+  fc.on('text:changed', saveState)
   setTool('select')
   fitZoom()
   saveState()
