@@ -19,6 +19,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm run test:login
       - run: npm run test:ios
       - run: npm run build:ios
       - run: npm run build:ios -- --simulator --skip-web

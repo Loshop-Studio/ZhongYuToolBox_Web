@@ -25,6 +25,8 @@
           <el-form-item label="密码">
             <el-input v-model="password" name="password" autocomplete="current-password" type="password" placeholder="输入密码" show-password @keyup.enter="onLogin" />
           </el-form-item>
+          <el-checkbox v-model="rememberPassword" :disabled="loading" @change="onRememberChange">记住密码</el-checkbox>
+          <p class="remember-hint">仅保存在本机。退出登录后可自动填入；取消勾选会清除已保存的密码。</p>
 
           <el-button
             type="primary"
@@ -67,24 +69,29 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { blockState } from '@/stores/block'
 import { IS_BROWSER, PLATFORM, IS_WINDOWS, IS_MOBILE } from '@/config'
+import { readSavedLogin, forgetSavedLogin } from '@/utils/rememberLogin'
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const schoolSelect = ref('sxz')
-const schoolCode = ref('')
-const account = ref('')
-const password = ref('')
+const savedLogin = readSavedLogin()
+const schoolSelect = ref(savedLogin?.schoolSelect || 'sxz')
+const schoolCode = ref(savedLogin?.schoolCode || '')
+const account = ref(savedLogin?.account || '')
+const password = ref(savedLogin?.password || '')
+const rememberPassword = ref(!!savedLogin)
 const loading = ref(false)
 
 function onSchoolChange() {
   if (schoolSelect.value !== 'other') schoolCode.value = ''
 }
+function onRememberChange() { if (!rememberPassword.value) forgetSavedLogin() }
 
 async function onLogin() {
+  if (loading.value) return
   loading.value = true
   try {
-    const info = await auth.login(account.value, password.value, schoolSelect.value, schoolCode.value)
+    const info = await auth.login(account.value, password.value, schoolSelect.value, schoolCode.value, rememberPassword.value)
     // 登录后若被风控/封禁拦截，不要进入应用，复位登录态（封禁界面会持续展示设备号/QQ群）
     if (blockState.active) {
       auth.logout()
@@ -109,6 +116,9 @@ async function onLogin() {
 
 function onLogout() {
   auth.logout()
+  const saved = readSavedLogin()
+  schoolSelect.value = saved?.schoolSelect || 'sxz'; schoolCode.value = saved?.schoolCode || ''
+  account.value = saved?.account || ''; password.value = saved?.password || ''; rememberPassword.value = !!saved
   ElMessage.info('已注销')
 }
 
@@ -141,4 +151,5 @@ onMounted(() => {
 .mt {
   margin-top: 16px;
 }
+.remember-hint { margin: 4px 0 18px; font-size: 12px; line-height: 1.6; color: var(--el-text-color-secondary); }
 </style>

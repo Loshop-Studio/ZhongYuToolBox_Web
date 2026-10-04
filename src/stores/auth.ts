@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { loginApi, getUserInfo, refreshTokenApi, discoverSchool } from '@/api/auth'
 import { IS_BROWSER, PLATFORM, IS_WINDOWS } from '@/config'
 import { reportLogin } from '@/utils/track'
+import { readSavedLogin, saveRememberedLogin, clearLoginOnLogout } from '@/utils/rememberLogin'
 
 function parseJwt(token: string): any {
   try {
@@ -69,7 +70,7 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('apiBaseUrl', apiBaseUrl)
       localStorage.setItem('apiBaseOrigin', apiBaseUrl)
     },
-    async login(account: string, password: string, schoolSelect: string, schoolCode: string) {
+    async login(account: string, password: string, schoolSelect: string, schoolCode: string, rememberPassword = !!readSavedLogin()) {
       const code = schoolSelect === 'other' ? schoolCode : 'sxz'
       if (!code) throw new Error('请输入学校代码')
       const info = await discoverSchool(code)
@@ -83,13 +84,8 @@ export const useAuthStore = defineStore('auth', {
       const effectiveSchool = schoolSelect === 'other' ? schoolCode : 'sxz'
       this.schoolCode = effectiveSchool
       localStorage.setItem('schoolCode', effectiveSchool)
-      // 内嵌模式在本机用户数据中记录自动登录凭据，不进入导出文件
-      if (!IS_BROWSER) {
-        localStorage.setItem('loginAccount', account)
-        localStorage.setItem('loginPassword', password)
-        localStorage.setItem('loginSchoolSelect', schoolSelect)
-        localStorage.setItem('loginSchoolCode', schoolCode)
-      }
+      // Save credentials locally only after a successful login and explicit opt-in.
+      saveRememberedLogin({ account, password, schoolSelect, schoolCode }, rememberPassword)
       this.startRefresh()
       void reportLogin(effectiveSchool, account)
       // Authentication is exclusively enforced by the school's official API.
@@ -97,12 +93,9 @@ export const useAuthStore = defineStore('auth', {
     },
     /** 用记录的凭据自动重新登录（401 刷新失败后的兜底） */
     async autoRelogin() {
-      const account = localStorage.getItem('loginAccount')
-      const password = localStorage.getItem('loginPassword')
-      const schoolSelect = localStorage.getItem('loginSchoolSelect') || 'sxz'
-      const schoolCode = localStorage.getItem('loginSchoolCode') || ''
-      if (!account || !password) throw new Error('无可用登录凭据')
-      await this.login(account, password, schoolSelect, schoolCode)
+      const saved = readSavedLogin()
+      if (!saved) throw new Error('无可用登录凭据')
+      await this.login(saved.account, saved.password, saved.schoolSelect, saved.schoolCode, true)
     },
     async doRefresh(): Promise<boolean> {
       if (!this.token || !this.refreshToken) return false
@@ -151,11 +144,9 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('photo')
       localStorage.removeItem('userId')
       localStorage.removeItem('schoolCode')
-      // 清除自动重登凭据
-      localStorage.removeItem('loginAccount')
-      localStorage.removeItem('loginPassword')
-      localStorage.removeItem('loginSchoolSelect')
-      localStorage.removeItem('loginSchoolCode')
+      // Explicit remembered credentials remain available in the login form.
+      // Session tokens are always cleared; unchecking the form forgets the password.
+      clearLoginOnLogout()
       this.stopRefresh()
     }
   }
