@@ -21,7 +21,8 @@
     "dev:ww2": "node scripts/dev-windows.mjs",
     "test:windows": "node scripts/build-windows.mjs --qa",
     "build:installer": "node scripts/build-installer.mjs",
-    "test:update": "node scripts/test-update.mjs"
+    "test:update": "node scripts/test-update.mjs",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -48,6 +49,7 @@
     "@vitejs/plugin-vue": "^5.0.5",
     "electron": "^30.5.1",
     "electron-builder": "^24.13.3",
+    "patch-package": "^8.0.1",
     "typescript": "^5.4.5",
     "vite": "^5.3.3",
     "vue-tsc": "^2.0.26"
