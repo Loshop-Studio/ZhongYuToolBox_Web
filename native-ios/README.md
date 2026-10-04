@@ -16,7 +16,7 @@ Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；业务页面共
 
 主界面从包内资源启动，仅监听 `127.0.0.1:18765`，不开放局域网端口。固定 origin 保持账号 / 外观设置跨启动保存。官方 API/OSS 请求用 URLSession 直连；图片通过受限 WKURLSchemeHandler 使用 URLSession，不携带 Origin、Referer、Cookie 或账号鉴权头，支持动态文章 HTML、懒加载及带签名参数的图片。TLS 使用系统校验，不依赖作者网页服务器。HTTP 只按域名对官方遗留接口配置 ATS 例外。临时二进制分块传输，上传/保存上限 128 MB，响应上限 256 MB，单张图片上限 32 MB。远端选课/专栏使用独立、非持久化 WKWebView，只有受限网络桥，不提供文件/设备/窗口权限；非主框架也不能调用桥。作者用户量统计在此 fork 默认关闭。
 
-账号凭据保存在本机 WKWebsiteDataStore，沿用已有自动重登行为，退出登录可清除；不复制进 IPA。iOS 的 identifierForVendor 不是中育平板的 swdid，不可替代领创绑定设备号。
+账号凭据保存在本机 WKWebsiteDataStore，沿用已有自动重登行为，退出登录清除会话，取消勾选「记住密码」清除凭据；不复制进 IPA。iOS 的 identifierForVendor 不是中育平板的 swdid，不可替代领创绑定设备号。
 
 1.1.14 新增云笔记高清预览与矢量 PDF / SVG 导出，移动端预览页右上角「⋯」可导出当前页 SVG 或全部页 SVG ZIP；笔迹、文字保持矢量，截图页和原始图片保持位图。导出经系统文件面板保存。
 

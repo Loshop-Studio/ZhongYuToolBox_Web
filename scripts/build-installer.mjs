@@ -77,7 +77,7 @@ collect(source)
 for (const required of ['dist/index.html', 'bridge.js', '中育工具箱-aoki.exe', 'dist/fonts/SourceHanSerifCN-Regular.otf'])
   if (!entries.some(e => e.path === required)) throw new Error('Missing payload: ' + required)
 const notes = path.join(work, '安装说明.txt')
-fs.writeFileSync(notes, '\uFEFF中育工具箱 · aoki ' + version + '\r\n\r\n原作者 Loshop；co-author aoki。\r\n本安装包为独立 Windows fork，保留原作者署名及支持入口。\r\n\r\n适用 Windows 10/11 x64。默认仅为当前用户安装，可修改安装位置。\r\n需要 .NET Framework 4.8 和 Microsoft Edge WebView2 Runtime。\r\n缺少 WebView2 时会运行随包微软安装程序并联网下载运行时。\r\n\r\n安装包不包含账号、密码或登录缓存。\r\n账号缓存位于本机 %LOCALAPPDATA%\\ZhongYuToolbox-aoki-WebView2。\r\n安装、升级及卸载会保留这个目录；需要清除登录信息时请先在应用中退出登录。\r\n卸载只移除安装程序登记的文件与快捷方式。\r\n第三方组件和字体授权随应用分发。\r\n本程序及安装包未进行代码签名。\r\n')
+fs.writeFileSync(notes, '\uFEFF中育工具箱 · aoki ' + version + '\r\n\r\n原作者 Loshop；co-author aoki。\r\n本安装包为独立 Windows fork，保留原作者署名及支持入口。\r\n\r\n适用 Windows 10/11 x64。默认仅为当前用户安装，可修改安装位置。\r\n需要 .NET Framework 4.8 和 Microsoft Edge WebView2 Runtime。\r\n缺少 WebView2 时会运行随包微软安装程序并联网下载运行时。\r\n\r\n安装包不包含账号、密码或登录缓存。\r\n账号缓存位于本机 %LOCALAPPDATA%\\ZhongYuToolbox-aoki-WebView2。\r\n安装、升级及卸载会保留这个目录；需要清除登录信息时请先在应用中退出登录，并取消勾选“记住密码”。\r\n卸载只移除安装程序登记的文件与快捷方式。\r\n第三方组件和字体授权随应用分发。\r\n本程序及安装包未进行代码签名。\r\n')
 for (const [file, rel] of [[notes, '安装说明.txt'], [path.join(compilerDir, 'License.txt'), 'LICENSES/InnoSetup-LICENSE.txt']]) {
   const bytes = fs.readFileSync(file)
   fs.copyFileSync(file, path.join(payload, rel))

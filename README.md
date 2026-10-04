@@ -48,6 +48,8 @@
 
 <p><img src="docs/screenshots/note-vector-export.png" alt="1.1.14 云笔记高清预览与 SVG / PDF 导出菜单，离线测试笔记" width="900"></p>
 
+<p><img src="docs/screenshots/remember-password.png" alt="1.1.14 登录页记住密码选项，空表单无真实账号" width="900"></p>
+
 ## 移动端导航
 
 底部统一四组：**资源、测评、问答、我的**。资源包含笔记、专栏、课程及选课；测评包含作业与官方错题本；问答进入随身答；我的集中账号、外观、图库、应用下载、其他工具和关于应用。
