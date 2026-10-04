@@ -110,7 +110,7 @@ watch(() => [route.query.content, route.query.name], load, { immediate: true })
 onBeforeRouteLeave(stop); onBeforeUnmount(stop)
 </script>
 <style scoped>
-.board-view { display:flex; flex-direction:column; height:100%; min-height: min(600px,75dvh); background:var(--el-fill-color-light); }
+.board-view { display:flex; flex-direction:column; height:100%; min-height:0; background:var(--el-fill-color-light); }
 /* 顶部 sticky 返回栏：导出操作并入标题栏（参考笔记详情 appbar，高度与旧版一致） */
 .appbar { position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--el-bg-color); border-bottom:1px solid var(--el-border-color-light); }
 .appbar .back { display:flex; align-items:center; justify-content:center; width:32px; height:32px; flex-shrink:0; font-size:20px; color:var(--el-text-color-regular); background:transparent; border:none; padding:0; cursor:pointer; border-radius:50%; transition:background .2s; }
@@ -133,7 +133,9 @@ onBeforeRouteLeave(stop); onBeforeUnmount(stop)
 .actions-item span { flex:1; }
 .actions-item .sheet-quality { width:110px; flex-shrink:0; }
 .actions-cancel { margin-top:6px; padding:15px 20px; text-align:center; font-size:16px; color:var(--el-text-color-secondary); border-top:1px solid var(--el-border-color-lighter); cursor:pointer; }
-.board-body { flex:1; min-height:220px; padding:12px; }.board { width:100%; height:100%; min-height:220px; }.hint { margin:0; padding:6px 14px; font-size:13px; line-height:1.6; color:var(--el-text-color-secondary); }
+.board-body { flex:1 1 auto; min-height:0; padding:12px; }.board { width:100%; height:100%; min-height:0; }.hint { margin:0; padding:6px 14px; font-size:13px; line-height:1.6; color:var(--el-text-color-secondary); }
 .board-ph { display:flex; align-items:center; justify-content:center; gap:8px; height:100%; }
-@media(max-width:600px) { .board-view { min-height:65dvh; }.board-body { padding:6px; } }
+@media(max-width:600px) { .board-body { padding:6px; } }
+/* 横屏：竖向空间紧张，进一步压缩内边距，把高度尽量留给播放器 */
+@media (orientation: landscape) and (max-height: 560px) { .board-body { padding:4px; } }
 </style>
