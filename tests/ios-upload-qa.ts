@@ -92,4 +92,8 @@ async function run() {
   status.textContent = 'iOS上传回归通过'
   report.textContent = checks.join('\n') + '\nPASS: ' + checks.length + ' checks. No real account or cloud writes.'
 }
-run().catch(error => { status.textContent = 'iOS上传回归失败'; report.textContent += '\n' + (error.stack || error) }).finally(() => { HTMLCanvasElement.prototype.toBlob = nativeToBlob; window.fetch = nativeFetch })
+run().catch(error => { status.textContent = 'iOS上传回归失败'; report.textContent += '\n' + (error.stack || error) }).finally(() => {
+  HTMLCanvasElement.prototype.toBlob = nativeToBlob; window.fetch = nativeFetch
+  // Never leave the mock JWT to make the next UI test contact real official APIs.
+  localStorage.clear()
+})
