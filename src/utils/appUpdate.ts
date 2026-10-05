@@ -1,8 +1,8 @@
 /** Public release metadata only. Never attach school credentials or author telemetry. */
 export interface AppRelease { tag: string; title: string; notes: string; url: string; publishedAt: string; assets: { name: string; size: number; url: string }[] }
 export function versionParts(version: string): number[] | null {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-aoki|-ios-beta)?(?:[ ._-]?patch[ ._-]?(\d+))?$/i.exec(version.trim())
-  return match ? match.slice(1).map(n => Number(n || 0)) : null
+  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-aoki|-ios-beta(\d*))?(?:[ ._-]?patch[ ._-]?(\d+))?$/i.exec(version.trim())
+  return match ? [...match.slice(1, 4).map(Number), Number(match[4] || match[5] || 0)] : null
 }
 export function compareVersions(a: string, b: string): number | null {
   const x = versionParts(a), y = versionParts(b)
@@ -19,11 +19,13 @@ function githubLink(value: unknown, repository: string, kind: 'release' | 'asset
 }
 export async function fetchLatestRelease(repository: string, signal?: AbortSignal, channel: 'stable' | 'ios-beta' = 'stable'): Promise<AppRelease> {
   if (!['nickfox395/ZhongYuToolBox_Web', 'Loshop-Studio/ZhongYuToolBox_Web'].includes(repository)) throw new Error('未知的发布仓库')
-  const beta = channel === 'ios-beta' && repository === 'nickfox395/ZhongYuToolBox_Web'
+  const beta = channel === 'ios-beta'
   const response = await fetch(`https://api.github.com/repos/${repository}/releases${beta ? '?per_page=20' : '/latest'}`, { credentials: 'omit', signal, headers: { Accept: 'application/vnd.github+json' } })
   if (!response.ok) throw new Error(response.status === 404 ? '此仓库暂时没有正式发布版本' : response.status === 403 || response.status === 429 ? 'GitHub 请求频率受限，请稍后重试或直接打开发布页' : `GitHub 返回 HTTP ${response.status}`)
   const payload = await response.json()
-  const data = beta ? (Array.isArray(payload) ? payload : []).find(r => !r.draft && r.prerelease && /^v\d+\.\d+\.\d+-ios-beta$/.test(r.tag_name) && r.assets?.some((a: any) => a.state === 'uploaded' && /\.ipa$/i.test(a.name))) : payload
+  const data = beta ? (Array.isArray(payload) ? payload : [])
+    .filter(r => !r.draft && r.prerelease && /^v\d+\.\d+\.\d+-ios-beta\d*$/.test(r.tag_name) && r.assets?.some((a: any) => a.state === 'uploaded' && /\.ipa$/i.test(a.name)))
+    .sort((a, b) => compareVersions(b.tag_name, a.tag_name) || 0)[0] : payload
   if (!data || data.draft || (!beta && data.prerelease) || typeof data.tag_name !== 'string') throw new Error(beta ? '暂时没有可用的 iOS 内测版本' : '没有可用的正式发布版本')
   return { tag: data.tag_name, title: String(data.name || data.tag_name), notes: typeof data.body === 'string' ? data.body : '该版本没有填写更新说明。', url: githubLink(data.html_url, repository, 'release'), publishedAt: String(data.published_at || ''), assets: (Array.isArray(data.assets) ? data.assets : []).filter((a: any) => a.state === 'uploaded').map((a: any) => ({ name: String(a.name), size: Number(a.size) || 0, url: githubLink(a.browser_download_url, repository, 'asset') })) }
 }

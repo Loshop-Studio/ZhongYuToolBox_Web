@@ -1,4 +1,5 @@
 import packageInfo from '../../package.json'
+import iosRelease from './iosRelease.json'
 
 /**
  * 统一配置中心
@@ -62,7 +63,8 @@ export const AUTHOR_STATS_ENABLED = import.meta.env.VITE_AUTHOR_STATS === undefi
 export const TRACK_API = 'https://tbapi.loshop.com.cn/api'
 
 /** 当前客户端版本号（用于更新分发比对；发版时同步修改此处） */
-export const APP_VERSION: string = packageInfo.version
+export const APP_VERSION: string = PLATFORM === 'ios'
+  ? `${packageInfo.version.split('-')[0]}-ios-beta${iosRelease.beta}` : packageInfo.version
 
 /** 浏览器资源代理（仅本机） */
 export const PROXY_REMOTE = 'http://127.0.0.1:5005/proxy/'

@@ -31,11 +31,12 @@ window.fetch = async (input, options = {}) => {
   calls.push({ url: url.href, method, bytes })
   if (url.hostname === 'sxz.api.zykj.org') {
     if (url.pathname.endsWith('/User/GetInfoAsync')) return json({ success: true, result: { userId: 101 } })
-    if (url.pathname.endsWith('/GenerateTokenV2Async')) return json({ result: { bucket: 'ios-test-bucket', accessKeyId: 'TEST_ONLY_ID', accessKeySecret: 'TEST_ONLY_SECRET', securityToken: 'TEST_ONLY_STS' } })
+    if (url.pathname.endsWith('/GenerateTokenV2Async')) return json({ result: { bucket: 'ios-test-bucket', endpoint: 'http://ios-test-bucket.oss-cn-hangzhou.aliyuncs.com', accessKeyId: 'TEST_ONLY_ID', accessKeySecret: 'TEST_ONLY_SECRET', securityToken: 'TEST_ONLY_STS' } })
     if (url.pathname.startsWith('/CloudNotes/api/') && url.pathname.endsWith('/AddOrUpdate')) return json({ code: 0 })
     if (url.pathname.endsWith('/PictureLibrary/AddPictureAsync')) return json({ success: true, result: true })
   }
   if (url.hostname === 'ios-test-bucket.oss-cn-hangzhou.aliyuncs.com' && method === 'PUT') {
+    check(url.protocol === 'https:', 'STS 返回 HTTP endpoint，上传实际使用 HTTPS')
     check(bytes && bytes > 0, '上传文件非空：' + url.pathname.split('/').at(-1))
     if (url.pathname.endsWith('.webp')) {
       const header = new Uint8Array(await (options.body as Blob).slice(0, 12).arrayBuffer())
@@ -54,6 +55,15 @@ async function decoded(blob: Blob) {
   try { image.src = url; await image.decode(); return image } finally { URL.revokeObjectURL(url) }
 }
 async function run() {
+  if ((window as any).webkit?.messageHandlers?.zytb) {
+    const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 30000)
+    try {
+      // Real URLSession HEAD, no credentials and no cloud writes. A 404 is expected:
+      // reaching any HTTP response proves the app no longer hits ATS error -1022.
+      const response = await nativeFetch('http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/__ios_ats_probe__', { method: 'HEAD', credentials: 'omit', signal: controller.signal })
+      check(response.status >= 200 && response.status < 600, '真实原生 OSS HTTP 地址转 HTTPS：收到服务器响应，无 ATS 拦截')
+    } finally { clearTimeout(timeout) }
+  }
   const pdf = await PDFDocument.create()
   for (let i = 0; i < 2; i++) {
     const page = pdf.addPage([720, 450])

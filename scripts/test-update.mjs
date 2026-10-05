@@ -26,3 +26,14 @@ globalThis.fetch=async(url,opts)=>{
 assert.equal((await fetchLatestRelease('nickfox395/ZhongYuToolBox_Web',undefined,'ios-beta')).tag,'v1.1.14-ios-beta')
 for(const state of ['draft','no-ipa']){betaCase=state;await assert.rejects(fetchLatestRelease('nickfox395/ZhongYuToolBox_Web',undefined,'ios-beta'))}
 console.log('PASS: iOS beta channel, public metadata, same main version, draft/missing IPA exclusion.')
+assert.equal(compareVersions('v1.1.14-ios-beta2','1.1.14-ios-beta1'),1)
+assert.equal(compareVersions('v1.1.14-ios-beta1','1.1.14-ios-beta'),1)
+assert.equal(compareVersions('v1.1.15-ios-beta1','1.1.14-ios-beta9'),1)
+for(const repo of ['nickfox395/ZhongYuToolBox_Web','Loshop-Studio/ZhongYuToolBox_Web']) {
+ globalThis.fetch=async(url,opts)=>{
+  assert.equal(url,`https://api.github.com/repos/${repo}/releases?per_page=20`);assert.equal(opts.headers.Authorization,undefined)
+  return Response.json([1,3,2].map(n=>({tag_name:`v1.1.14-ios-beta${n}`,name:'Beta '+n,draft:false,prerelease:true,html_url:`https://github.com/${repo}/releases/tag/v1.1.14-ios-beta${n}`,assets:[{name:'beta.ipa',state:'uploaded',browser_download_url:`https://github.com/${repo}/releases/download/v1.1.14-ios-beta${n}/beta.ipa`}]})))
+ }
+ assert.equal((await fetchLatestRelease(repo,undefined,'ios-beta')).tag,'v1.1.14-ios-beta3')
+}
+console.log('PASS: numbered iOS betas order correctly; fork and upstream query their own beta channel.')

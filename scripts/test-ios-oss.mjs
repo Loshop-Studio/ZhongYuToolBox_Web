@@ -25,9 +25,20 @@ assert.ok(url.startsWith('https://test-bucket.oss-cn-hangzhou.aliyuncs.com/note_
 const path=new URL(url).pathname
 const canonical=['PUT','',file.type,headers.Date,'x-oss-security-token:TEST_ONLY_STS','/test-bucket'+path].join('\n')
 assert.equal(headers.Authorization,'OSS TEST_ONLY_ID:'+createHmac('sha1','TEST_ONLY_SECRET').update(canonical).digest('base64'))
+credential.endpoint='http://test-bucket.oss-cn-shanghai.aliyuncs.com:80'
+calls.length=0
+const secureUrl=await uploadFile(file,'TEST_USER','note_v2','TEST_NONCE','folder/notes.bin')
+assert.ok(secureUrl.startsWith('https://test-bucket.oss-cn-shanghai.aliyuncs.com/'))
+assert.equal(calls[1].url,secureUrl)
+const secureHeaders=calls[1].options.headers
+assert.equal(secureHeaders.Authorization,'OSS TEST_ONLY_ID:'+createHmac('sha1','TEST_ONLY_SECRET').update(['PUT','',file.type,secureHeaders.Date,'x-oss-security-token:TEST_ONLY_STS','/test-bucket'+new URL(secureUrl).pathname].join('\n')).digest('base64'))
+assert.deepEqual(new Uint8Array(await calls[1].options.body.arrayBuffer()),bytes)
+credential.endpoint='http://custom-unencrypted.example'
+await assert.rejects(uploadFile(file,'TEST_USER','note_v2','TEST_NONCE'),/HTTPS endpoint/)
+delete credential.endpoint
 globalThis.fetch=async url=>url.endsWith('/GenerateTokenV2Async')?new Response(JSON.stringify({result:credential})):new Response('denied',{status:403})
 await assert.rejects(uploadFile(file,'TEST_USER','note_v2','TEST_NONCE'),/OSS 上传失败\(403\)/)
-console.log('PASS: iOS OSS binary PUT, STS signature/resource path and upload failure. Test credentials only; no network requests.')
+console.log('PASS: iOS OSS HTTP endpoint upgrades to HTTPS; binary PUT and STS signature unchanged; unencrypted custom endpoint rejected. Test credentials only; no network requests.')
 
 const storage=new Map([['token','TEST_ONLY_TOKEN'],['userId','101']]);globalThis.localStorage={getItem:k=>storage.get(k)??null}
 let infoCalls=0;globalThis.fetch=async(url,options)=>{infoCalls++;assert.equal(options.headers.Authorization,'Bearer TEST_ONLY_TOKEN');return new Response(JSON.stringify({result:{userId:102}}))}

@@ -21,10 +21,24 @@ enum HostPolicy {
         }
         return false
     }
+    // Legacy OSS links may be HTTP. OSS supports HTTPS; keep the signed query intact.
+    static func transportURL(_ url: URL) -> URL {
+        guard remote(url), url.scheme == "http", let host = url.host?.lowercased(),
+              host.hasSuffix(".aliyuncs.com"), url.port == nil || url.port == 80,
+              var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
+        parts.scheme = "https"; parts.port = nil
+        return parts.url ?? url
+    }
+    static func authorStats(_ url: URL?, method: String) -> Bool {
+        guard let url else { return false }
+        return method == "POST" && url.scheme == "https" && url.host == "tbapi.loshop.com.cn"
+            && (url.port == nil || url.port == 443) && url.path == "/api/login"
+            && url.query == nil && url.fragment == nil && url.user == nil && url.password == nil
+    }
     static func release(_ url: URL?, method: String) -> Bool {
         guard let url else { return false }
         let stable = url.query == nil && ["/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest"].contains(url.path)
-        let iosBeta = url.path == "/repos/nickfox395/ZhongYuToolBox_Web/releases" && url.query == "per_page=20"
+        let iosBeta = ["/repos/nickfox395/ZhongYuToolBox_Web/releases", "/repos/Loshop-Studio/ZhongYuToolBox_Web/releases"].contains(url.path) && url.query == "per_page=20"
         return method == "GET" && url.scheme == "https" && url.host == "api.github.com" && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil && url.fragment == nil && (stable || iosBeta)
     }
     static func external(_ url: URL?) -> Bool {

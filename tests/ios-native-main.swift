@@ -9,6 +9,16 @@ check(!HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/Zh
 check(!HostPolicy.release(URL(string:"https://api.github.com/repos/other/private/releases/latest"), method:"GET"), "Other repositories rejected")
 check(HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases?per_page=20"), method:"GET"), "Own public iOS beta list allowed")
 check(!HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases?per_page=100"), method:"GET"), "Arbitrary GitHub queries rejected")
+check(HostPolicy.release(URL(string:"https://api.github.com/repos/Loshop-Studio/ZhongYuToolBox_Web/releases?per_page=20"), method:"GET"), "Upstream public beta list allowed")
+let signedOSS = URL(string:"http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/a%20b.png?Signature=a%2Bb%2Fc%3D&Expires=100")!
+check(HostPolicy.transportURL(signedOSS).absoluteString == "https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/a%20b.png?Signature=a%2Bb%2Fc%3D&Expires=100", "OSS upgrades to HTTPS without changing signed query or path")
+check(HostPolicy.transportURL(URL(string:"http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com:80/file")!).absoluteString == "https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/file", "HTTP default port becomes HTTPS default port")
+for raw in ["http://sxz.api.zykj.org/api/test", "http://aliyuncs.com.evil.test/a", "http://token@ezy-sxz.oss-cn-hangzhou.aliyuncs.com/a", "http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com:8888/a"] {
+    let url = URL(string: raw)!; check(HostPolicy.transportURL(url) == url, "Only approved OSS URLs are upgraded")
+}
+check(HostPolicy.authorStats(URL(string:"https://tbapi.loshop.com.cn/api/login"), method:"POST"), "Original author login-count endpoint allowed separately")
+for raw in ["https://tbapi.loshop.com.cn/api/login?token=x", "https://tbapi.loshop.com.cn/api/other", "https://tbapi.loshop.com.cn.evil.test/api/login"] { check(!HostPolicy.authorStats(URL(string:raw), method:"POST"), "Other author endpoints rejected") }
+check(!HostPolicy.authorStats(URL(string:"https://tbapi.loshop.com.cn/api/login"), method:"GET"), "Author count endpoint requires POST")
 check(HostPolicy.local(URL(string: HostPolicy.origin)), "Local origin")
 check(!HostPolicy.local(URL(string: "http://127.0.0.1:18766")), "Wrong port")
 check(!HostPolicy.local(URL(string: "http://localhost:18765")), "Wrong hostname")

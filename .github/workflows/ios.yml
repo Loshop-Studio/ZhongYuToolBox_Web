@@ -21,8 +21,23 @@ jobs:
       - run: npm ci
       - run: npm run test:login
       - run: npm run test:update
+      - run: npm run test:stats
       - run: npm run test:ios
       - run: npm run build:ios
+      - name: Preserve fork IPA
+        run: |
+          mkdir -p release/ios-fork
+          cp release/ios/*.{ipa,txt,md,json} release/ios-fork/
+      - name: Build upstream iOS beta with original author statistics
+        run: npm run build:ios
+        env:
+          VITE_RELEASE_REPOSITORY: Loshop-Studio/ZhongYuToolBox_Web
+          VITE_AUTHOR_STATS: 'true'
+      - name: Preserve upstream IPA
+        run: |
+          mkdir -p release/ios-upstream
+          cp release/ios/*Loshop*.ipa release/ios-upstream/
+          cp release/ios/*.{txt,md,json} release/ios-upstream/
       - run: npm run build:ios -- --simulator --skip-web --upload-qa
       - run: node scripts/test-ios-simulator.mjs
       - uses: actions/upload-artifact@v4
@@ -30,9 +45,8 @@ jobs:
         with:
           name: ZhongYuToolBox-iPhone-iPad-unsigned-IPA
           path: |
-            release/ios/*.ipa
-            release/ios/*.txt
-            release/ios/*.md
+            release/ios-fork/
+            release/ios-upstream/
             release/ios/test-evidence/
           if-no-files-found: error
           retention-days: 30

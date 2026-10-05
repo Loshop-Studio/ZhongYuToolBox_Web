@@ -11,21 +11,27 @@
 2. **填写「操作步骤」「预期结果」和「实际结果 / 报错」，准备好报错截图。**
 3. **点击「复制反馈信息」，将反馈内容和截图发送到页面显示的 QQ 交流群；也可点击「在 GitHub 提交问题」，补充内容后提交 Issue。**
 
-反馈页面会自动带上应用版本、运行平台和系统 / 浏览器信息，不自动提交账号或学习资料。页面显示的 QQ 交流群为 `1067807011`。
+反馈入口随 iOS 1.1.14 Beta 包上线；Windows / Android 共用源码已加入，原有 1.1.14 正式安装包此次未重新打包。反馈页面会自动带上应用版本、运行平台和系统 / 浏览器信息，不自动提交账号或学习资料。页面显示的 QQ 交流群为 `1067807011`。
 
 ## 下载与安装
 
 [Windows / Android 最新正式版](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/latest) · [开发中的三端源码](https://github.com/nickfox395/ZhongYuToolBox_Web/tree/feature/ios-liquid-glass-1.1.9) · [原作者项目](https://github.com/Loshop-Studio/ZhongYuToolBox_Web)
 
-当前 Windows / Android 正式版为 **1.1.14-aoki**；iOS 同为 **1.1.14**，改为独立 **Beta 内测**发布。新增云笔记高清矢量 PDF、当前页 SVG 与全部页面 SVG（ZIP）导出，沿用 npm 画板组件。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 的未签名 IPA 仅放在 [iOS 1.1.14 Beta 内测页](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta)，不再放入正式版下载。
+当前 Windows / Android 正式版为 **1.1.14-aoki**；iOS 同为 **1.1.14**，改为独立 **Beta 内测**发布。新增云笔记高清矢量 PDF、当前页 SVG 与全部页面 SVG（ZIP）导出，沿用 npm 画板组件。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 的未签名 IPA 仅放在 [iOS 1.1.14 Beta 内测页](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta1)，不再放入正式版下载。
 
 | 平台 | 下载文件 | 安装方式 |
 | --- | --- | --- |
 | Windows 10/11 x64 | `Windows-x64-Setup.exe` 或便携 ZIP | 运行安装程序；便携版完整解压后打开 exe，需要系统 WebView2 Runtime |
 | Android 8.0+ | `Android.apk` | 在 Android 设备打开 APK，按系统提示安装，需要较新的系统 WebView |
-| iPhone / iPad · iOS 16+ | `iOS-beta-unsigned.ipa` | 未签名包需自行签名（如爱思助手）后安装，并在设备设置中完成信任；iOS 26 使用系统 Liquid Glass 导航 |
+| iPhone / iPad · iOS 16+ | `iOS-beta1-unsigned.ipa` | 未签名包需自行签名（如爱思助手）后安装，并在设备设置中完成信任；iOS 26 使用系统 Liquid Glass 导航 |
 
 安装包不包含账号、密码、Token 或个人笔记。Windows 同一系统用户的不同便携版本复用 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2` 的既有登录缓存；自动登录不等于账号被打进安装包。
+
+## iOS 1.1.14 Beta 1
+
+修复图库及云笔记上传的 ATS 拦截：官方 STS 返回的阿里云 HTTP endpoint、图库图片地址与重定向统一使用 HTTPS，保持文件内容、对象路径及签名参数。主版本仍为 1.1.14，应用内显示 beta1，内部构建号为 10114.2；后续 beta2 等可由检查更新识别。验证包含真实原生 URLSession 对公开 OSS 地址的无凭据 HEAD 请求，以及模拟 HTTP endpoint 的上传回归；不向真实账号上传测试资料。
+
+本仓库与上游分别发布 iOS Pre-release；fork 关闭作者统计，上游发行包保留原统计，并使用各自仓库的更新及反馈入口。两份包保留本版移动 UI，未覆盖上游主分支代码。
 
 ## 实际运行界面
 

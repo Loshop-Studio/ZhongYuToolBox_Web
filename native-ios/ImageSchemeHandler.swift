@@ -23,7 +23,7 @@ final class ImageSchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDele
                   let remote = URL(string: value), HostPolicy.remote(remote) else {
                 urlSchemeTask.didFailWithError(HostFailure.message("图片地址未获允许")); return
             }
-            let task = self.session.dataTask(with: URLRequest(url: remote))
+            let task = self.session.dataTask(with: URLRequest(url: HostPolicy.transportURL(remote)))
             self.transfers[task.taskIdentifier] = Transfer(web: urlSchemeTask, task: task)
             task.resume()
         }
@@ -57,6 +57,7 @@ final class ImageSchemeHandler: NSObject, WKURLSchemeHandler, URLSessionDataDele
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         guard HostPolicy.remote(request.url) else { completionHandler(nil); return }
         var safe = request
+        safe.url = request.url.map { HostPolicy.transportURL($0) }
         for header in ["Origin", "Referer", "Cookie", "Authorization"] { safe.setValue(nil, forHTTPHeaderField: header) }
         completionHandler(safe)
     }

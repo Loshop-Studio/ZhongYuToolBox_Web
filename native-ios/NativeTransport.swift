@@ -70,10 +70,13 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
     }
     private func request(_ args: [String: Any], privileged: Bool, reply: @escaping (Any?, String?) -> Void) throws {
         let id = args["session"] as? String ?? "", method = (args["method"] as? String ?? "GET").uppercased()
-        guard let stage = stages[id], tasks[id] == nil, let value = args["url"] as? String, let url = URL(string: value), (HostPolicy.remote(url) || (privileged && HostPolicy.release(url, method: method))), HostPolicy.methods.contains(method) else { throw HostFailure.message("请求地址、方法或会话未获允许") }
-        var request = URLRequest(url: url); request.httpMethod = method
+        guard let stage = stages[id], tasks[id] == nil, let value = args["url"] as? String, let url = URL(string: value), (HostPolicy.remote(url) || (privileged && (HostPolicy.release(url, method: method) || HostPolicy.authorStats(url, method: method)))), HostPolicy.methods.contains(method) else { throw HostFailure.message("请求地址、方法或会话未获允许") }
+        var request = URLRequest(url: HostPolicy.transportURL(url)); request.httpMethod = method
         let forbidden = Set(["host", "origin", "referer", "connection", "content-length", "accept-encoding", "cookie"])
         for (key, value) in args["headers"] as? [String: String] ?? [:] where !forbidden.contains(key.lowercased()) { request.setValue(value, forHTTPHeaderField: key) }
+        if HostPolicy.release(url, method: method) || HostPolicy.authorStats(url, method: method) {
+            for header in ["Authorization", "x-oss-security-token"] { request.setValue(nil, forHTTPHeaderField: header) }
+        }
         let output = cache.appendingPathComponent(UUID().uuidString + ".bin")
         try Data().write(to: output)
         let file = try FileHandle(forWritingTo: output)
@@ -101,7 +104,10 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
         guard let transfer = transfers.removeValue(forKey: task.taskIdentifier) else { return }
         try? transfer.file.close(); tasks.removeValue(forKey: transfer.id)
         if let stage = stages.removeValue(forKey: transfer.id) { try? FileManager.default.removeItem(at: stage.url) }
-        if let failure = transfer.failure ?? error?.localizedDescription {
+        let networkError = error as NSError?
+        let atsFailure = networkError?.domain == NSURLErrorDomain && networkError?.code == NSURLErrorAppTransportSecurityRequiresSecureConnection
+            ? "iOS ATS 拦截请求（\(task.currentRequest?.url?.scheme ?? "")://\(task.currentRequest?.url?.host ?? "")，-1022）；请在问题反馈中提供此提示。" : nil
+        if let failure = transfer.failure ?? atsFailure ?? error?.localizedDescription {
             try? FileManager.default.removeItem(at: transfer.output); transfer.reply(nil, failure); return
         }
         guard let response = transfer.response else { try? FileManager.default.removeItem(at: transfer.output); transfer.reply(nil, "服务器未返回响应"); return }
@@ -116,7 +122,8 @@ final class NativeTransport: NSObject, URLSessionDataDelegate, URLSessionTaskDel
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
         guard HostPolicy.remote(request.url) else { transfers[task.taskIdentifier]?.failure = "服务器重定向地址未获允许"; completionHandler(nil); return }
         var safe = request
-        if !HostPolicy.sameOrigin(response.url, request.url) {
+        safe.url = request.url.map { HostPolicy.transportURL($0) }
+        if !HostPolicy.sameOrigin(response.url, safe.url) {
             for key in ["Authorization", "Cookie", "x-oss-security-token"] { safe.setValue(nil, forHTTPHeaderField: key) }
         }
         completionHandler(safe)

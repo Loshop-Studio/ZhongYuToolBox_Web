@@ -65,6 +65,17 @@ export interface StsCredential {
   endpoint?: string
 }
 
+/** OSS accepts HTTPS even when the legacy STS response advertises HTTP. */
+export function secureOssEndpoint(credential: StsCredential): string {
+  const endpoint = new URL(credential.endpoint || `https://${credential.bucket}.${credential.region || 'oss-cn-hangzhou'}.aliyuncs.com`)
+  if (endpoint.username || endpoint.password || endpoint.search || endpoint.hash || !['http:', 'https:'].includes(endpoint.protocol)) throw new Error('OSS endpoint 格式无效')
+  if (endpoint.protocol === 'http:' && /\.aliyuncs\.com$/i.test(endpoint.hostname) && (!endpoint.port || endpoint.port === '80')) {
+    endpoint.protocol = 'https:'; endpoint.port = ''
+  }
+  if (PLATFORM === 'ios' && endpoint.protocol !== 'https:') throw new Error('iOS OSS 上传需要 HTTPS endpoint')
+  return endpoint.href.replace(/\/+$/, '')
+}
+
 /** 请求 STS 临时凭证（复刻 GenerateTokenV2Async 调用） */
 export async function generateStsToken(
   userId: string,
@@ -106,7 +117,7 @@ export async function uploadFile(
 
   if (PLATFORM === 'android' || PLATFORM === 'ios') {
     const remoteFile = `${fc}/${FR}/${userId}/${dateStr}/${nonce}/${remoteFileName}`
-    const endpoint = result.endpoint || `https://${result.bucket}.oss-cn-hangzhou.aliyuncs.com`
+    const endpoint = secureOssEndpoint(result)
     const date = new Date().toUTCString(), contentType = file.type || 'application/octet-stream'
     const canonical = ['PUT', '', contentType, date, `x-oss-security-token:${result.securityToken}`, `/${result.bucket}/${remoteFile}`].join('\n')
     const signature = CryptoJS.enc.Base64.stringify(CryptoJS.HmacSHA1(canonical, result.accessKeySecret))

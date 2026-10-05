@@ -18,7 +18,7 @@ import { APP_VERSION, PLATFORM, IS_WINDOWS } from '@/config'
 import { RELEASE_REPOSITORY } from '@/config/edition'
 import { fetchLatestRelease, compareVersions, type AppRelease } from '@/utils/appUpdate'
 const platform: string = PLATFORM
-const iosBeta = platform === 'ios' && RELEASE_REPOSITORY === 'nickfox395/ZhongYuToolBox_Web'
+const iosBeta = platform === 'ios'
 const checking = ref(false), error = ref(''), release = shallowRef<AppRelease | null>(null)
 const comparison = computed(() => release.value ? compareVersions(release.value.tag, APP_VERSION) : null)
 const platformName = IS_WINDOWS ? 'Windows' : platform === 'ios' ? 'iPhone / iPad · Beta 内测' : platform === 'android' || platform === 'plus' ? 'Android / 移动端' : '网页预览'

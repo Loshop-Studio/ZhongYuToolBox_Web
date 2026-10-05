@@ -12,7 +12,7 @@ enum IOSSimulatorFixtures {
     localStorage.setItem('realName','模拟测试');
     localStorage.setItem('apiBaseUrl','http://sxz.api.zykj.org');
     location.hash='/column';
-    const image='https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/__ios_image_fixture.png';
+    const image='http://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/__ios_image_fixture.png';
     const fixtureFetch=window.fetch;
     window.fetch=async(input,init)=>{
       const url=typeof input==='string'?input:input.url;

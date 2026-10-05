@@ -6,6 +6,7 @@ export const EDITION = {
 } as const
 
 /** This edition checks its own releases, without account information. */
-export const RELEASE_REPOSITORY = 'nickfox395/ZhongYuToolBox_Web'
+export const RELEASE_REPOSITORY = import.meta.env.VITE_RELEASE_REPOSITORY === 'Loshop-Studio/ZhongYuToolBox_Web'
+  ? 'Loshop-Studio/ZhongYuToolBox_Web' : 'nickfox395/ZhongYuToolBox_Web'
 /** The maintainer's discussion group; source never contains a QQ login credential. */
 export const QQ_FEEDBACK_GROUP = '1067807011'

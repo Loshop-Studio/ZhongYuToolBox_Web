@@ -28,7 +28,7 @@
     "test:android": "node scripts/test-android.mjs && node scripts/test-android-oss.mjs",
     "build:ios": "node scripts/build-ios.mjs",
     "dev:ios": "vite --mode ios --host 127.0.0.1",
-    "test:ios": "node scripts/test-ios-bridge.mjs && node scripts/test-ios-oss.mjs && node scripts/test-ios-native.mjs",
+    "test:ios": "node scripts/test-ios-bridge.mjs && node scripts/test-ios-oss.mjs && node scripts/test-ios-editions.mjs && node scripts/test-ios-native.mjs",
     "test:update": "node scripts/test-update.mjs",
     "postinstall": "patch-package",
     "test:login": "node scripts/test-remember-login.mjs"

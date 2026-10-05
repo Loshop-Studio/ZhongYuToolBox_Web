@@ -5,7 +5,7 @@ final class NavigationUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--ios-upload-fixtures"]
         app.launch()
-        XCTAssertTrue(app.webViews.firstMatch.staticTexts["iOS上传回归通过"].waitForExistence(timeout: 90), "Actual WKWebView must encode WebP and finish mocked PDF/image uploads")
+        XCTAssertTrue(app.webViews.firstMatch.staticTexts["iOS上传回归通过"].waitForExistence(timeout: 120), "Actual WKWebView must reach OSS through native HTTPS and encode WebP before mocked PDF/image uploads")
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "iOS local WebP encoding and note/gallery upload regression"; shot.lifetime = .keepAlways; add(shot)
     }

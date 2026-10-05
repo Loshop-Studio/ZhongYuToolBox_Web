@@ -20,7 +20,13 @@ Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；业务页面共
 
 1.1.14 新增云笔记高清预览与矢量 PDF / SVG 导出，移动端预览页右上角「⋯」可导出当前页 SVG 或全部页 SVG ZIP；笔迹、文字保持矢量，截图页和原始图片保持位图。导出经系统文件面板保存。
 
-1.1.14 iOS 改为 **Beta 内测**，下载入口为 [iOS Beta Release](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta)。Safari Canvas 不支持 WebP 编码时，调用包内 jSquash / libwebp 在本机 Worker 编码，不向外部转换服务发送文档；图库复用登录 ID，并通过统一鉴权流程获取 STS 与备用用户信息。
+1.1.14 iOS 改为 **Beta 内测**，当前为 [Beta 1](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta1)，内部构建号 `10114.2`。Safari Canvas 不支持 WebP 编码时，调用包内 jSquash / libwebp 在本机 Worker 编码，不向外部转换服务发送文档；图库复用登录 ID，并通过统一鉴权流程获取 STS 与备用用户信息。
+
+Beta 1 修复 OSS HTTP endpoint 的 ATS 拦截：笔记及图库上传将官方 STS 返回的阿里云地址转为 HTTPS，原生图片请求及重定向同样使用 HTTPS，保持路径及签名查询参数；不添加全局 ATS 关闭选项，不关闭 TLS 证书校验。模拟器回归包含真实 URLSession 对公开 OSS 地址的无凭据 HEAD 请求，以及返回 HTTP endpoint 的模拟上传；测试不写入真实云端账号。
+
+应用内反馈：**底部「我的」→「关于应用」→「问题反馈」**。填写操作步骤、预期结果、实际结果或报错，点击「复制反馈信息」并附截图发送到页面显示的 QQ 交流群，或打开 GitHub Issue 表单提交。版本会显示 Beta 序号；检查更新支持当前发行仓库的 beta1、beta2 等标签。
+
+GitHub 工作流分别构建 fork 与上游发行包：fork 关闭作者统计，上游通过 `VITE_AUTHOR_STATS=true` 保留原 `POST https://tbapi.loshop.com.cn/api/login` 用户量统计，统计失败不影响登录；`VITE_RELEASE_REPOSITORY` 选择各自的更新与反馈仓库。两份 IPA 独立标注并附 `BUILD_INFO.json`，不会覆盖上游主分支界面代码。
 
 ## 构建
 
@@ -45,7 +51,7 @@ GitHub Actions 的 **Build iOS IPA** 使用 `macos-26` 云端构建。完成后�
 ## 爱思助手签名安装
 
 1. 将 iPhone/iPad 连接到电脑，打开爱思助手的 **工具箱 → IPA 签名**。
-2. 添加上面生成的 `iOS-unsigned.ipa`。
+2. 添加下载的 `iOS-beta1-unsigned.ipa`（文件名带 aoki 或 Loshop 发行标记）。
 3. 使用你自己的 Apple ID 或适用的证书/描述文件签名。凭据只在爱思中输入，不需要提交到 GitHub 或聊天。
 4. 签名完成后安装生成的已签名 IPA。按照设备实际提示信任开发者、开启开发者模式。
 
