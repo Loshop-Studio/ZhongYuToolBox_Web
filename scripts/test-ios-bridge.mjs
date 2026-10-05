@@ -12,7 +12,10 @@ function sandbox(guest=false,options={}){
   responses.set('http://127.0.0.1:18765/example/page_router.bin',readFileSync(resolve(root,'public/example/page_router.bin')))
   let sequence=0
   class XHR extends EventTarget{constructor(){super();this.responseType='';this.timeout=0;this.withCredentials=false}open(){} }
-  const GuardedRequest=options.stripDate?class extends Request {constructor(...args){super(...args);this.headers.delete('Date')}}:Request
+  const GuardedRequest=class extends Request {
+    constructor(...args){super(...args);if(options.stripDate)this.headers.delete('Date')}
+    get body(){return options.noBodyStream?null:super.body}
+  }
   const context={URL,Request:GuardedRequest,Response,Headers,Event,EventTarget,Uint8Array,DOMException,AbortController,Proxy,Object,Map,Set,JSON,
     setTimeout,clearTimeout,btoa,atob,console,location:new URL(guest?'https://sxz.school.zykj.org/index.html':'http://127.0.0.1:18765/index.html'),
     XMLHttpRequest:XHR,document:{addEventListener(){},documentElement:{classList:{add(){}}}},addEventListener:listeners.addEventListener.bind(listeners),dispatchEvent:listeners.dispatchEvent.bind(listeners),
@@ -83,6 +86,12 @@ checks.push('模板白名单拒绝路径穿越')
 const guarded=sandbox(false,{stripDate:true})
 await guarded.context.fetch('https://test.oss-cn-hangzhou.aliyuncs.com/test',{method:'PUT',headers:{Date:'Thu, 01 Oct 2026 00:00:00 GMT'},body:bytes})
 check(guarded.calls.find(call=>call.method==='request').args.headers.date==='Thu, 01 Oct 2026 00:00:00 GMT','WebKit 过滤 Date 时仍保留 OSS 签名日期')
+const legacy=sandbox(false,{noBodyStream:true})
+for(const method of ['POST','PUT']){
+ const result=await legacy.context.fetch('https://test.oss-cn-hangzhou.aliyuncs.com/test',{method,body:new Blob([bytes])})
+ assert.deepEqual(new Uint8Array(await result.arrayBuffer()),bytes)
+ checks.push('旧版 WebKit 无 Request.body 流时 '+method+' 仍完整发送 600 KB 文件')
+}
 const imageSource='https://ezy-sxz.oss-cn-hangzhou.aliyuncs.com/a.png?signature=a%2Bb&x=2';
 const mappedImage=context.__zytbImageUrl(imageSource);
 check(mappedImage.startsWith('zytb-image://fetch?')&&new URL(mappedImage).searchParams.get('url')===imageSource,'原生图片地址保留签名参数和完整 URL')

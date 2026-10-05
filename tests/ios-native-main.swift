@@ -7,6 +7,8 @@ for url in ["https://zykj.org.evil.test", "https://evilzykj.org", "http://127.0.
 check(HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest"), method:"GET"), "Own public release metadata allowed")
 check(!HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases/latest"), method:"POST"), "Release writes rejected")
 check(!HostPolicy.release(URL(string:"https://api.github.com/repos/other/private/releases/latest"), method:"GET"), "Other repositories rejected")
+check(HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases?per_page=20"), method:"GET"), "Own public iOS beta list allowed")
+check(!HostPolicy.release(URL(string:"https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases?per_page=100"), method:"GET"), "Arbitrary GitHub queries rejected")
 check(HostPolicy.local(URL(string: HostPolicy.origin)), "Local origin")
 check(!HostPolicy.local(URL(string: "http://127.0.0.1:18766")), "Wrong port")
 check(!HostPolicy.local(URL(string: "http://localhost:18765")), "Wrong hostname")
@@ -23,7 +25,17 @@ try bytes.write(to: root.appendingPathComponent("test.bin"))
 try Data("export const test = true".utf8).write(to: root.appendingPathComponent("worker.mjs"))
 let cache = root.appendingPathComponent("cache", isDirectory: true)
 try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
-let server = LocalAssetServer(root: root, cache: cache)
+// Reserve the preferred port with another real listener to reproduce EADDRINUSE.
+let blockerParams = NWParameters.tcp
+blockerParams.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: NWEndpoint.Port(rawValue: 18765)!)
+let blocker = try NWListener(using: blockerParams)
+let occupied = DispatchSemaphore(value: 0)
+blocker.stateUpdateHandler = { state in if case .ready = state { occupied.signal() } }
+blocker.newConnectionHandler = { $0.cancel() }
+blocker.start(queue: DispatchQueue(label: "test.occupied"))
+check(occupied.wait(timeout: .now() + 10) == .success, "Preferred port really occupied")
+defer { blocker.cancel() }
+let server = LocalAssetServer(root: root, cache: cache, preferredPort: 18765, persistPort: false)
 let ready = DispatchSemaphore(value: 0)
 var startError: Error?
 server.start { result in if case .failure(let error) = result { startError = error }; ready.signal() }
@@ -35,6 +47,12 @@ while Date() < startDeadline {
 }
 if let startError { print("Listener error: \(startError)") }
 check(didStart && startError == nil, "Loopback server starts")
+check(HostPolicy.port != 18765, "Occupied port falls back to an OS-assigned free port")
+check(!HostPolicy.local(URL(string: "http://127.0.0.1:18765")), "Occupied old port cannot invoke privileged bridge")
+var duplicateURLs = [URL](); let duplicate = DispatchSemaphore(value: 0)
+for _ in 0..<3 { server.start { result in if case .success(let url) = result { duplicateURLs.append(url) }; duplicate.signal() } }
+for _ in 0..<3 { check(duplicate.wait(timeout: .now() + 5) == .success, "Repeated start completes") }
+check(duplicateURLs.count == 3 && Set(duplicateURLs).count == 1 && duplicateURLs[0].absoluteString == HostPolicy.origin + "/", "Repeated starts reuse the same listener and origin")
 func request(_ path: String, host: String? = nil) -> (Data, HTTPURLResponse) {
     var req = URLRequest(url: URL(string: HostPolicy.origin + path)!)
     if let host { req.setValue(host, forHTTPHeaderField: "Host") }

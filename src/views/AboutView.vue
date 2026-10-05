@@ -1,7 +1,8 @@
 <template>
   <div class="about-page">
-    <el-card class="block about-heading"><h2>关于应用</h2><p class="muted">版本与下载、支持作者、使用说明与项目致谢。</p><el-tabs v-model="section"><el-tab-pane label="检查更新" name="updates" /><el-tab-pane label="支持作者" name="support" /><el-tab-pane label="使用说明" name="guide" /><el-tab-pane label="说明与致谢" name="credits" /></el-tabs></el-card>
+    <el-card class="block about-heading"><h2>关于应用</h2><p class="muted">版本与下载、问题反馈、支持作者、使用说明与项目致谢。</p><el-tabs v-model="section"><el-tab-pane label="检查更新" name="updates" /><el-tab-pane label="问题反馈" name="feedback" /><el-tab-pane label="支持作者" name="support" /><el-tab-pane label="使用说明" name="guide" /><el-tab-pane label="说明与致谢" name="credits" /></el-tabs></el-card>
     <el-card v-show="section === 'updates'" class="block"><AppUpdatePanel /></el-card>
+    <el-card v-if="section === 'feedback'" class="block"><AppFeedbackPanel /></el-card>
     <DonateView v-if="section === 'support'" />
     <el-card v-show="section === 'credits'" class="block" header="aoki fork · 新增功能">
       <p class="muted">Windows / Android / iOS 版本的独立改造，由 aoki 维护。感谢 Loshop 提供原始项目。</p>
@@ -125,11 +126,12 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppUpdatePanel from '@/components/AppUpdatePanel.vue'
+import AppFeedbackPanel from '@/components/AppFeedbackPanel.vue'
 import DonateView from '@/views/DonateView.vue'
 import { EDITION } from '@/config/edition'
 const route = useRoute()
 const section = ref('updates')
-watch(() => route.query.tab, tab => { section.value = ['updates','support','guide','credits'].includes(String(tab)) ? String(tab) : 'updates' }, { immediate: true })
+watch(() => route.query.tab, tab => { section.value = ['updates','feedback','support','guide','credits'].includes(String(tab)) ? String(tab) : 'updates' }, { immediate: true })
 const forkFeatures = [
   {title:'iPhone / iPad 原生壳',description:'Swift + UIKit + WKWebView，保留本版本界面；系统导航与文件面板适配 iOS/iPadOS 26 Liquid Glass，支持 iPad 分屏、系统外观及原生文件导出。'},
   {title:'中育学生应用下载',description:'查询官方在线版本；支持本地 APK / ZIP 导入、摘要核对、离线另存为。在线与已导入版本分别显示；图库集成在中育桌面中。'},

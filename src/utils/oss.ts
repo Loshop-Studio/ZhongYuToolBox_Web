@@ -7,6 +7,7 @@
 import OSS from 'ali-oss'
 import CryptoJS from 'crypto-js'
 import { PLATFORM } from '@/config'
+import { request } from '@/utils/request'
 
 /** 上传类型 -> fc 数值映射（复刻 V_MAP） */
 const V_MAP: Record<string, number> = {
@@ -41,10 +42,6 @@ export function setOssBaseUrl(url: string): void {
   ossBaseUrl = url
 }
 
-function apiBase(): string {
-  return localStorage.getItem('apiBaseUrl') || 'http://sxz.api.zykj.org'
-}
-
 /** MD5 大写（复刻 index.js md5） */
 function md5Upper(str: string): string {
   return CryptoJS.MD5(str).toString().toUpperCase()
@@ -77,39 +74,11 @@ export async function generateStsToken(
   const ts = Date.now()
   const rawStr = `${userId}+${fc}+${FR}+${FT}+${FE}+${FO}+${nonce}+${ts}`
   const sign = md5Upper(rawStr)
-  const token = localStorage.getItem('token')
-
-  const resp = await fetch(`${apiBase()}/api/services/app/ObjectStorage/GenerateTokenV2Async`, {
+  const data = await request('/api/services/app/ObjectStorage/GenerateTokenV2Async', {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      fc: V_MAP[fc],
-      fr: G_MAP[FR],
-      ft: FT,
-      fe: FE,
-      fo: FO,
-      nonce,
-      ts,
-      sign
-    })
+    headers: { Accept: 'application/json' },
+    body: JSON.stringify({ fc: V_MAP[fc], fr: G_MAP[FR], ft: FT, fe: FE, fo: FO, nonce, ts, sign })
   })
-
-  if (!resp.ok) {
-    const errorText = await resp.text()
-    throw new Error(`服务器响应错误(${resp.status}): ${errorText.substring(0, 100)}`)
-  }
-
-  const responseText = await resp.text()
-  let data: any
-  try {
-    data = JSON.parse(responseText)
-  } catch {
-    throw new Error('服务器返回数据格式错误，请重新登录后再试')
-  }
   if (!data.result) throw new Error('获取 token 失败: ' + JSON.stringify(data))
   return data.result as StsCredential
 }
@@ -177,16 +146,10 @@ export async function fetchOssBaseUrl(userId: string): Promise<string> {
   const rawStr = `${userId}+note_v2+res+1++0+${nonce}+${ts}`
   const sign = md5Upper(rawStr)
 
-  const resp = await fetch(`${apiBase()}/api/services/app/ObjectStorage/GenerateTokenV2Async`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
+  const data = await request('/api/services/app/ObjectStorage/GenerateTokenV2Async', {
+    method: 'POST', headers: { Accept: 'application/json' },
     body: JSON.stringify({ fc: 1, fr: 1, ft: 2, fe: '', fo: '0', nonce, ts, sign })
   })
-  const data = await resp.json()
   if (!data.result) throw new Error('获取 OSS 配置失败')
   const region = data.result.region || 'oss-cn-hangzhou'
   const bucket = data.result.bucket || 'ezy-sxz'
@@ -199,16 +162,12 @@ export async function fetchUserId(): Promise<string> {
   const token = localStorage.getItem('token')
   if (!token) throw new Error('localStorage 中未找到 token')
 
-  const resp = await fetch(`${apiBase()}/api/services/app/User/GetInfoAsync`, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json, text/plain, */*',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      Authorization: `Bearer ${token}`
-    }
-  })
-  if (!resp.ok) throw new Error('请求用户信息失败: ' + resp.status)
-  const data = await resp.json()
-  if (data.result && data.result.id) return String(data.result.id)
+  // The successful login already stored this ID; logout/account changes clear it.
+  // Avoid a redundant raw fetch when Safari is opening the file picker.
+  const cached = localStorage.getItem('userId')
+  if (cached && cached !== '0') return cached
+  const data = await request('/api/services/app/User/GetInfoAsync', { method: 'GET' })
+  const id = data.result?.userId || data.result?.id
+  if (id) return String(id)
   throw new Error('无法获取用户ID: ' + JSON.stringify(data))
 }

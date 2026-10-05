@@ -1,8 +1,10 @@
 import Foundation
 
 enum HostPolicy {
-    static let port = 18765
-    static let origin = "http://127.0.0.1:\(port)"
+    static private(set) var port = 18765
+    static var origin: String { "http://127.0.0.1:\(port)" }
+    // Pin privileges to the port actually bound by our listener, never every loopback port.
+    static func useLocalPort(_ value: UInt16) { port = Int(value) }
     static let maxFileSize = 128 * 1024 * 1024
     static let maxChunkSize = 192 * 1024
     static let methods = Set(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
@@ -21,7 +23,9 @@ enum HostPolicy {
     }
     static func release(_ url: URL?, method: String) -> Bool {
         guard let url else { return false }
-        return method == "GET" && url.scheme == "https" && url.host == "api.github.com" && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil && url.query == nil && url.fragment == nil && ["/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest"].contains(url.path)
+        let stable = url.query == nil && ["/repos/nickfox395/ZhongYuToolBox_Web/releases/latest", "/repos/Loshop-Studio/ZhongYuToolBox_Web/releases/latest"].contains(url.path)
+        let iosBeta = url.path == "/repos/nickfox395/ZhongYuToolBox_Web/releases" && url.query == "per_page=20"
+        return method == "GET" && url.scheme == "https" && url.host == "api.github.com" && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil && url.fragment == nil && (stable || iosBeta)
     }
     static func external(_ url: URL?) -> Bool {
         guard let url else { return false }

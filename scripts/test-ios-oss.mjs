@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 await mkdir('.test-output',{recursive:true})
-await build({entryPoints:['src/utils/oss.ts'],outfile:'.test-output/ios-oss.mjs',bundle:true,platform:'node',format:'esm',external:['ali-oss','crypto-js'],plugins:[{name:'ios-config',setup(b){b.onResolve({filter:/^@\/config$/},()=>({path:'config',namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},()=>({contents:'export const PLATFORM="ios";',loader:'js'}));}}]})
+await build({entryPoints:['src/utils/oss.ts'],outfile:'.test-output/ios-oss.mjs',bundle:true,platform:'node',format:'esm',external:['ali-oss','crypto-js'],plugins:[{name:'ios-config',setup(b){b.onResolve({filter:/^@\/config$/},()=>({path:'config',namespace:'mock'}));b.onResolve({filter:/^@\/utils\/request$/},()=>({path:'request',namespace:'mock'}));b.onLoad({filter:/.*/,namespace:'mock'},args=>({contents:args.path==='request'?`export async function request(path,options={}) {const response=await fetch('http://sxz.api.zykj.org'+path,{...options,headers:{...options.headers,Authorization:'Bearer '+localStorage.getItem('token')}});if(!response.ok)throw Error('Request failed');const data=await response.json();if(data.success===false)throw Error(data.error?.message);return data;}`:'export const PLATFORM="ios";',loader:'js'}));}}]})
 globalThis.localStorage={getItem:key=>key==='token'?'TEST_ONLY_TOKEN':null}
 const credential={bucket:'test-bucket',accessKeyId:'TEST_ONLY_ID',accessKeySecret:'TEST_ONLY_SECRET',securityToken:'TEST_ONLY_STS'}
 const calls=[]
@@ -15,7 +15,7 @@ globalThis.fetch=async(url,options)=>{
  if(url.endsWith('/GenerateTokenV2Async'))return new Response(JSON.stringify({result:credential}))
  return new Response('',{status:200})
 }
-const {uploadFile}=await import(pathToFileURL(resolve('.test-output/ios-oss.mjs')))
+const {uploadFile,fetchUserId}=await import(pathToFileURL(resolve('.test-output/ios-oss.mjs')))
 const bytes=Uint8Array.from({length:600000},(_,i)=>i%251),file=new File([bytes],'notes.bin',{type:'application/octet-stream'})
 const url=await uploadFile(file,'TEST_USER','note_v2','TEST_NONCE','folder/notes.bin')
 const upload=calls[1],headers=upload.options.headers
@@ -28,3 +28,12 @@ assert.equal(headers.Authorization,'OSS TEST_ONLY_ID:'+createHmac('sha1','TEST_O
 globalThis.fetch=async url=>url.endsWith('/GenerateTokenV2Async')?new Response(JSON.stringify({result:credential})):new Response('denied',{status:403})
 await assert.rejects(uploadFile(file,'TEST_USER','note_v2','TEST_NONCE'),/OSS 上传失败\(403\)/)
 console.log('PASS: iOS OSS binary PUT, STS signature/resource path and upload failure. Test credentials only; no network requests.')
+
+const storage=new Map([['token','TEST_ONLY_TOKEN'],['userId','101']]);globalThis.localStorage={getItem:k=>storage.get(k)??null}
+let infoCalls=0;globalThis.fetch=async(url,options)=>{infoCalls++;assert.equal(options.headers.Authorization,'Bearer TEST_ONLY_TOKEN');return new Response(JSON.stringify({result:{userId:102}}))}
+assert.equal(await fetchUserId(),'101');assert.equal(infoCalls,0)
+storage.delete('userId');assert.equal(await fetchUserId(),'102');assert.equal(infoCalls,1)
+globalThis.fetch=async()=>new Response(JSON.stringify({result:{id:103}}));assert.equal(await fetchUserId(),'103')
+globalThis.fetch=async()=>new Response(JSON.stringify({success:false,error:{message:'Access denied'}}));await assert.rejects(fetchUserId(),/Access denied/)
+storage.delete('token');await assert.rejects(fetchUserId(),/token/)
+console.log('PASS: gallery cached user ID, authenticated fallback, both official ID fields, access denial and logout.')

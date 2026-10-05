@@ -7,3 +7,5 @@ export const EDITION = {
 
 /** This edition checks its own releases, without account information. */
 export const RELEASE_REPOSITORY = 'nickfox395/ZhongYuToolBox_Web'
+/** The maintainer's discussion group; source never contains a QQ login credential. */
+export const QQ_FEEDBACK_GROUP = '1067807011'

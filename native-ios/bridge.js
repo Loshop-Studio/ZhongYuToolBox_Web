@@ -26,7 +26,7 @@
     req.signal.addEventListener('abort',abort,{once:true});
     try {
       if(req.signal.aborted) throw new DOMException('请求已取消','AbortError');
-      if (req.body) {
+      if (req.body?.getReader) {
         const reader=req.body.getReader(); let offset=0;
         for (;;) {
           const {value,done}=await reader.read(); if(done) break;
@@ -35,6 +35,14 @@
             const bytes=value.subarray(i,i+192*1024);
             await call('writeRequest',{session,offset,base64:encode(bytes)}); offset+=bytes.length;
           }
+        }
+      } else if (!['GET','HEAD'].includes(req.method)) {
+        // Older WebKit has Request.arrayBuffer but no readable Request.body.
+        // Silently skipping it produces empty JSON/OSS PUT uploads.
+        const bytes=new Uint8Array(await req.arrayBuffer());
+        for(let offset=0;offset<bytes.length;offset+=192*1024) {
+          if(req.signal.aborted) throw new DOMException('请求已取消','AbortError');
+          await call('writeRequest',{session,offset,base64:encode(bytes.subarray(offset,offset+192*1024))});
         }
       }
       // Preserve OSS Date supplied by the caller even if WebKit's Request header guard strips it.

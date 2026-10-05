@@ -28,7 +28,9 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
-      input: process.env.ZYTB_BUILD_QA === '1'
+      input: process.env.ZYTB_IOS_UPLOAD_QA === '1'
+        ? { app: fileURLToPath(new URL('./index.html', import.meta.url)), uploadQa: fileURLToPath(new URL('./tests/ios-upload-qa.html', import.meta.url)) }
+        : process.env.ZYTB_BUILD_QA === '1'
         ? { app: fileURLToPath(new URL('./index.html', import.meta.url)), qa: fileURLToPath(new URL('./tests/native-qa.html', import.meta.url)) }
         : fileURLToPath(new URL('./index.html', import.meta.url))
     }

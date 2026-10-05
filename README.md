@@ -2,17 +2,28 @@
 
 基于 [Loshop-Studio/ZhongYuToolBox_Web](https://github.com/Loshop-Studio/ZhongYuToolBox_Web) 的独立 Windows / Android / iOS 改造版。原作者 **Loshop**；新增 co-author **aoki**。感谢原作者及所有贡献者，保留原有“支持作者”入口与捐赠对象。本 fork 不代表中育官方或原作者发布。
 
+## **如何在应用内反馈问题**
+
+### **桌面端：左侧菜单「关于应用」→「问题反馈」**
+### **iPhone / iPad / Android：底部「我的」→「关于应用」→「问题反馈」**
+
+1. **按上面的路径打开应用里的「问题反馈」页面。**
+2. **填写「操作步骤」「预期结果」和「实际结果 / 报错」，准备好报错截图。**
+3. **点击「复制反馈信息」，将反馈内容和截图发送到页面显示的 QQ 交流群；也可点击「在 GitHub 提交问题」，补充内容后提交 Issue。**
+
+反馈页面会自动带上应用版本、运行平台和系统 / 浏览器信息，不自动提交账号或学习资料。页面显示的 QQ 交流群为 `1067807011`。
+
 ## 下载与安装
 
-[最新正式版与全部下载文件](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/latest) · [开发中的三端源码](https://github.com/nickfox395/ZhongYuToolBox_Web/tree/feature/ios-liquid-glass-1.1.9) · [原作者项目](https://github.com/Loshop-Studio/ZhongYuToolBox_Web)
+[Windows / Android 最新正式版](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/latest) · [开发中的三端源码](https://github.com/nickfox395/ZhongYuToolBox_Web/tree/feature/ios-liquid-glass-1.1.9) · [原作者项目](https://github.com/Loshop-Studio/ZhongYuToolBox_Web)
 
-当前正式版为 **1.1.14-aoki**，三端版本号统一。新增云笔记高清矢量 PDF、当前页 SVG 与全部页面 SVG（ZIP）导出，沿用 npm 画板组件。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 提供未签名 IPA。
+当前 Windows / Android 正式版为 **1.1.14-aoki**；iOS 同为 **1.1.14**，改为独立 **Beta 内测**发布。新增云笔记高清矢量 PDF、当前页 SVG 与全部页面 SVG（ZIP）导出，沿用 npm 画板组件。Windows 提供安装程序和便携包，Android 提供 APK，iPhone / iPad 的未签名 IPA 仅放在 [iOS 1.1.14 Beta 内测页](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta)，不再放入正式版下载。
 
 | 平台 | 下载文件 | 安装方式 |
 | --- | --- | --- |
 | Windows 10/11 x64 | `Windows-x64-Setup.exe` 或便携 ZIP | 运行安装程序；便携版完整解压后打开 exe，需要系统 WebView2 Runtime |
 | Android 8.0+ | `Android.apk` | 在 Android 设备打开 APK，按系统提示安装，需要较新的系统 WebView |
-| iPhone / iPad · iOS 16+ | `iOS-unsigned.ipa` | 未签名包需自行签名（如爱思助手）后安装，并在设备设置中完成信任；iOS 26 使用系统 Liquid Glass 导航 |
+| iPhone / iPad · iOS 16+ | `iOS-beta-unsigned.ipa` | 未签名包需自行签名（如爱思助手）后安装，并在设备设置中完成信任；iOS 26 使用系统 Liquid Glass 导航 |
 
 安装包不包含账号、密码、Token 或个人笔记。Windows 同一系统用户的不同便携版本复用 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2` 的既有登录缓存；自动登录不等于账号被打进安装包。
 

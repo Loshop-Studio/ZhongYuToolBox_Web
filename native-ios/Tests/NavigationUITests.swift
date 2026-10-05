@@ -1,6 +1,33 @@
 import XCTest
 
 final class NavigationUITests: XCTestCase {
+    func testIosUploadConversionAndTransport() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ios-upload-fixtures"]
+        app.launch()
+        XCTAssertTrue(app.webViews.firstMatch.staticTexts["iOS上传回归通过"].waitForExistence(timeout: 90), "Actual WKWebView must encode WebP and finish mocked PDF/image uploads")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "iOS local WebP encoding and note/gallery upload regression"; shot.lifetime = .keepAlways; add(shot)
+    }
+    func testFeedbackEntryAndTemplate() {
+        let app = XCUIApplication(); app.launchArguments = ["--ios-ui-fixtures"]; app.launch()
+        let tabs = app.tabBars.firstMatch
+        XCTAssertTrue(tabs.waitForExistence(timeout: 30)); tabs.buttons["我的"].tap()
+        let about = app.webViews.firstMatch.buttons["关于应用"]
+        XCTAssertTrue(about.waitForExistence(timeout: 15))
+        for _ in 0..<5 { if about.isHittable { break }; app.webViews.firstMatch.swipeUp() }
+        XCTAssertTrue(about.isHittable); about.tap()
+        let feedback = app.webViews.firstMatch.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "问题反馈")).firstMatch
+        XCTAssertTrue(feedback.waitForExistence(timeout: 15)); feedback.tap()
+        let web = app.webViews.firstMatch
+        XCTAssertTrue(web.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "1067807011")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(web.buttons["复制反馈信息"].exists)
+        XCTAssertTrue(web.links["在 GitHub 提交问题 ↗"].exists)
+        let field = web.textViews.firstMatch
+        XCTAssertTrue(field.exists); XCTAssertTrue((field.value as? String ?? "").contains("1.1.14"))
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "iPhone in-app feedback entry and local diagnostic template"; shot.lifetime = .keepAlways; add(shot)
+    }
     func testIPadLandscapeContentFitsScreen() {
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }

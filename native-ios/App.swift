@@ -52,16 +52,20 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
             guard let web = Bundle.main.url(forResource: "WebAssets", withExtension: nil), let bridgeURL = Bundle.main.url(forResource: "bridge", withExtension: "js") else { throw HostFailure.message("应用资源缺失，请重新安装完整 IPA") }
             bridge = try String(contentsOf: bridgeURL, encoding: .utf8)
             let cache = FileManager.default.temporaryDirectory.appendingPathComponent("zytb-ios-transport", isDirectory: true)
-            // Only our own transient files are removed; WKWebsiteDataStore holds login/settings separately.
-            try? FileManager.default.removeItem(at: cache)
-            try FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
-            transport = NativeTransport(cache: cache); server = LocalAssetServer(root: web, cache: cache)
-            main = makeWebView(privileged: true)
-            main.translatesAutoresizingMaskIntoConstraints = false
-            mountCanvas()
+            server = try LocalAssetServer.shared(root: web, cache: cache)
+            transport = NativeTransport(cache: cache)
             server.start { [weak self] result in DispatchQueue.main.async {
                 guard let self else { return }
-                switch result { case .success(let url): self.main.load(URLRequest(url: url)); case .failure(let error): self.main.isHidden = true; self.status.text = "本地界面启动失败：\(error.localizedDescription)" }
+                switch result { case .success(let url):
+                    self.main = self.makeWebView(privileged: true)
+                    self.main.translatesAutoresizingMaskIntoConstraints = false
+                    self.mountCanvas()
+                    var start = url
+                    #if targetEnvironment(simulator)
+                    if ProcessInfo.processInfo.arguments.contains("--ios-upload-fixtures") { start = URL(string: HostPolicy.origin + "/tests/ios-upload-qa.html")! }
+                    #endif
+                    self.main.load(URLRequest(url: start))
+                case .failure(let error): self.status.text = "本地界面启动失败：\(error.localizedDescription)" }
             } }
         } catch { status.text = error.localizedDescription }
     }
@@ -161,7 +165,7 @@ final class ToolboxController: UITabBarController, UITabBarControllerDelegate, W
         config.websiteDataStore = privileged ? .default() : .nonPersistent()
         config.allowsInlineMediaPlayback = true
         let imageHandler = ImageSchemeHandler()
-        var startup = bridge + "\n" + script
+        var startup = bridge.replacingOccurrences(of: "http://127.0.0.1:18765", with: HostPolicy.origin) + "\n" + script
         #if targetEnvironment(simulator)
         if privileged && ProcessInfo.processInfo.arguments.contains("--ios-ui-fixtures") {
             startup += "\n" + IOSSimulatorFixtures.script

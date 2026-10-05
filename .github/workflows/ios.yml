@@ -20,9 +20,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:login
+      - run: npm run test:update
       - run: npm run test:ios
       - run: npm run build:ios
-      - run: npm run build:ios -- --simulator --skip-web
+      - run: npm run build:ios -- --simulator --skip-web --upload-qa
       - run: node scripts/test-ios-simulator.mjs
       - uses: actions/upload-artifact@v4
         if: always()

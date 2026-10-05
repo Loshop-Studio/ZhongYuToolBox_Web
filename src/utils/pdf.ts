@@ -8,6 +8,7 @@ import CryptoJS from 'crypto-js'
 import { loadPdfjs } from '@/utils/pdfWorker'
 import JSZip from 'jszip'
 import { fitPageToCanvas } from './noteCanvas'
+import { encodeCanvasImage } from './canvasImage'
 
 export interface PdfPageImage {
   pageNum: number
@@ -85,14 +86,7 @@ export async function convertPdfToImages(
       // intent: 'print' 走打印级渲染管线，文字/矢量更锐利、避免灰边
       await page.render({ canvasContext: ctx, viewport, intent: 'print',
         transform: fit ? [1, 0, 0, 1, fit.x, fit.y] : undefined }).promise
-      const blob = await new Promise<Blob>((resolve, reject) =>
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error('第 ' + i + ' 页导出图片失败'))),
-          type,
-          quality
-        )
-      )
-      if (blob.type !== type) throw new Error('当前环境无法导出所需图片格式：' + type)
+      const blob = await encodeCanvasImage(canvas, type, quality)
       const img: PdfPageImage = { pageNum: i, blob, url: '' }
       if (opts.onPage) {
         // 流式：交付给调用方后立即释放，不被本数组持有（关键：避免多页同时占内存）

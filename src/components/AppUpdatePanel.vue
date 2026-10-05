@@ -1,10 +1,10 @@
 <template>
   <section aria-label="检查应用更新">
     <div class="update-heading"><div><h2>检查更新</h2><p>当前版本 {{ APP_VERSION }} · {{ platformName }}</p></div><el-button type="primary" :loading="checking" @click="check">{{ checking ? '检查中…' : '检查更新' }}</el-button></div>
-    <p class="muted">检查当前发行仓库的正式版；下载与安装由你确认。</p>
+    <p class="muted">{{ iosBeta ? 'iOS 当前为 Beta 内测，检查本仓库的 iOS 内测包' : '检查当前发行仓库的正式版' }}；下载与安装由你确认。</p>
     <el-alert v-if="error" :title="error" type="warning" :closable="false" show-icon />
     <template v-if="release">
-      <el-alert :title="comparison === null ? '版本标签无法自动比较，请查看发布说明' : comparison > 0 ? `发现新版本 ${release.tag}` : comparison < 0 ? '当前运行版本高于最新正式版' : '当前已是最新正式版'" :type="comparison !== null && comparison > 0 ? 'success' : 'info'" :closable="false" show-icon />
+      <el-alert :title="comparison === null ? '版本标签无法自动比较，请查看发布说明' : comparison > 0 ? `发现新版本 ${release.tag}` : comparison < 0 ? '当前运行版本高于最新发布版' : iosBeta ? '主版本号相同，请按内测发布说明核对构建与修复' : '当前已是最新正式版'" :type="comparison !== null && comparison > 0 ? 'success' : 'info'" :closable="false" show-icon />
       <h3>{{ release.title }}</h3><p class="muted">{{ release.publishedAt ? new Date(release.publishedAt).toLocaleDateString() : '' }}</p>
       <h4>版本功能与改动</h4><pre class="release-notes">{{ release.notes }}</pre>
       <div class="download-list"><a v-for="asset in platformAssets" :key="asset.url" :href="asset.url" target="_blank" rel="noopener noreferrer">{{ asset.name }} · {{ (asset.size / 1048576).toFixed(1) }} MB</a></div>
@@ -18,9 +18,10 @@ import { APP_VERSION, PLATFORM, IS_WINDOWS } from '@/config'
 import { RELEASE_REPOSITORY } from '@/config/edition'
 import { fetchLatestRelease, compareVersions, type AppRelease } from '@/utils/appUpdate'
 const platform: string = PLATFORM
+const iosBeta = platform === 'ios' && RELEASE_REPOSITORY === 'nickfox395/ZhongYuToolBox_Web'
 const checking = ref(false), error = ref(''), release = shallowRef<AppRelease | null>(null)
 const comparison = computed(() => release.value ? compareVersions(release.value.tag, APP_VERSION) : null)
-const platformName = IS_WINDOWS ? 'Windows' : platform === 'ios' ? 'iPhone / iPad' : platform === 'android' || platform === 'plus' ? 'Android / 移动端' : '网页预览'
+const platformName = IS_WINDOWS ? 'Windows' : platform === 'ios' ? 'iPhone / iPad · Beta 内测' : platform === 'android' || platform === 'plus' ? 'Android / 移动端' : '网页预览'
 const releasesUrl = `https://github.com/${RELEASE_REPOSITORY}/releases`
 const platformAssets = computed(() => (release.value?.assets || []).filter(a => IS_WINDOWS ? /\.(exe|zip)$/i.test(a.name) && /windows/i.test(a.name) : platform === 'ios' ? /\.ipa$/i.test(a.name) : platform === 'android' || platform === 'plus' ? /\.apk$/i.test(a.name) : /\.(exe|apk|ipa)$/i.test(a.name)))
 let controller: AbortController | null = null
@@ -28,7 +29,7 @@ async function check() {
   if (checking.value) return
   const ctl = controller = new AbortController(), timer = setTimeout(() => ctl.abort(), 15000)
   checking.value = true; error.value = ''; release.value = null
-  try { const result = await fetchLatestRelease(RELEASE_REPOSITORY, ctl.signal); if (!ctl.signal.aborted) release.value = result }
+  try { const result = await fetchLatestRelease(RELEASE_REPOSITORY, ctl.signal, iosBeta ? 'ios-beta' : 'stable'); if (!ctl.signal.aborted) release.value = result }
   catch (e) { if (controller === ctl) error.value = ctl.signal.aborted ? '检查超时，请重试或直接打开 GitHub 发布页' : e instanceof Error ? e.message : String(e) }
   finally { clearTimeout(timer); if (controller === ctl) { checking.value = false; controller = null } }
 }

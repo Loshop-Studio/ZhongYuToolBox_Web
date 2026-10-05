@@ -14,11 +14,13 @@ Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；业务页面共
 
 1.1.13 新增随身答画板 SVG / MP4 本地导出，修复移动画板缩放与文字、颜色撤销/重做。MP4 依赖设备 WebCodecs / H.264 编码能力，不支持时仍可导出 SVG；AAC 编码不可用时提示无音轨。「我的 → 关于应用」可手动检查 GitHub 正式版、阅读新版本功能并打开下载页面，不自动安装或将学校凭据发送给 GitHub。
 
-主界面从包内资源启动，仅监听 `127.0.0.1:18765`，不开放局域网端口。固定 origin 保持账号 / 外观设置跨启动保存。官方 API/OSS 请求用 URLSession 直连；图片通过受限 WKURLSchemeHandler 使用 URLSession，不携带 Origin、Referer、Cookie 或账号鉴权头，支持动态文章 HTML、懒加载及带签名参数的图片。TLS 使用系统校验，不依赖作者网页服务器。HTTP 只按域名对官方遗留接口配置 ATS 例外。临时二进制分块传输，上传/保存上限 128 MB，响应上限 256 MB，单张图片上限 32 MB。远端选课/专栏使用独立、非持久化 WKWebView，只有受限网络桥，不提供文件/设备/窗口权限；非主框架也不能调用桥。作者用户量统计在此 fork 默认关闭。
+主界面从包内资源启动，仅监听 `127.0.0.1`，优先使用已有持久化端口（初始为 `18765`），不开放局域网端口。同一进程中的窗口共用服务；端口仍被其他进程占用时，重试后由系统分配空闲端口并保存，后续启动复用。权限检查只认可实际监听的端口。首次更换本地 origin 时可能需要重新登录，旧数据不被清除。官方 API/OSS 请求用 URLSession 直连；图片通过受限 WKURLSchemeHandler 使用 URLSession，不携带 Origin、Referer、Cookie 或账号鉴权头，支持动态文章 HTML、懒加载及带签名参数的图片。TLS 使用系统校验，不依赖作者网页服务器。HTTP 只按域名对官方遗留接口配置 ATS 例外。临时二进制分块传输，上传/保存上限 128 MB，响应上限 256 MB，单张图片上限 32 MB。远端选课/专栏使用独立、非持久化 WKWebView，只有受限网络桥，不提供文件/设备/窗口权限；非主框架也不能调用桥。作者用户量统计在此 fork 默认关闭。
 
 账号凭据保存在本机 WKWebsiteDataStore，沿用已有自动重登行为，退出登录清除会话，取消勾选「记住密码」清除凭据；不复制进 IPA。iOS 的 identifierForVendor 不是中育平板的 swdid，不可替代领创绑定设备号。
 
 1.1.14 新增云笔记高清预览与矢量 PDF / SVG 导出，移动端预览页右上角「⋯」可导出当前页 SVG 或全部页 SVG ZIP；笔迹、文字保持矢量，截图页和原始图片保持位图。导出经系统文件面板保存。
+
+1.1.14 iOS 改为 **Beta 内测**，下载入口为 [iOS Beta Release](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta)。Safari Canvas 不支持 WebP 编码时，调用包内 jSquash / libwebp 在本机 Worker 编码，不向外部转换服务发送文档；图库复用登录 ID，并通过统一鉴权流程获取 STS 与备用用户信息。
 
 ## 构建
 
@@ -38,7 +40,7 @@ npm run dev:ios
 
 `test:ios` 在 macOS 额外编译真实 Swift 策略和回环资产服务器，检查路径限制、响应流及 origin 边界；在 Windows 明确跳过原生部分。只通过 Windows 测试不代表 IPA 已编译或真机功能验证完成。
 
-GitHub Actions 的 **Build iOS IPA** 使用 `macos-26` 云端构建。完成后从对应运行页的 Artifacts 下载 `ZhongYuToolBox-iPhone-iPad-unsigned-IPA`，解压获得 `ZhongYuToolBox-aoki-<版本>-iOS-unsigned.ipa` 与 SHA256SUMS。工作流不使用、收集或发布 Apple ID、证书、密码、用户缓存。生成工程及 WebAssets 为构建产物，不进入源码提交。
+GitHub Actions 的 **Build iOS IPA** 使用 `macos-26` 云端构建。完成后从对应运行页的 Artifacts 下载 `ZhongYuToolBox-iPhone-iPad-unsigned-IPA`，解压获得 `ZhongYuToolBox-aoki-<版本>-iOS-beta-unsigned.ipa` 与 SHA256SUMS。工作流不使用、收集或发布 Apple ID、证书、密码、用户缓存。生成工程及 WebAssets 为构建产物，不进入源码提交。
 
 ## 爱思助手签名安装
 

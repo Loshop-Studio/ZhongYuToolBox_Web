@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@jsquash/webp": "1.5.0",
     "@vue-office/pptx": "^1.0.1",
     "ali-oss": "^6.21.0",
     "crypto-js": "^4.2.0",

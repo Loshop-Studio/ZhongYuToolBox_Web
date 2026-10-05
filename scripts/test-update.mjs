@@ -15,3 +15,14 @@ assert.equal((await fetchLatestRelease('nickfox395/ZhongYuToolBox_Web')).notes,'
 for(const value of ['limited','evil','pre','abort']){scenario=value;await assert.rejects(fetchLatestRelease('nickfox395/ZhongYuToolBox_Web'))}
 await assert.rejects(fetchLatestRelease('unknown/repo'))
 console.log('PASS update version ordering, public request, unsafe links, prereleases, rate limits and abort')
+assert.equal(compareVersions('v1.1.14-ios-beta','1.1.14-aoki'),0)
+let betaCase='valid'
+globalThis.fetch=async(url,opts)=>{
+ assert.equal(url,'https://api.github.com/repos/nickfox395/ZhongYuToolBox_Web/releases?per_page=20');assert.equal(opts.credentials,'omit');assert.equal(opts.headers.Authorization,undefined)
+ const release={tag_name:'v1.1.14-ios-beta',name:'iOS Beta',body:'upload fixes',html_url:'https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.14-ios-beta',draft:false,prerelease:true,assets:[{name:'iOS-beta.ipa',state:'uploaded',browser_download_url:'https://github.com/nickfox395/ZhongYuToolBox_Web/releases/download/v1.1.14-ios-beta/iOS-beta.ipa'}]}
+ if(betaCase==='draft')release.draft=true;if(betaCase==='no-ipa')release.assets=[]
+ return Response.json([{...release,tag_name:'v9.0.0-other'},release])
+}
+assert.equal((await fetchLatestRelease('nickfox395/ZhongYuToolBox_Web',undefined,'ios-beta')).tag,'v1.1.14-ios-beta')
+for(const state of ['draft','no-ipa']){betaCase=state;await assert.rejects(fetchLatestRelease('nickfox395/ZhongYuToolBox_Web',undefined,'ios-beta'))}
+console.log('PASS: iOS beta channel, public metadata, same main version, draft/missing IPA exclusion.')
