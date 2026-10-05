@@ -13,6 +13,6 @@ for (const upstream of [false, true]) {
  const edition=await import(pathToFileURL(outfile))
  assert.equal(edition.APP_VERSION,'1.1.14-ios-beta1')
  assert.equal(edition.RELEASE_REPOSITORY,repository)
- assert.equal(edition.AUTHOR_STATS_ENABLED,upstream)
+ assert.equal(edition.AUTHOR_STATS_ENABLED,true)
 }
-console.log('PASS: Beta 1 labels, separate release/feedback repositories; fork author statistics off, upstream enabled.')
+console.log('PASS: Beta 1 labels, separate release/feedback repositories; author statistics enabled in both editions.')

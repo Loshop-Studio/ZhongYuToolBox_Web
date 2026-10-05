@@ -56,8 +56,8 @@ export const API_BASE_BASE_URL: string =
 export const SHARE_SERVER: string =
   ls.getItem('shareServer') || ''
 
-/** Fork default stays off. Upstream PR changes this default to true; see UPSTREAM_PR.md. */
-const AUTHOR_STATS_DEFAULT = false
+/** Author login-count stays enabled in both editions, per the maintainer's preference. */
+const AUTHOR_STATS_DEFAULT = true
 export const AUTHOR_STATS_ENABLED = import.meta.env.VITE_AUTHOR_STATS === undefined
   ? AUTHOR_STATS_DEFAULT : import.meta.env.VITE_AUTHOR_STATS === 'true'
 export const TRACK_API = 'https://tbapi.loshop.com.cn/api'

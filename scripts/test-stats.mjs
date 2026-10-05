@@ -4,7 +4,8 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 const source = await readFile('src/config/index.ts', 'utf8')
-assert.match(source, /const AUTHOR_STATS_DEFAULT = false/)
+assert.match(source, /const AUTHOR_STATS_DEFAULT = true/)
+assert.match(await readFile('.env.ios', 'utf8'), /^VITE_AUTHOR_STATS=true$/m)
 assert.match(await readFile('src/stores/auth.ts', 'utf8'), /void reportLogin\(effectiveSchool, account\)/)
 const windows = await readFile('native-windows/Program.cs', 'utf8')
 assert.match(windows, /e.Request.Uri == "https:\/\/tbapi.loshop.com.cn\/api\/login"/)
@@ -35,5 +36,5 @@ try {
     await reportLogin('', 'TEST_USER'); assert.equal(calls - before, enabled ? 1 : 0)
     reject = true; await reportLogin('TEST_SCHOOL', 'TEST_USER'); reject = false
   }
-  console.log('PASS: fork disabled/no requests; upstream login-count contract preserved; no credential headers; 403/network failure do not block login.')
+  console.log('PASS: author statistics enabled by default; original login-count contract preserved; explicit disabled test has no requests; no credential headers; 403/network failure do not block login.')
 } finally { globalThis.fetch = original }

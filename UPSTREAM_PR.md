@@ -7,11 +7,11 @@
 - 原接口 `POST https://tbapi.loshop.com.cn/api/login`，JSON `{ school, username, deviceId: '' }`。
 - 最新上游 `e94e1e8` 已恢复原统计实现及调用，优先保留这些现有代码。如果引入 fork 的统计开关，上游的 `AUTHOR_STATS_DEFAULT` 必须为 `true`；不能把 fork 的关闭默认值合入上游。
 
-`nickfox395/ZhongYuToolBox_Web` 保持 `AUTHOR_STATS_DEFAULT = false`，其发布包不请求作者统计服务。构建时可显式设置 `VITE_AUTHOR_STATS=true/false` 覆盖默认值。
+自 2026-10-05 的维护者指示起，`nickfox395/ZhongYuToolBox_Web` 与上游均保持 `AUTHOR_STATS_DEFAULT = true`，iOS 构建也启用 `VITE_AUTHOR_STATS=true`；后续发行包保留并启用作者统计。测试可显式覆盖开关验证禁用分支，但不得将关闭配置用于发行包。
 
 统计失败或作者服务停服不得阻断官方登录，不恢复强制更新、封禁或环境扫描。统计请求不发送密码、Token、文件或设备扫描结果。
 
-上游 PR 提交前同时检查源码调用和实际构建的统计开关；fork 发版前运行 `npm run test:stats`，确保禁用分支不发请求。
+上游 PR 提交前同时检查源码调用和实际构建的统计开关；两仓库发版前运行 `npm run test:stats`，确认默认启用、合约不变和统计失败不阻断登录。
 
 ## 上游 UI/UX 基线
 

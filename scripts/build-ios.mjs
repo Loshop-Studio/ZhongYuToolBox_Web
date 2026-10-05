@@ -8,8 +8,8 @@ const version=JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version
 const beta=JSON.parse(readFileSync(join(root,'src/config/iosRelease.json'),'utf8')).beta
 if(!Number.isSafeInteger(beta)||beta<1)throw Error('无效 iOS beta 序号')
 const releaseRepository=process.env.VITE_RELEASE_REPOSITORY==='Loshop-Studio/ZhongYuToolBox_Web'?'Loshop-Studio/ZhongYuToolBox_Web':'nickfox395/ZhongYuToolBox_Web'
-const authorStats=process.env.VITE_AUTHOR_STATS==='true'
-if(releaseRepository.startsWith('Loshop-Studio/')&&!authorStats)throw Error('上游发行包必须保留作者用户量统计')
+const authorStats=process.env.VITE_AUTHOR_STATS!=='false'
+if(!authorStats)throw Error('发行包必须保留作者用户量统计')
 const webOnly=process.argv.includes('--web-only'), simulator=process.argv.includes('--simulator')
 if(!webOnly && process.platform!=='darwin')throw Error('IPA 需要 macOS + Xcode 26 或更新版本。Windows 可运行 npm run build:ios -- --web-only；完整 IPA 请使用 GitHub Actions 的 Build iOS IPA。')
 function run(command,args,options={}){console.log('运行：'+command+' '+args.join(' '));const r=spawnSync(command,args,{cwd:root,stdio:'inherit',shell:process.platform==='win32'&&/\.(cmd|bat)$/.test(command),...options});if(r.error)throw r.error;if(r.status!==0)throw Error(`构建步骤失败：${command} (${r.status}, ${r.signal})`)}
