@@ -37,7 +37,7 @@ enum IOSSimulatorFixtures {
 }
 final class FixtureImageProtocol: URLProtocol {
     override class func canInit(with request: URLRequest) -> Bool {
-        request.url?.host == "ezy-sxz.oss-cn-hangzhou.aliyuncs.com" && request.url?.path == "/__ios_image_fixture.png"
+        request.url?.scheme == "https" && request.url?.host == "ezy-sxz.oss-cn-hangzhou.aliyuncs.com" && request.url?.path == "/__ios_image_fixture.png"
     }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {

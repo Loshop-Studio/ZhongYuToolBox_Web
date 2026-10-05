@@ -52,7 +52,8 @@ HTMLCanvasElement.prototype.toBlob = function(callback, type, quality) {
 }
 async function decoded(blob: Blob) {
   const image = new Image(), url = URL.createObjectURL(blob)
-  try { image.src = url; await image.decode(); return image } finally { URL.revokeObjectURL(url) }
+  try { image.src = url; await image.decode(); return { image, dispose: () => URL.revokeObjectURL(url) } }
+  catch (error) { URL.revokeObjectURL(url); throw error }
 }
 async function run() {
   if ((window as any).webkit?.messageHandlers?.zytb) {
@@ -74,7 +75,8 @@ async function run() {
   const pages = await convertPdfToImages(file, undefined, { type: 'image/webp', quality: .96, canvasSize: { width: 2880, height: 1800 } })
   check(pages.length === 2, '两页 PDF 完整渲染')
   for (const page of pages) {
-    const image = await decoded(page.blob)
+    const { image, dispose } = await decoded(page.blob)
+    try {
     check(image.naturalWidth === 2880 && image.naturalHeight === 1800, 'WebP 尺寸保持 2880 × 1800')
     const canvas = document.createElement('canvas'); canvas.width = 2880; canvas.height = 1800
     const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0)
@@ -82,6 +84,7 @@ async function run() {
       const pixel = ctx.getImageData(x, y, 1, 1).data
       check(pixel[0] > 180 && pixel[1] < 80 && pixel[2] < 80, '页面四角内容保留，无裁切')
     }
+    } finally { dispose() }
   }
   const uploaded = await uploadPdfAsNote({ file, noteName: 'IOS_UPLOAD_TEST_ONLY', autoLandscape: false })
   check(uploaded.length === 2 && calls.filter(c => c.url.includes('/CloudNotes/api/Notes/AddOrUpdate')).length === 1, 'PDF 两页上传与笔记登记完成（模拟官方接口）')
@@ -102,7 +105,7 @@ async function run() {
   status.textContent = 'iOS上传回归通过'
   report.textContent = checks.join('\n') + '\nPASS: ' + checks.length + ' checks. No real account or cloud writes.'
 }
-run().catch(error => { status.textContent = 'iOS上传回归失败'; report.textContent += '\n' + (error.stack || error) }).finally(() => {
+run().catch(error => { status.textContent = 'iOS上传回归失败'; report.textContent += '\n' + (error.name || 'Error') + ': ' + (error.message || error) + '\n' + (error.stack || '') }).finally(() => {
   HTMLCanvasElement.prototype.toBlob = nativeToBlob; window.fetch = nativeFetch
   // Never leave the mock JWT to make the next UI test contact real official APIs.
   localStorage.clear()

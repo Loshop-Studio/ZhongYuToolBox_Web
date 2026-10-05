@@ -48,10 +48,10 @@ for(const kind of ['iPhone','iPad']) {
     'CODE_SIGNING_ALLOWED=NO','CODE_SIGNING_REQUIRED=NO','test'
    ],{stdio:'inherit'})
    if(test.error)throw test.error
-   if(test.status!==0)throw Error(`Navigation UI test failed (${test.status}, ${test.signal})`)
    const attachments=spawnSync('xcrun',['xcresulttool','export','attachments','--path',bundle,'--output-path',join(output,`${kind}-attachments`)],{stdio:'inherit'})
    if(attachments.error)throw attachments.error
    if(attachments.status!==0)throw Error('Could not export actual XCTest screenshots')
+   if(test.status!==0)throw Error(`Navigation UI test failed (${test.status}, ${test.signal})`)
   }
  } finally { run(['shutdown',device.udid]) }
 }
