@@ -10,13 +10,13 @@ defineProps<{ active: MobileGroup }>()
 defineEmits<{ select: [group: MobileGroup]; search: [] }>()
 </script>
 <style scoped>
-.mobile-tab-dock { position:fixed; z-index:1900; bottom:0; left:0; right:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line); padding:6px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left)); }
-.mobile-tab-dock button { border:0; background:transparent; color:var(--muted); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:5px; min-height:56px; font-size:12px; padding:0; }
-.mobile-tab-icon { width:48px; height:30px; display:grid; place-items:center; border-radius:16px; transition:background 160ms ease; }
-.mobile-tab-icon svg { width:23px; height:23px; fill:currentColor; }
+.mobile-tab-dock { position:fixed; z-index:1900; bottom:0; left:0; right:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); background:var(--surface); border-top:1px solid var(--line); padding:3px max(6px,env(safe-area-inset-right)) calc(3px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left)); }
+.mobile-tab-dock button { border:0; background:transparent; color:var(--muted); display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; min-height:48px; font-size:11px; line-height:1.2; padding:0; }
+.mobile-tab-icon { width:44px; height:24px; display:grid; place-items:center; border-radius:12px; transition:background 160ms ease; }
+.mobile-tab-icon svg { width:21px; height:21px; fill:currentColor; }
 .mobile-tab-dock button.active { color:var(--accent); }
 .mobile-tab-dock button.active .mobile-tab-icon { background:var(--accent-soft); }
-.mobile-tab-search .el-icon { height:30px; font-size:24px; }
+.mobile-tab-search .el-icon { height:24px; font-size:22px; }
 .mobile-tab-dock button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
 @media(prefers-reduced-motion:reduce) { .mobile-tab-icon { transition:none; } }
 </style>

@@ -160,9 +160,12 @@ final class NavigationUITests: XCTestCase {
         let first = web.staticTexts["测试文章 1"]
         XCTAssertTrue(first.waitForExistence(timeout: 20))
         XCTAssertTrue(first.isHittable, "The article list must not be clipped below its search fields")
+        XCTAssertLessThan(first.frame.minY, app.frame.minY + app.frame.height * 0.5, "Phone controls must leave the lower half of the screen available for article content")
         let second = web.staticTexts["测试文章 2"]
         XCTAssertTrue(second.exists)
         XCTAssertLessThan(second.frame.maxY, app.tabBars.firstMatch.frame.minY)
+        let compact = XCTAttachment(screenshot: app.screenshot())
+        compact.name = "iPhone-compact-column-light"; compact.lifetime = .keepAlways; add(compact)
         first.tap()
         XCTAssertTrue(web.staticTexts["图片原生加载通过"].waitForExistence(timeout: 20), "Real WKWebView image decoding through URLSession, without Origin/Referer")
         let back = app.buttons["native-back"]

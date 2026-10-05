@@ -2,8 +2,13 @@
   <div class="ios-shell windows-ui">
     <main ref="scroller" class="ios-scroll-content" :class="{ 'ios-detail-page': detail }">
       <header class="ios-page-heading">
-        <div class="ios-heading-kicker"><span v-if="nativeNavigation && backAvailable" class="ios-native-back-space" aria-hidden="true"></span><button v-else-if="backAvailable" class="ios-back-button" aria-label="返回上一页" @click="back"><el-icon><ArrowLeft /></el-icon></button><span v-else class="ios-brand-icon"><img :src="`${baseUrl}icon.svg`" alt=""/></span><span>{{ detail ? currentGroup.label : '中育工具箱' }}</span><span class="ios-school-badge">{{ auth.isLoggedIn ? auth.schoolCode.toUpperCase() : '学习工作空间' }}</span></div>
-        <h1>{{ heading }}</h1><p v-if="!detail">{{ currentGroup.description }}</p>
+        <div class="ios-heading-leading">
+          <span v-if="nativeNavigation && backAvailable" class="ios-native-back-space" aria-hidden="true"></span>
+          <button v-else-if="backAvailable" class="ios-back-button" aria-label="返回上一页" @click="back"><el-icon><ArrowLeft /></el-icon></button>
+          <span v-else class="ios-brand-icon"><img :src="`${baseUrl}icon.svg`" alt=""/></span>
+          <h1>{{ heading }}</h1>
+        </div>
+        <span class="ios-school-badge">{{ auth.isLoggedIn ? auth.schoolCode.toUpperCase() : '学习工作空间' }}</span>
       </header>
       <nav v-if="sections.length && !detail" class="ios-section-nav" :aria-label="`${currentGroup.label}分类`">
         <button v-for="item in sections" :key="item.key" :class="{ active: currentSection === item.key }" :aria-current="currentSection === item.key ? 'page' : undefined" @click="section(item)">{{ item.label }}</button>

@@ -2,9 +2,10 @@
 .mobile-edition body { overscroll-behavior:none; -webkit-text-size-adjust:100%; }
 .mobile-edition #app { height:100dvh; }
 .ios-shell { height:100dvh; width:100%; overflow:hidden; background:var(--canvas); color:var(--ink); position:relative; }
-.ios-scroll-content { height:100%; box-sizing:border-box; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top) + 18px) max(20px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 120px) max(20px, env(safe-area-inset-left)); scroll-padding-bottom:120px; }
-.ios-native-chrome .ios-scroll-content { padding-bottom:calc(var(--ios-native-bottom, 90px) + 16px); scroll-padding-bottom:calc(var(--ios-native-bottom, 90px) + 16px); }
-.ios-native-back-space { display:inline-block; width:40px; min-width:40px; height:32px; }
+.ios-scroll-content { height:100%; box-sizing:border-box; overflow-y:auto; overscroll-behavior-y:contain; -webkit-overflow-scrolling:touch; padding:calc(env(safe-area-inset-top) + 8px) max(16px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 98px) max(16px, env(safe-area-inset-left)); scroll-padding-bottom:98px; }
+.ios-native-chrome .ios-scroll-content { padding-bottom:calc(var(--ios-native-bottom, 90px) + 8px); scroll-padding-bottom:calc(var(--ios-native-bottom, 90px) + 8px); }
+.android-edition .ios-scroll-content { padding-top:calc(env(safe-area-inset-top) + 8px); padding-bottom:calc(60px + env(safe-area-inset-bottom)); scroll-padding-bottom:calc(60px + env(safe-area-inset-bottom)); }
+.ios-native-back-space { display:inline-block; width:44px; min-width:44px; height:44px; }
 .ios-native-chrome .appbar .back { display:none !important; }
 .ios-shell .ios-scroll-content:has(.ios-fixed-feature) { display:flex; flex-direction:column; overflow:hidden; }
 .ios-shell .ios-scroll-content:has(.ios-fixed-feature) > .ios-page-heading,
@@ -21,22 +22,19 @@
 .ios-shell .column-page .col-body { overflow:hidden; }
 .ios-shell .column-page .col-tab { white-space:nowrap; }
 .ios-page-heading, .ios-section-nav, .ios-page-stage { max-width:1080px; margin-left:auto; margin-right:auto; }
-.ios-page-heading { margin-bottom:24px; }
-.ios-heading-kicker { display:flex; align-items:center; gap:9px; font-size:13px; color:var(--muted); margin-bottom:18px; min-height:28px; }
+.ios-page-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; margin-bottom:8px; }
+.ios-heading-leading { display:flex; align-items:center; gap:10px; min-width:0; }
 .ios-brand-icon { display:inline-flex; width:26px; height:26px; }
 .ios-brand-icon img { width:100%; height:100%; }
-.ios-school-badge { margin-left:auto; font-size:11px; border:1px solid var(--line); border-radius:20px; padding:5px 10px; }
-.ios-back-button { border:0; background:transparent; color:var(--ink); width:32px; min-height:32px; display:grid; place-items:center; padding:0; }
-.ios-page-heading h1 { font-size:36px; line-height:1.15; letter-spacing:-.7px; font-weight:400; margin:0 0 10px; }
-.ios-page-heading p { font-size:14px; color:var(--muted); margin:0; line-height:1.6; }
-.ios-section-nav { display:flex; align-items:center; gap:8px; margin-bottom:24px; }
-.ios-section-nav button { border:0; border-radius:16px; padding:10px 18px; font-size:16px; min-height:44px; color:var(--muted); background:transparent; transition:background 180ms,color 180ms; }
+.ios-school-badge { flex-shrink:0; max-width:38%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; border:1px solid var(--line); border-radius:20px; padding:4px 8px; }
+.ios-back-button { border:0; background:transparent; color:var(--ink); width:44px; min-width:44px; min-height:44px; display:grid; place-items:center; padding:0; }
+.ios-page-heading h1, .android-edition .ios-page-heading h1 { font-size:22px; line-height:1.25; letter-spacing:0; font-weight:400; margin:0; overflow-wrap:anywhere; }
+.ios-section-nav { display:flex; align-items:center; gap:4px; margin-bottom:8px; }
+.ios-section-nav button { border:0; border-radius:12px; padding:8px 16px; font-size:15px; min-height:44px; color:var(--muted); background:transparent; transition:background 180ms,color 180ms; }
 .ios-section-nav button.active { background:var(--accent-soft); color:var(--accent); }
 .ios-section-nav .ios-course-shortcut { margin-left:auto; padding:10px 12px; font-size:14px; color:var(--accent); display:flex; align-items:center; gap:5px; }
 .ios-page-stage { position:relative; min-height:240px; }
-.ios-page-stage.embedded { height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 306px); min-height:260px; overflow:hidden; }
-.ios-detail-page .ios-page-heading h1 { font-size:26px; }
-.ios-detail-page .ios-page-stage { min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 225px); }
+.ios-detail-page .ios-page-stage { min-height:0; }
 /* One shared glass surface, with an independently moving selection lens. */
 .ios-dock-wrap { position:fixed; z-index:1900; bottom:calc(env(safe-area-inset-bottom) + 12px); left:max(16px, env(safe-area-inset-left)); right:max(16px, env(safe-area-inset-right)); max-width:620px; margin:auto; display:flex; gap:12px; height:76px; }
 .ios-dock-wrap::before { content:''; position:absolute; inset:-10px -30px calc(-1 * (env(safe-area-inset-bottom) + 12px)); background:linear-gradient(transparent,var(--canvas)); pointer-events:none; z-index:-1; }
@@ -117,6 +115,17 @@
 .ios-shell .el-card { border-radius:24px !important; }
 .ios-shell .el-card__header { padding:20px 20px 0; }
 .ios-shell .el-card__body { padding:20px; }
+/* Scope density changes to the shared mobile shell, including desktop-specific
+   component styles reused by note lists. Keep touch controls at least 44px. */
+#app .ios-shell .el-card__header { padding:14px 16px 0; font-size:20px; }
+#app .ios-shell .el-card__body { padding:16px; }
+#app .ios-shell .note-view { padding:0; }
+#app .ios-shell .selection-bar { margin-bottom:8px; gap:8px; font-size:13px; }
+#app .ios-shell .note-tabs { border-radius:16px !important; }
+#app .ios-shell .note-tabs > .el-tabs__header { margin:0; }
+#app .ios-shell .note-tabs > .el-tabs__header .el-tabs__nav-wrap { padding:0 10px; }
+#app .ios-shell .note-tabs > .el-tabs__content { padding:10px; }
+#app .ios-shell .note-tabs .crumb { margin:4px 0 8px; }
 .ios-shell .el-pagination { flex-wrap:wrap; gap:8px; }
 .ios-shell .queue-file, .ios-shell .image-file-name { min-width:0; overflow-wrap:anywhere; }
 .ios-shell .iframe-bar { height:auto; min-height:48px; flex-wrap:wrap; gap:8px; padding:8px; border-color:var(--line); }
@@ -124,7 +133,7 @@
 .ios-shell .iframe-page { border-radius:22px; overflow:hidden; }
 .mobile-edition.dark .ios-glass-dock, .mobile-edition.dark .ios-glass-search { border-color:rgba(235,219,241,.16); box-shadow:0 8px 30px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.08); }
 .mobile-edition.dark .ios-glass-lens { box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 5px rgba(0,0,0,.1); }
-@media (min-width:768px) { .ios-scroll-content { padding-left:max(40px,env(safe-area-inset-left)); padding-right:max(40px,env(safe-area-inset-right)); } .ios-hub { display:grid; grid-template-columns:1fr 1fr; gap:0 48px; padding-top:25px; } .ios-hub-art { margin:40px auto 20px; grid-column:1; } .ios-hub-copy { grid-column:1; } .ios-hub-guide { grid-column:2; grid-row:1 / span 2; align-self:center; margin:0; } .ios-hub-footnote { grid-column:1 / span 2; margin-top:40px; } }
+@media (min-width:768px) { .ios-scroll-content { padding-left:max(24px,env(safe-area-inset-left)); padding-right:max(24px,env(safe-area-inset-right)); } .ios-hub { display:grid; grid-template-columns:1fr 1fr; gap:0 48px; padding-top:25px; } .ios-hub-art { margin:40px auto 20px; grid-column:1; } .ios-hub-copy { grid-column:1; } .ios-hub-guide { grid-column:2; grid-row:1 / span 2; align-self:center; margin:0; } .ios-hub-footnote { grid-column:1 / span 2; margin-top:40px; } }
 @media (max-width:374px) { .ios-dock-wrap { gap:8px; left:12px; right:12px; height:70px; } .ios-glass-search { width:62px; min-width:62px; height:70px; } .ios-glass-dock button svg { width:24px; height:24px; } .ios-glass-dock button span { font-size:12px; } .ios-scroll-content { padding-left:16px; padding-right:16px; } }
 @media (prefers-reduced-motion:reduce) { .mobile-edition *, .mobile-edition *::before, .mobile-edition *::after { scroll-behavior:auto !important; transition-duration:.001ms !important; animation-duration:.001ms !important; } }
 @media (prefers-reduced-transparency:reduce) { .ios-glass-dock, .ios-glass-search { background:var(--surface); -webkit-backdrop-filter:none; backdrop-filter:none; } .ios-glass-lens { background:var(--accent-soft); } }.ios-scroll-content { scrollbar-width:none; } .ios-scroll-content::-webkit-scrollbar { display:none; }

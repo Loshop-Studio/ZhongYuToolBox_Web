@@ -1,10 +1,16 @@
 // Disposable localhost fixture. Every remote fetch is intercepted; no official writes.
 import { createBoard } from 'ezy-board-viewer'
 import { aesEncrypt, aesDecrypt } from '../src/utils/crypto'
+const mobilePlatform = import.meta.env.VITE_PLATFORM
+const nativeIOS = mobilePlatform === 'ios' && new URL(location.href).searchParams.has('nativeChrome')
 const base = 'http://sxz.api.zykj.org'
 localStorage.setItem('token','test.'+btoa(JSON.stringify({sub:'QA_UI_ONLY',exp:Math.floor(Date.now()/1000)+3600}))+'.test')
 for(const [key,value] of Object.entries({apiBaseUrl:base,userId:'QA_UI_ONLY',realName:'演示账号 · 测试数据',photo:'icon.png',schoolCode:'sxz'})) localStorage.setItem(key,value)
-Object.defineProperty(window,'nativeHost',{value:{kind:'webview2',setThemeDark:async()=>{}}})
+Object.defineProperty(window,'nativeHost',{value:{kind:nativeIOS ? 'ios' : mobilePlatform === 'android' ? 'android' : 'webview2',setThemeDark:async()=>{},syncNavigation:async()=>{}}})
+if (nativeIOS) {
+  document.documentElement.classList.add('ios-native-chrome')
+  document.documentElement.style.setProperty('--ios-native-bottom','83px')
+}
 Object.defineProperty(window,'electronAPI',{value:{saveFile:async(bytes:ArrayBuffer,name:string)=>{
   document.getElementById('fixture-export')?.remove()
   const link=document.createElement('a');link.id='fixture-export';link.textContent='测试导出文件：'+name;link.download=name;link.href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));link.style.cssText='position:fixed;bottom:12px;right:24px;z-index:9999;background:#fff;padding:12px;border:1px solid #705776;color:#705776';document.body.append(link);return {canceled:false}
@@ -23,6 +29,7 @@ previewBytes.set(location.origin+'/fixture-note/preview.png',await (await fetch(
 previewResources.push({pageIndex:1,resourceType:2,ossImageUrl:location.origin+'/example/a888b5fb-e65d-4611-a3af-1f80a0fb6ced/screenshot.png'})
 const noteTemplate={type:1,fileUrl:'https://fixture.invalid/note',parentId:'0',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,updateTime:'2026-10-01'}
 let notes=[{...noteTemplate,fileId:'QA_NOTE',fileName:'数学 · 几何复习'},{...noteTemplate,fileId:'QA_NOTE_2',fileName:'物理 · 力学复习'},{...noteTemplate,type:0,fileId:'QA_FOLDER',fileName:'归档'},{...noteTemplate,fileId:'QA_RECYCLE',fileName:'已废弃 · 几何草稿',isRecycleBin:true}]
+if (new URL(location.href).searchParams.has('density')) notes.push(...Array.from({length:20},(_,i)=>({...noteTemplate,fileId:'QA_DENSITY_'+i,fileName:'离线测试笔记 '+(i+1)})))
 const task={id:77,examTaskId:77,examId:991,examName:'数学 · 单元测评（离线演示）',topicName:'数学',enableScore:true,groups:[{questions:[{id:11,originScore:2,myScore:10,score:10,completed:false,number:'1'},{id:12,originScore:1,score:5,number:'2'}]}]}
 const html='<div class="stem"><p>已知 x² + y² = 1，求图形面积。</p><img src="'+image+'"></div><div class="answers"><p>答案：π。</p></div><div class="analysis"><p>半径为 1，由圆的面积公式可得。</p></div>'
 let mistakeItems=[{id:1,source:'数学 · 单元测评',stemShoot:image,creationTime:'2026-10-01'},{id:2,source:'数学 · 综合训练',stemShoot:image,creationTime:'2026-09-30'}]

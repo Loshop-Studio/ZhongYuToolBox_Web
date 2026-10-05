@@ -1,9 +1,7 @@
 /* aoki's existing theme on phones/tablets; desktop rules stay unchanged. */
-.android-edition .ios-scroll-content { padding-top:18px; padding-bottom:calc(86px + env(safe-area-inset-bottom)); scroll-padding-bottom:86px; }
-.android-edition .ios-back-button { width:40px; height:40px; min-height:40px; border-radius:50%; background:var(--surface); border:1px solid var(--line); }
+.android-edition .ios-back-button { border-radius:50%; background:var(--surface); border:1px solid var(--line); }
 .android-edition .ios-shell .col-mobile-bar { display:none !important; }
 .android-edition .iframe-back { flex-shrink:0; }
-.android-edition .ios-page-heading h1 { font-size:32px; }
 .android-edition body { overscroll-behavior: none; }
 .android-edition .layout-root { height: 100dvh; }
 .android-edition .el-dialog { max-width: calc(100vw - 24px); }
