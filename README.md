@@ -1,5 +1,4 @@
-# ZhongYuToolBox · Windows aoki edition
-
+# ZhongYuToolBox
 作者 **Loshop**；
 
 ## 应用下载与错题 PDF
@@ -20,7 +19,7 @@ npm run build:electron
 # Uniapp版本构建
 
 ```Shell
-npm run build:uniapp
+npm run build:plus
 ```
 
 ## Webview2版本运行与构建
@@ -30,20 +29,14 @@ Windows 10/11 x64，.NET Framework 4.8，Microsoft Edge WebView2 Runtime。解�
 账号缓存位于 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2`，同一 Windows 用户打开不同版本的便携包会复用登录状态。此目录不在发布包内；当前实现会在本地保存 Token 和用于自动重登的账号、密码，用户中心退出登录会移除这些登录凭据。
 
 ```powershell
-npm ci
-npm run test:pdf
-npm run test:linspirer
 npm run dev:ww2
 # 正式构建（与 build:windows 相同）
 npm run build:ww2
-npm run build:installer
 ```
 
 构建需要 Windows 内置 C# 编译器，不需要 .NET SDK。缺少 WebView2 SDK 缓存时由脚本从官方 NuGet 下载固定版本。保留上游 Android / 5+ Worker 与模板兼容性修复；本项目只发布 Windows 包。
 
 `dev:ww2` 编译原生窗口后启动仅监听 `127.0.0.1:5174` 的 Vite 服务，窗口加载开发页面，支持 HMR 和 WebView2 开发工具。关闭窗口或按 Ctrl+C 会停止启动器创建的服务。可用 `npm run dev:ww2 -- --port=5175` 换端口；端口被占用时直接报错，不连接其他服务。开发账号缓存单独位于 `%LOCALAPPDATA%\ZhongYuToolbox-aoki-WebView2-dev`，正式版缓存不受影响；开发产物不能打包为安装程序。
-
-1.1.5 修复领创计算器设备号大小写问题：密码计算与联网用户查询统一去除首尾空白并转为小写，空设备号不发请求。回归使用虚构设备与用户资料。
 
 得意黑按 SIL Open Font License 1.1 分发，授权见 public/fonts/OFL.txt。设计参考 Emil Kowalski 的 Design Engineering 和 Wise Design，UI 独立实现。
 
@@ -59,9 +52,11 @@ PDF 正文使用思源宋体 CN Regular（Adobe / Google），按 SIL Open Font 
 
 验证：`npm run test:update`；`npm run dev` 后打开 `/tests/board-export.html`，点击「开始导出验证」检查多页 SVG、录制编码、音轨与取消。测试仅使用合成资料。
 
-画板沿用上游 npm 依赖 `ezy-board-viewer@0.1.1`，不恢复已删除的本地组件目录。`npm ci` 自动应用导出取消、编码器释放、不同尺寸页面居中及旧 WebView ZIP 兼容补丁，说明见 [patches/README.md](patches/README.md)；升级该依赖时需核对并移除或更新补丁。保留上游新增的云笔记预览、PDF 导出与中文字体功能。
+画板沿用上游 npm 依赖 `ezy-board-viewer@0.1.4`，不恢复已删除的本地组件目录。`npm ci` 自动应用导出取消、编码器释放、不同尺寸页面居中及旧 WebView ZIP 兼容补丁，说明见 [patches/README.md](patches/README.md)；升级该依赖时需核对并移除或更新补丁。保留上游新增的云笔记预览、PDF 导出与中文字体功能。
 
 ## Android / iPhone / iPad 原生构建
+
+> 安卓与IOS平台原生编译功能尚不完善。
 
 新增平台标签 `android`、`ios`，采用资源、测评、问答、我的四组移动导航；原有浏览器、Electron、WebView2、H5+ 布局及作者最新业务页面保留。原登录统计与支持作者入口继续使用。
 
