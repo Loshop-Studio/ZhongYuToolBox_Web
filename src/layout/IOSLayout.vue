@@ -14,7 +14,7 @@
         <button v-for="item in sections" :key="item.key" :class="{ active: currentSection === item.key }" :aria-current="currentSection === item.key ? 'page' : undefined" @click="section(item)">{{ item.label }}</button>
         <button v-if="activeGroup === 'resources' && currentSection === 'lesson' && auth.isLoggedIn" class="ios-course-shortcut" @click="router.push('/course')">选课 <el-icon><TopRight /></el-icon></button>
       </nav>
-      <div class="ios-page-stage" :class="{ embedded: route.path === '/course', 'ios-fixed-feature': ['/column', '/course'].includes(route.path) || detail }">
+      <div class="ios-page-stage" :class="{ embedded: route.path === '/course', 'ios-fixed-feature': fixedFeature }">
         <router-view v-slot="{ Component, route: pageRoute }">
           <keep-alive><component :is="Component" v-if="pageRoute.meta.keepAlive" :key="String(pageRoute.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" /></keep-alive>
           <component :is="Component" v-if="!pageRoute.meta.keepAlive" :key="String(pageRoute.name) + '|' + auth.apiBaseUrl + '|' + auth.userId" />
@@ -47,6 +47,9 @@ const activeGroup = computed(() => mobileGroupForPath(route.path))
 const currentGroup = computed(() => mobileGroups.find(g => g.key === activeGroup.value)!)
 const currentSection = computed(() => mobileSectionForPath(route.path, route.query.section))
 const detail = computed(() => !!route.meta.hideLayoutHeader && !['/column', '/course'].includes(route.path) || activeGroup.value === 'me' && !['/me', '/login'].includes(route.path))
+// Back navigation does not imply a bounded viewport. Personal tools and About
+// use the outer scroller; only views with their own detail/workspace layout fit it.
+const fixedFeature = computed(() => !!route.meta.hideLayoutHeader)
 const heading = computed(() => route.path === '/login' ? '你的账号' : detail.value ? String(route.meta.title || currentGroup.value.label) : currentGroup.value.label)
 const backAvailable = computed(() => detail.value || route.path === '/login' || route.path === '/course')
 const sections = computed(() => activeGroup.value === 'resources' ? resourceSections : activeGroup.value === 'assessment' ? assessmentSections : [])
