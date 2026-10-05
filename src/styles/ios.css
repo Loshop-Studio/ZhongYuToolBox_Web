@@ -35,6 +35,13 @@
 .ios-section-nav .ios-course-shortcut { margin-left:auto; padding:10px 12px; font-size:14px; color:var(--accent); display:flex; align-items:center; gap:5px; }
 .ios-page-stage { position:relative; min-height:240px; }
 .ios-detail-page .ios-page-stage { min-height:0; }
+/* Detail views already supply an action bar. Keep a single title/back row,
+   including room for UIKit's native back button at the same top safe inset. */
+#app .ios-detail-page:has(.ios-fixed-feature .appbar) > .ios-page-heading { display:none; }
+#app .ios-shell .ios-detail-page .appbar { height:52px; min-height:52px; box-sizing:border-box; padding:0 4px; margin-bottom:8px; }
+#app .ios-shell .ios-detail-page .appbar .back { width:44px; height:44px; flex-shrink:0; }
+#app .ios-shell .ios-detail-page .appbar-title { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ios-native-chrome #app .ios-detail-page .appbar { padding-left:52px; }
 /* One shared glass surface, with an independently moving selection lens. */
 .ios-dock-wrap { position:fixed; z-index:1900; bottom:calc(env(safe-area-inset-bottom) + 12px); left:max(16px, env(safe-area-inset-left)); right:max(16px, env(safe-area-inset-right)); max-width:620px; margin:auto; display:flex; gap:12px; height:76px; }
 .ios-dock-wrap::before { content:''; position:absolute; inset:-10px -30px calc(-1 * (env(safe-area-inset-bottom) + 12px)); background:linear-gradient(transparent,var(--canvas)); pointer-events:none; z-index:-1; }
