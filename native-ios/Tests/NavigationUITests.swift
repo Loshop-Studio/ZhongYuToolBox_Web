@@ -15,8 +15,12 @@ final class NavigationUITests: XCTestCase {
     }
     func testFeedbackEntryAndTemplate() {
         let app = XCUIApplication(); app.launchArguments = ["--ios-ui-fixtures"]; app.launch()
+        // UIKit tabs appear before Vue initializes its route-selection callback.
+        // Wait for the fixture page, otherwise startup can overwrite an early tap.
+        XCTAssertTrue(app.webViews.firstMatch.staticTexts["测试文章 1"].waitForExistence(timeout: 30))
         let tabs = app.tabBars.firstMatch
         XCTAssertTrue(tabs.waitForExistence(timeout: 30)); tabs.buttons["我的"].tap()
+        XCTAssertTrue(app.webViews.firstMatch.buttons["账号与登录"].waitForExistence(timeout: 15))
         let about = app.webViews.firstMatch.buttons["关于应用"]
         XCTAssertTrue(about.waitForExistence(timeout: 15))
         for _ in 0..<5 { if about.isHittable { break }; app.webViews.firstMatch.swipeUp() }

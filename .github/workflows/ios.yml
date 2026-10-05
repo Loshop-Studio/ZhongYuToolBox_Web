@@ -47,6 +47,21 @@ jobs:
           path: |
             release/ios-fork/
             release/ios-upstream/
-            release/ios/test-evidence/
           if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-navigation-test-evidence
+          path: |
+            release/ios/test-evidence/*-attachments/
+            release/ios/test-evidence/*.png
+          if-no-files-found: warn
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: iOS-failed-xcresults
+          path: release/ios/test-evidence/*.xcresult/
+          if-no-files-found: warn
           retention-days: 30
