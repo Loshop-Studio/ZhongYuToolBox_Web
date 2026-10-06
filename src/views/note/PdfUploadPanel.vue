@@ -182,13 +182,14 @@ async function applyFile(file: File) {
     orientationText.value = result.rotatedPages.length
       ? `共 ${result.totalPages} 页，已在本机旋转 ${result.rotatedPages.length} 张竖版页面。原文件未修改。`
       : `共 ${result.totalPages} 页，没有竖版页面，保持原方向。`
+    if (result.renderedFromEncrypted) orientationText.value += ' 此 PDF 含加密标记，已在本机渲染为兼容 PDF。'
     const preview = await convertPdfToImages(result.file, undefined, {maxPages: 5, canvasSize: {width: NOTE_CANVAS.width / 4, height: NOTE_CANVAS.height / 4}})
     if (revision === selectionRevision) buildPreview(preview)
   } catch (error: any) {
     if (revision !== selectionRevision) return
     currentFile.value = null
     preparedPdf.value = null
-    orientationText.value = 'PDF 本地处理失败，请重新选择文件。'
+    orientationText.value = 'PDF 本地处理失败：' + formatError(error)
     ElMessage.error('PDF 处理失败：' + formatError(error))
   } finally {
     if (revision === selectionRevision) preparing.value = false

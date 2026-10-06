@@ -4,6 +4,8 @@ export interface LandscapePdfResult {
   file: File
   totalPages: number
   rotatedPages: number[]
+  /** Encrypted input was locally rendered, rather than rewritten as vector content. */
+  renderedFromEncrypted?: boolean
 }
 
 /** Preserve PDF content and crop boxes; change only portrait pages' display rotation. */
@@ -11,7 +13,12 @@ export async function prepareLandscapePdf(
   file: File,
   onProgress?: (current: number, total: number) => void
 ): Promise<LandscapePdfResult> {
-  const document = await PDFDocument.load(await file.arrayBuffer())
+  // Read encryption metadata only; never save encrypted streams with pdf-lib.
+  const document = await PDFDocument.load(await file.arrayBuffer(), { ignoreEncryption: true })
+  if (document.isEncrypted) {
+    const { renderEncryptedLandscapePdf } = await import('./pdfEncrypted')
+    return renderEncryptedLandscapePdf(file, onProgress)
+  }
   const pages = document.getPages()
   if (!pages.length) throw new Error('PDF 中没有可上传的页面')
   const rotatedPages: number[] = []
