@@ -7,11 +7,12 @@ const root=resolve(dirname(fileURLToPath(import.meta.url)),'..')
 const source=readFileSync(resolve(root,'native-android/bridge.js'),'utf8')
 const checks=[]
 function check(value,name){assert.ok(value,name);checks.push(name)}
-function sandbox(guest=false){
+function sandbox(guest=false,options={}){
   const stages=new Map(),calls=[],responses=new Map(),listeners=new EventTarget()
   let sequence=0
   class XHR extends EventTarget{constructor(){super();this.responseType='';this.timeout=0;this.withCredentials=false}open(){} }
-  const context={URL,Request,Response,Headers,Event,EventTarget,Uint8Array,DOMException,AbortController,Proxy,Object,Map,Set,JSON,
+  class GuardedRequest extends Request{constructor(...args){super(...args);if(options.stripDate)this.headers.delete('date')}}
+  const context={URL,Request:GuardedRequest,Response,Headers,Event,EventTarget,Uint8Array,DOMException,AbortController,Proxy,Object,Map,Set,JSON,
     setTimeout,clearTimeout,btoa,atob,console,location:new URL(guest?'https://sxz.school.zykj.org/index.html':'https://appassets.androidplatform.net/assets/index.html'),
     XMLHttpRequest:XHR,document:{addEventListener(){}},addEventListener:listeners.addEventListener.bind(listeners),dispatchEvent:listeners.dispatchEvent.bind(listeners),
     fetch:async(input)=>{const url=typeof input==='string'?input:input.url;if(!responses.has(url))throw Error('Unexpected native browser fetch: '+url);return new Response(responses.get(url))}
@@ -54,6 +55,12 @@ await new Promise((resolve,reject)=>{xhr.onload=resolve;xhr.onerror=reject;xhr.s
 assert.deepEqual(new Uint8Array(xhr.response),bytes);checks.push('官方页面 XHR/Axios 二进制响应')
 const guest=sandbox(true)
 check(!guest.context.nativeHost,'远程页面没有本机保存/设备/窗口接口')
+const guarded=sandbox(false,{stripDate:true})
+const signingDate='Tue, 06 Oct 2026 00:00:00 GMT'
+for(const headers of [{Date:signingDate},new Headers({date:signingDate}),[['DATE',signingDate]]]){
+  await guarded.context.fetch('https://test.oss-cn-hangzhou.aliyuncs.com/test',{method:'PUT',headers,body:bytes})
+  check(guarded.calls.filter(c=>c.method==='request').at(-1).args.headers.date===signingDate,'Chromium 过滤 Date 后仍原样透传 OSS 签名日期（多种 HeadersInit）')
+}
 const frame={...context};frame.window=frame;frame.top={};frame.ZyAndroid={postMessage(){throw Error('iframe must not call native')}}
 delete frame.__zytbNetworkInstalled;delete frame.nativeHost
 createContext(frame);runInContext(source,frame);check(!frame.nativeHost,'iframe 不注册原生桥')

@@ -45,7 +45,12 @@
           }
         }
       }
-      const result=await call('request',{session,url:req.url,method:req.method,headers:Object.fromEntries(req.headers)});
+      const headers=Object.fromEntries(req.headers);
+      // Chromium removes Date from Request headers. The native transport must
+      // receive the caller's exact OSS signing date, without generating a new one.
+      const signingDate=init?.headers && new Headers(init.headers).get('date');
+      if(signingDate!==null && signingDate!==undefined) headers.date=signingDate;
+      const result=await call('request',{session,url:req.url,method:req.method,headers});
       if(req.signal.aborted) throw new DOMException('请求已取消','AbortError');
       const bytes = [204,205,304].includes(result.status) || req.method==='HEAD' ? null : (await originalFetch(result.bodyUrl)).body;
       return new Response(bytes,{status:result.status,statusText:result.statusText,headers:result.headers});
