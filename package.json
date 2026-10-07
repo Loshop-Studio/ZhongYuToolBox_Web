@@ -1,6 +1,6 @@
 {
   "name": "zhongyu-toolbox-rev",
-  "version": "1.1.14-aoki",
+  "version": "1.1.15-aoki",
   "private": true,
   "author": "Loshop; co-author: aoki",
   "description": "ZhongYuToolBox aoki Windows WebView2, Android and iOS WKWebView editions, themes, local image/PDF conversion",
@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "test:pdf": "node scripts/test-pdf.mjs",
+    "test:oss": "node scripts/test-oss-upload-date.mjs",
     "test:linspirer": "node scripts/test-linspirer.mjs",
     "test:apps": "node scripts/test-app-downloads.mjs",
     "test:picture": "node scripts/test-picture.mjs",

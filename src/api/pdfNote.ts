@@ -5,7 +5,7 @@
  * resourceList（每页 9 条固定结构）-> Resources/AddOrUpdate -> Notes/AddOrUpdate
  */
 import { aesEncrypt } from '@/utils/crypto'
-import { uploadFile } from '@/utils/oss'
+import { createOssUploadSession, type OssUploadSession } from '@/utils/oss'
 import { blobToMd5, convertPdfToImages, type PdfPageImage } from '@/utils/pdf'
 import { prepareLandscapePdf } from '@/utils/pdfLandscape'
 import { PLATFORM, IS_AOKI as IS_WINDOWS } from '@/config'
@@ -354,6 +354,7 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
   const previewPages: PdfPageImage[] = []
   let noteRoot = ''
   let pageIndex = 0
+  let uploadSession: OssUploadSession | null = null
 
   const uploadOnePage = async (img: PdfPageImage, total: number) => {
     if (img.blob.type !== 'image/webp') throw new Error('笔记图片必须为 WebP 格式')
@@ -365,7 +366,8 @@ export async function uploadPdfAsNote(opts: UploadPdfOptions): Promise<PdfPageIm
     for (const [fileIndex, resource] of resources.entries()) {
       assertSession()
       const remoteName = resource.type === 0 ? IMG_FILENAME : resource.rel
-      const uploadedUrl = await uploadFile(resource.blob, userId, 'note_v2', customFileId, pageHash + '/' + remoteName)
+      uploadSession ??= await createOssUploadSession(userId, 'note_v2', customFileId)
+      const uploadedUrl = await uploadSession.upload(resource.blob, pageHash + '/' + remoteName)
       if (!noteRoot) {
         const parsed = new URL(uploadedUrl)
         const suffix = pageHash + '/' + remoteName

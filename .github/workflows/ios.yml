@@ -22,6 +22,7 @@ jobs:
       - run: npm run test:login
       - run: npm run test:update
       - run: npm run test:stats
+      - run: npm run test:oss
       - run: npm run test:ios
       - run: npm run build:ios
       - name: Preserve fork IPA

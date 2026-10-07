@@ -32,7 +32,7 @@ final class NavigationUITests: XCTestCase {
         XCTAssertTrue(web.buttons["复制反馈信息"].exists)
         XCTAssertTrue(web.links["在 GitHub 提交问题 ↗"].exists)
         let field = web.textViews.firstMatch
-        XCTAssertTrue(field.exists); XCTAssertTrue((field.value as? String ?? "").contains("1.1.14"))
+        XCTAssertTrue(field.exists); XCTAssertTrue((field.value as? String ?? "").contains("1.1.15"))
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = "iPhone in-app feedback entry and local diagnostic template"; shot.lifetime = .keepAlways; add(shot)
     }

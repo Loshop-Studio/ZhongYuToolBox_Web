@@ -53,7 +53,7 @@ const mocks = {
   '@/utils/plusPicker': 'export const isPlus = false;',
   '@/utils/crypto': 'export const aesEncrypt = value => value;',
   '@/utils/pdf': `import {createHash} from 'node:crypto'; export const blobToMd5 = async blob => createHash('md5').update(Buffer.from(await blob.arrayBuffer())).digest('hex').toUpperCase(); export async function convertPdfToImages(file, progress, options) { return globalThis.renderPages(file, options); }`,
-  '@/utils/oss': `export async function uploadFile(blob, userId, fc, fileId, filename) { const url = 'https://actual-bucket.oss-cn-hangzhou.aliyuncs.com/note_v2/res/'+userId+'/20990101/'+fileId+'/'+filename; globalThis.uploads.push({blob, url, filename}); return url; }`
+  '@/utils/oss': `export async function createOssUploadSession(userId, fc, fileId) { globalThis.grants++; return { dateStamp:'20990101', async upload(blob, filename) { const url = 'https://actual-bucket.oss-cn-hangzhou.aliyuncs.com/note_v2/res/'+userId+'/20990101/'+fileId+'/'+filename; globalThis.uploads.push({blob, url, filename}); return url; } }; }`
 }
 await build({ entryPoints: ['src/api/pdfNote.ts'], outfile: output + '/upload.mjs', bundle: true, platform: 'node', format: 'esm', external: ['canvas'], plugins: [{name:'offline-test-mocks', setup(builder) {
   builder.onResolve({filter:/^@\//}, args => mocks[args.path] ? {path:args.path, namespace:'mock'} : {path:resolve('src',args.path.slice(2)+'.ts')})
@@ -64,6 +64,7 @@ globalThis.window = {}
 globalThis.localStorage = {getItem: key => key === 'token' ? 'test.'+payload+'.test' : null}
 let saves = [], failTemplate = true
 globalThis.uploads = []
+globalThis.grants = 0
 globalThis.fetch = async (url, options) => {
   if (!options) {
     if (failTemplate && url.endsWith('/header.bin')) { failTemplate=false; throw new Error('TEST template failure') }
@@ -86,6 +87,7 @@ assert.equal(uploads.length,0)
 const progress=[]
 await uploadPdfAsNote({file:input,noteName:'TEST_ONLY',onProgress:p=>progress.push(p)})
 assert.equal(uploads.length,18)
+assert.equal(grants,1, 'all note resources share one authorization and dated root')
 const resources = saves[0].body
 assert.equal(resources.length,18)
 for (const resource of resources) {

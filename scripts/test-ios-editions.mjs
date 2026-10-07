@@ -11,8 +11,8 @@ for (const upstream of [false, true]) {
  const outfile = resolve(`.test-output/ios-edition-${upstream}.mjs`)
  await build({ entryPoints:['.test-output/ios-edition-entry.ts'], outfile, bundle:true, platform:'node', format:'esm', define:{'import.meta.env':JSON.stringify({VITE_IS_BROWSER:'false',VITE_PLATFORM:'ios',...(upstream?{VITE_AUTHOR_STATS:'true',VITE_RELEASE_REPOSITORY:repository}:{})})} })
  const edition=await import(pathToFileURL(outfile))
- assert.equal(edition.APP_VERSION,'1.1.14-ios-beta2')
+ assert.equal(edition.APP_VERSION,'1.1.15-ios-beta1')
  assert.equal(edition.RELEASE_REPOSITORY,repository)
  assert.equal(edition.AUTHOR_STATS_ENABLED,true)
 }
-console.log('PASS: Beta 2 labels, separate release/feedback repositories; author statistics enabled in both editions.')
+console.log('PASS: 1.1.15 Beta 1 labels, separate release/feedback repositories; author statistics enabled in both editions.')
