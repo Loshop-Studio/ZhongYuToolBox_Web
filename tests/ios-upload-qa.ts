@@ -80,12 +80,18 @@ async function run() {
     const { image, dispose } = await decoded(page.blob)
     try {
     check(image.naturalWidth === 2880 && image.naturalHeight === 1800, 'WebP 尺寸保持 2880 × 1800')
-    const canvas = document.createElement('canvas'); canvas.width = 2880; canvas.height = 1800
-    const ctx = canvas.getContext('2d')!; ctx.drawImage(image, 0, 0)
-    for (const [x, y] of [[20, 20], [2860, 20], [20, 1780], [2860, 1780]]) {
-      const pixel = ctx.getImageData(x, y, 1, 1).data
-      check(pixel[0] > 180 && pixel[1] < 80 && pixel[2] < 80, '页面四角内容保留，无裁切')
-    }
+    // Sample the same source pixels without allocating another 5 MP surface.
+    // WKWebView can exhaust its canvas backing store during simulator runs.
+    const canvas = document.createElement('canvas'); canvas.width = 40; canvas.height = 40
+    try {
+      const ctx = canvas.getContext('2d')!
+      for (const [x, y] of [[20, 20], [2860, 20], [20, 1780], [2860, 1780]]) {
+        ctx.clearRect(0, 0, 40, 40)
+        ctx.drawImage(image, x - 20, y - 20, 40, 40, 0, 0, 40, 40)
+        const pixel = ctx.getImageData(20, 20, 1, 1).data
+        check(pixel[0] > 180 && pixel[1] < 80 && pixel[2] < 80, '页面四角内容保留，无裁切')
+      }
+    } finally { canvas.width = 0; canvas.height = 0 }
     } finally { dispose() }
   }
   const uploaded = await uploadPdfAsNote({ file, noteName: 'IOS_UPLOAD_TEST_ONLY', autoLandscape: false })
