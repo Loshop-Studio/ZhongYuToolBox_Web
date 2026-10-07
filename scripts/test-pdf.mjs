@@ -12,7 +12,9 @@ const {readNoteTemplate} = createRequire(import.meta.url)('../electron/noteTempl
 assert.equal(readNoteTemplate(resolve('public/example'), 'page_router.bin').length,40)
 for (const name of ['../../package.json', '/etc/passwd', 'res/image/random.webp']) assert.throws(()=>readNoteTemplate(resolve('public/example'),name))
 await mkdir(output, { recursive: true })
-await build({ entryPoints: ['src/utils/pdfLandscape.ts'], outfile: output + '/landscape.mjs', bundle: true, platform: 'node', format: 'esm' })
+// Legacy PDF.js optionally imports node-canvas; browser rendering is tested in
+// the native WebView QA. Keep that optional native module out of this Node bundle.
+await build({ entryPoints: ['src/utils/pdfLandscape.ts'], outfile: output + '/landscape.mjs', bundle: true, platform: 'node', format: 'esm', external: ['canvas'] })
 await build({entryPoints:['src/utils/noteCanvas.ts'],outfile:output+'/canvas.mjs',bundle:true,platform:'node',format:'esm'})
 const {NOTE_CANVAS,fitPageToCanvas}=await import(pathToFileURL(output+'/canvas.mjs'))
 for(const [w,h] of [[595,842],[842,595],[500,500],[3000,300],[300,3000]]) {const f=fitPageToCanvas(w,h,NOTE_CANVAS);assert.ok(f.x>=0&&f.y>=0);assert.ok(f.x+w*f.scale<=2880+1e-6);assert.ok(f.y+h*f.scale<=1800+1e-6)}
@@ -53,7 +55,7 @@ const mocks = {
   '@/utils/pdf': `import {createHash} from 'node:crypto'; export const blobToMd5 = async blob => createHash('md5').update(Buffer.from(await blob.arrayBuffer())).digest('hex').toUpperCase(); export async function convertPdfToImages(file, progress, options) { return globalThis.renderPages(file, options); }`,
   '@/utils/oss': `export async function uploadFile(blob, userId, fc, fileId, filename) { const url = 'https://actual-bucket.oss-cn-hangzhou.aliyuncs.com/note_v2/res/'+userId+'/20990101/'+fileId+'/'+filename; globalThis.uploads.push({blob, url, filename}); return url; }`
 }
-await build({ entryPoints: ['src/api/pdfNote.ts'], outfile: output + '/upload.mjs', bundle: true, platform: 'node', format: 'esm', plugins: [{name:'offline-test-mocks', setup(builder) {
+await build({ entryPoints: ['src/api/pdfNote.ts'], outfile: output + '/upload.mjs', bundle: true, platform: 'node', format: 'esm', external: ['canvas'], plugins: [{name:'offline-test-mocks', setup(builder) {
   builder.onResolve({filter:/^@\//}, args => mocks[args.path] ? {path:args.path, namespace:'mock'} : {path:resolve('src',args.path.slice(2)+'.ts')})
   builder.onLoad({filter:/.*/, namespace:'mock'}, args => ({contents:mocks[args.path],loader:'js'}))
 }}] })

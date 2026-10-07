@@ -19,12 +19,14 @@ let loading: Promise<any> | null = null
 export function loadPdfjs(): Promise<any> {
   if (loading) return loading
   loading = (async () => {
-    const pdfjs = await import('pdfjs-dist/build/pdf.mjs')
+    // Both realms need the legacy bundle: older Android WebViews lack
+    // Promise.withResolvers and a window-only polyfill cannot fix a real worker.
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
     if (isPlus) {
       // @ts-ignore 该子路径无类型声明；导入即注入 globalThis.pdfjsWorker（触发主线程伪 worker）
-      await import('pdfjs-dist/build/pdf.worker.min.mjs')
+      await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs')
     } else if (!pdfjs.GlobalWorkerOptions.workerPort) {
-      const workerUrl = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default
+      const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default
       pdfjs.GlobalWorkerOptions.workerPort = new Worker(workerUrl, { type: 'module' })
     }
     return pdfjs

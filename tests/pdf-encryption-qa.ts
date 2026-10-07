@@ -19,7 +19,32 @@ async function render(page: any, rotation = page.rotate) {
 }
 async function run() {
 try {
+  // Reproduce WebViews lacking this API, before either PDF.js bundle loads.
+  const promise = Promise as typeof Promise & { withResolvers?: unknown }
+  Reflect.deleteProperty(promise, 'withResolvers')
+  assert(typeof promise.withResolvers === 'undefined', '无法模拟缺少 withResolvers 的环境')
+  const NativeWorker = Worker
+  const workerChecks = new Set<string>()
+  const workerUrl = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')).default
+  const workerSource = await (await fetch(workerUrl)).text()
+  globalThis.Worker = class extends NativeWorker {
+    constructor(url: string | URL, options?: WorkerOptions) {
+      assert(new URL(url, location.href).href === new URL(workerUrl, location.href).href, '加载了非兼容解析 worker')
+      const script = `delete Promise.withResolvers;
+        postMessage({targetName:'compat-qa',stage:'before',value:typeof Promise.withResolvers});
+        ${workerSource}
+        postMessage({targetName:'compat-qa',stage:'after',value:typeof Promise.withResolvers});`
+      const blobUrl = URL.createObjectURL(new Blob([script], {type:'text/javascript'}))
+      super(blobUrl, options)
+      this.addEventListener('message', event => {
+        if (event.data?.targetName === 'compat-qa') workerChecks.add(event.data.stage + ':' + event.data.value)
+      })
+    }
+  }
   const pdfjs = await loadPdfjs()
+  assert(typeof promise.withResolvers === 'function', 'PDF.js 兼容包未补齐 withResolvers')
+  lines.push('PASS 缺少 Promise.withResolvers：兼容包恢复 PDF 处理')
+  output.textContent = lines.join('\n')
   for (const [name, url] of [['RC4', rc4], ['AES-128', aes128], ['AES-256', aes256]]) {
     const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer())
     const file = new File([bytes], name + '.pdf', { type: 'application/pdf' })
@@ -57,6 +82,8 @@ try {
     lines.push('PASS ' + name + '：4 页、逆时针旋转、未裁切、非空白、原文件不变')
     output.textContent = lines.join('\n')
   }
+  assert(workerChecks.has('before:undefined') && workerChecks.has('after:function'), '独立 worker 未恢复 withResolvers')
+  lines.push('PASS 独立解析 worker：缺失 API 后也能恢复并渲染')
   const file = new File([await (await fetch(locked)).arrayBuffer()], 'locked.pdf')
   try { await prepareLandscapePdf(file); throw new Error('密码保护文件未被识别') }
   catch (error) { assert((error as Error).message.includes('需要打开密码'), '缺少明确密码提示') }
