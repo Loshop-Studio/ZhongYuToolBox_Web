@@ -39,8 +39,6 @@ jobs:
           mkdir -p release/ios-upstream
           cp release/ios/*Loshop*.ipa release/ios-upstream/
           cp release/ios/*.{txt,md,json} release/ios-upstream/
-      - run: npm run build:ios -- --simulator --skip-web --upload-qa
-      - run: node scripts/test-ios-simulator.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,10 +48,28 @@ jobs:
             release/ios-upstream/
           if-no-files-found: error
           retention-days: 30
+  navigation:
+    runs-on: macos-26
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [iPhone, iPad]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build:ios -- --simulator --upload-qa
+      - run: node scripts/test-ios-simulator.mjs
+        env:
+          IOS_TEST_DEVICE: ${{ matrix.device }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: iOS-navigation-test-evidence
+          name: iOS-navigation-test-evidence-${{ matrix.device }}
           path: |
             release/ios/test-evidence/*-attachments/
             release/ios/test-evidence/*.png
@@ -62,7 +78,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: iOS-failed-xcresults
+          name: iOS-failed-xcresults-${{ matrix.device }}
           path: release/ios/test-evidence/*.xcresult/
           if-no-files-found: warn
           retention-days: 30

@@ -6,13 +6,15 @@ const app=resolve('release/ios/ZhongYuToolBox-Simulator.app'), output=resolve('r
 if(!existsSync(app)) throw Error('Build the simulator app first')
 mkdirSync(output,{recursive:true})
 function run(args) {
- const result=spawnSync('xcrun',['simctl',...args],{encoding:'utf8'})
+ const result=spawnSync('xcrun',['simctl',...args],{encoding:'utf8',timeout:360000})
  if(result.status!==0) throw Error(result.stderr || `simctl failed: ${args.join(' ')}`)
  console.log(result.stdout.trim()); return result.stdout
 }
 const devices=JSON.parse(run(['list','devices','available','--json'])).devices
 const ios26=Object.entries(devices).filter(([key])=>/iOS-26/.test(key)).flatMap(([,items])=>items)
-for(const kind of ['iPhone','iPad']) {
+const selectedDevice=process.env.IOS_TEST_DEVICE
+if(selectedDevice && !['iPhone','iPad'].includes(selectedDevice))throw Error('IOS_TEST_DEVICE must be iPhone or iPad')
+for(const kind of selectedDevice ? [selectedDevice] : ['iPhone','iPad']) {
  const device=ios26.find(d=>d.name.startsWith(kind)&&d.state==='Shutdown')
  if(!device) throw Error(`No iOS 26 ${kind} simulator available`)
  try {
@@ -53,5 +55,10 @@ for(const kind of ['iPhone','iPad']) {
    if(attachments.status!==0)throw Error('Could not export actual XCTest screenshots')
    if(test.status!==0)throw Error(`Navigation UI test failed (${test.status}, ${test.signal})`)
   }
- } finally { run(['shutdown',device.udid]) }
+ } finally {
+  // Cleanup must not hold a completed XCTest run indefinitely. CI runners are
+  // disposable, and each platform now has a separate job / simulator service.
+  const cleanup=spawnSync('xcrun',['simctl','shutdown',device.udid],{encoding:'utf8',timeout:120000})
+  if(cleanup.status!==0)console.warn('Simulator cleanup did not complete:',cleanup.error?.message || cleanup.stderr)
+ }
 }
