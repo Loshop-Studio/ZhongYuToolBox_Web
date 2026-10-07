@@ -38,7 +38,7 @@ for(const kind of ['iPhone','iPad']) {
    const bundle=join(output,kind === 'iPhone' ? 'NavigationUI.xcresult' : 'iPadLandscapeUI.xcresult')
    const cases=kind === 'iPhone'
     ? ['testIosUploadConversionAndTransport','testFeedbackEntryAndTemplate','testBoardReplyFitsPhoneAndSupportsEditing','testNativeGroupsAndSystemGlass','testColumnLayoutImagesAndNativeBack']
-    : ['testIPadLandscapeContentFitsScreen']
+    : ['testIosUploadConversionAndTransport','testIPadLandscapeContentFitsScreen']
    const test=spawnSync('xcodebuild',[
     '-project','native-ios/ZhongYuToolBox.xcodeproj','-scheme','ZhongYuToolBox',
     '-configuration','Release','-destination',`platform=iOS Simulator,id=${device.udid}`,

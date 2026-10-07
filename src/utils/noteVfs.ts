@@ -68,6 +68,14 @@ export interface NoteVfs {
   read(name: string): Promise<Uint8Array | null>
 }
 
+/** The original note router contains UUID directories. VFS pages use pageKey
+ * directories instead, so let the viewer discover those normalized directories.
+ * Keeping the original router here makes it look up snapshots in the wrong place.
+ */
+export function isNotePageRouter(path: string): boolean {
+  return path.replace(/\\/g, '/').split('/').pop()?.toLowerCase() === 'page_router.bin'
+}
+
 /** 默认 fetch 工厂：复用项目里的代理/直连策略 */
 async function defaultFetchBlob(url: string): Promise<Blob> {
   const res = await fetch(resourceFetchUrl(url))
@@ -177,7 +185,9 @@ export async function createNoteVfs(opts: NoteVfsOptions): Promise<NoteVfs> {
     pageDirMap.set(dir, p)
     names.push(dir + 'header.bin')
     names.push(dir + 'snapshot.bin')
-    for (const file of p.files || []) names.push(dir + file.fileName)
+    for (const file of p.files || []) {
+      if (!isNotePageRouter(file.fileName)) names.push(dir + file.fileName)
+    }
     if (p.mdbUrl) names.push(dir + MDB_VIRTUAL)
     for (const tu of p.touchUrls || []) {
       const base = tu.split(/[?#]/)[0].split('/').pop() || ('touch_' + p.pageKey + '.bin')
@@ -232,6 +242,7 @@ export async function createNoteVfs(opts: NoteVfsOptions): Promise<NoteVfs> {
   async function read(name: string): Promise<Uint8Array | null> {
     const seg = name.split('/')
     const base = seg[seg.length - 1]
+    if (isNotePageRouter(name)) return null
 
     // header.bin → 按页面尺寸 + 背景色 + 背景线合成
     if (base === 'header.bin') {

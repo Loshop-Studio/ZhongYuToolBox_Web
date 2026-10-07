@@ -1,6 +1,6 @@
 import type { NoteResource } from '@/api/note'
 import { proxyImgSrc } from './proxy'
-import type { NotePage, NoteImage } from './noteVfs'
+import { isNotePageRouter, type NotePage, type NoteImage } from './noteVfs'
 
 export const NOTE_IMAGE_EXT = /\.(jpg|jpeg|png|webp|gif|bmp)$/i
 export interface NoteImageEntry { raw: string; imgSrc: string }
@@ -17,6 +17,9 @@ export function collectNoteResources(resources: NoteResource[]) {
     const raw = noteResourceUrl(item), path = raw.split(/[?#]/)[0]
     const page: NotePage = boards.get(key) || { pageKey: key, snapshotUrl: '' }
     if (item.resourceType === 1) {
+      // VFS page directories are normalized to page numbers, not the UUIDs in
+      // the original whole-note router. It is not a per-page binary resource.
+      if (isNotePageRouter(path)) continue
       if (/snapshot\.bin$/i.test(path)) { page.snapshotUrl = raw; pageMap[key] ||= { originals: [] } }
       else if (/header\.bin$/i.test(path)) page.headerUrl = raw
       else if (/data\.mdb$/i.test(path)) page.mdbUrl = raw

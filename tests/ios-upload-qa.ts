@@ -5,6 +5,8 @@ import { imagesToPdf } from '../src/utils/imagesToPdf'
 import { uploadPdfAsNote } from '../src/api/pdfNote'
 import { fetchUserId, uploadFile } from '../src/utils/oss'
 import { addPicture } from '../src/api/picture'
+import 'element-plus/dist/index.css'
+import { notePreviewQa } from './note-preview-qa'
 
 const report = document.querySelector('#report')!, status = document.querySelector('#status')!
 const checks: string[] = [], calls: { url: string; method: string; bytes?: number }[] = []
@@ -102,6 +104,10 @@ async function run() {
   const url = await uploadFile(imageFile, '101', 'note_v2')
   await addPicture(url, imageFile.name, String(imageFile.size))
   check(calls.some(c => c.url.includes('/PictureLibrary/AddPictureAsync')) && calls.some(c => c.url.endsWith('.png') && c.bytes === imageFile.size), '图库原始图片上传、官方登记完成（模拟接口）')
+  // Note fixtures provide their own resource bytes. Restore native blob/data URL
+  // handling and the real canvas encoder before mounting the actual HD viewer.
+  HTMLCanvasElement.prototype.toBlob = nativeToBlob; window.fetch = nativeFetch
+  await notePreviewQa((ok, label) => check(ok, '高清笔记：' + label))
   status.textContent = 'iOS上传回归通过'
   report.textContent = checks.join('\n') + '\nPASS: ' + checks.length + ' checks. No real account or cloud writes.'
 }

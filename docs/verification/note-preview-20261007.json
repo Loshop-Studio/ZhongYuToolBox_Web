@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-07",
+  "status": "local-unreleased",
+  "version": "1.1.15-aoki",
+  "fixture": "Synthetic two vector pages with original UUID page_router.bin plus a raster page; no account data",
+  "windows": {
+    "runtime": "Native WebView2 QA app",
+    "passed": true,
+    "totalAssertions": 183,
+    "noteChecks": [
+      "原始 UUID 页路由不能覆盖 VFS 页码目录",
+      "直接传入旧资源清单时 VFS 也不暴露失效 UUID 页路由",
+      "实际挂载高清组件显示第一页，不误报缺少 snapshot.bin",
+      "实际高清组件翻页到另一 UUID 页面，完整显示文字"
+    ]
+  },
+  "android": {
+    "platform": "Android emulator / native WebView",
+    "passed": true,
+    "checks": [
+      "笔记混合矢量/截图页面全部保留且排序正确",
+      "带签名参数的截图和画板资源均可识别",
+      "原始 UUID 页路由不能覆盖 VFS 页码目录",
+      "直接传入旧资源清单时 VFS 也不暴露失效 UUID 页路由",
+      "旧格式文字/笔迹及附属 bin 完整矢量还原",
+      "矢量文字与原始页序一致",
+      "实际挂载高清组件显示第一页，不误报缺少 snapshot.bin",
+      "实际高清组件翻页到另一 UUID 页面，完整显示文字",
+      "同一笔记二次渲染复用下载字节",
+      "MDB 配置/笔迹共用下载且带签名笔触可读取",
+      "临时资源失败后可重试",
+      "笔记 PDF 三页齐全且仅截图页回退",
+      "无有效矢量图元时导出截图",
+      "缺失页明确停止导出，不静默漏页",
+      "取消笔记导出不生成文件",
+      "当前页 SVG 保留真实笔迹路径和中文文字",
+      "SVG ZIP 保留混合笔记全部页序并明确标注截图页",
+      "SVG 保留竖版页面原始尺寸不裁切",
+      "截图页图片内联，离线可读取且保留完整尺寸",
+      "离线 SVG 实际解码渲染完整页面右下角",
+      "SVG 缺失页面时停止打包，不静默漏页",
+      "SVG 取消任务不保存文件",
+      "SVG 不输出依赖过期 blob 或远程图片的文件"
+    ]
+  },
+  "browser": {
+    "runtime": "Microsoft Edge",
+    "passed": true,
+    "checks": [
+      "笔记混合矢量/截图页面全部保留且排序正确",
+      "带签名参数的截图和画板资源均可识别",
+      "原始 UUID 页路由不能覆盖 VFS 页码目录",
+      "直接传入旧资源清单时 VFS 也不暴露失效 UUID 页路由",
+      "旧格式文字/笔迹及附属 bin 完整矢量还原",
+      "矢量文字与原始页序一致",
+      "实际挂载高清组件显示第一页，不误报缺少 snapshot.bin",
+      "实际高清组件翻页到另一 UUID 页面，完整显示文字",
+      "同一笔记二次渲染复用下载字节",
+      "MDB 配置/笔迹共用下载且带签名笔触可读取",
+      "临时资源失败后可重试",
+      "笔记 PDF 三页齐全且仅截图页回退",
+      "无有效矢量图元时导出截图",
+      "缺失页明确停止导出，不静默漏页",
+      "取消笔记导出不生成文件",
+      "当前页 SVG 保留真实笔迹路径和中文文字",
+      "SVG ZIP 保留混合笔记全部页序并明确标注截图页",
+      "SVG 保留竖版页面原始尺寸不裁切",
+      "截图页图片内联，离线可读取且保留完整尺寸",
+      "离线 SVG 实际解码渲染完整页面右下角",
+      "SVG 缺失页面时停止打包，不静默漏页",
+      "SVG 取消任务不保存文件",
+      "SVG 不输出依赖过期 blob 或远程图片的文件"
+    ]
+  },
+  "ios": {
+    "nativeTested": false,
+    "scope": "Shared TypeScript fix; no iOS device or simulator verification in this round",
+    "frontendBuildPassed": true
+  },
+  "localPackages": [
+    {
+      "platform": "Android",
+      "path": "release/android/ZhongYuToolBox-aoki-1.1.15-Android-HDNoteFix.apk",
+      "sha256": "86275ce5b8cac2c90b0420d2bf1481e4ac30c3bea92caf586f2096ad2acaa90a",
+      "previewBundle": "NoteDetailView-C1IYClKr.js",
+      "matchedLocalBuild": true,
+      "qaAndSigningFilesAbsent": true
+    },
+    {
+      "platform": "Windows",
+      "path": "release/ZhongYuToolBox-aoki-1.1.15-Windows-HDNoteFix.zip",
+      "sha256": "95098f331accc283988ca1fec85c4e0f535a01ac5e3584fbfa97b9261ef6fe6b",
+      "previewBundle": "NoteDetailView-DEe_3V_W.js",
+      "matchedLocalBuild": true,
+      "qaAndSigningFilesAbsent": true
+    }
+  ]
+}

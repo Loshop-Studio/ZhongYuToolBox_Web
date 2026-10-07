@@ -4,6 +4,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.1.16-aoki] - 2026-10-07
+
+- 修复云笔记高清预览误报「该页缺少 snapshot.bin」：整本笔记的 `page_router.bin` 指向原始 UUID 目录，不能作为已按页码重建的虚拟文件系统中的单页资源；按真实页面目录读取，保留笔迹、文字、图片及页序。
+- 增加包含原始页面路由的回归样本，实际挂载高清组件验证第一页、翻页及 PDF/SVG 导出；Windows WebView2 与 Android WebView 验证通过。
+- Windows / Android 正式版与 iOS Beta 1 内测版统一为 1.1.16；iPhone / iPad 模拟器测试增加实际 WKWebView 高清笔记打开与翻页检查。
+
 ## [1.1.14-aoki] - 2026-10-04
 
 - 新增云笔记当前页 SVG 与全部页面 SVG ZIP 导出，笔迹/文字保留矢量，图片内联、页序与尺寸保留；截图页明确标为位图，不静默漏页。

@@ -24,7 +24,7 @@ previewBoard.page().stroke([[60,180],[280,120],[600,280]],{lineWidth:5,color:'#7
 previewBoard.addPage({width:450,height:720}).text('竖版矢量页',{x:30,y:70,size:28})
 const previewFiles=await previewBoard.toFiles(), previewDirs=[...new Set(previewFiles.filter(f=>f.path.endsWith('snapshot.bin')).map(f=>f.path.split('/')[0]))]
 const previewBytes=new Map<string,Blob>(), previewResources:any[]=[]
-for(const file of previewFiles){const idx=previewDirs.indexOf(file.path.split('/')[0]);if(idx<0)continue;const url=location.origin+'/fixture-note/'+file.path+'?signature=QA';previewBytes.set(url,file.blob);previewResources.push({pageIndex:idx*2,resourceType:1,ossImageUrl:url})}
+for(const file of previewFiles){const idx=file.path==='page_router.bin'?0:previewDirs.indexOf(file.path.split('/')[0]);if(idx<0)continue;const url=location.origin+'/fixture-note/'+file.path+'?signature=QA';previewBytes.set(url,file.blob);previewResources.push({pageIndex:idx*2,resourceType:1,ossImageUrl:url})}
 previewBytes.set(location.origin+'/fixture-note/preview.png',await (await fetch(image)).blob())
 previewResources.push({pageIndex:1,resourceType:2,ossImageUrl:location.origin+'/example/a888b5fb-e65d-4611-a3af-1f80a0fb6ced/screenshot.png'})
 const noteTemplate={type:1,fileUrl:'https://fixture.invalid/note',parentId:'0',version:4,shared:false,isRecycleBin:false,expirationTimeStamp:null,updateTime:'2026-10-01'}

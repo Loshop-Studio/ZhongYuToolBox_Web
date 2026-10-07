@@ -1,4 +1,6 @@
-import { createBoard, noteToSvgs, inspectNote } from 'ezy-board-viewer'
+import { createBoard, noteToSvgs, inspectNote, NoteViewer, type NoteViewerInstance } from 'ezy-board-viewer'
+import { createApp, h, ref } from 'vue'
+import ElementPlus from 'element-plus'
 import { PDFDocument } from 'pdf-lib'
 import { collectNoteResources } from '../src/utils/noteResourceModel'
 import { createNoteVfs } from '../src/utils/noteVfs'
@@ -15,7 +17,7 @@ export async function notePreviewQa(check: (ok: boolean, name: string) => void) 
   const bytes = new Map<string, Blob>(), counts = new Map<string, number>()
   const resources: any[] = []
   files.forEach(file => {
-    const index = paths.indexOf(file.path.split('/')[0]); if (index < 0) return
+    const index = file.path === 'page_router.bin' ? 0 : paths.indexOf(file.path.split('/')[0]); if (index < 0) return
     const url = 'https://fixture.invalid/' + file.path + '?signature=QA'
     bytes.set(url, file.blob)
     resources.push({ pageIndex: index * 2, resourceType: 1, ossImageUrl: url })
@@ -35,10 +37,35 @@ export async function notePreviewQa(check: (ok: boolean, name: string) => void) 
     counts.set(url, (counts.get(url) || 0) + 1)
     const blob = bytes.get(url); if (!blob) throw Error('未知测试资源 ' + url); return blob
   } })
-  check((await inspectNote(source)).pageDirs.length === 2, 'npm 笔记查看器识别 VFS 两页')
+  check((await inspectNote(source)).pageDirs.map(p => p.dir).join(',') === '1/,3/', '原始 UUID 页路由不能覆盖 VFS 页码目录')
+  const originalRouter = resources.find(r => /page_router\.bin/.test(r.ossImageUrl)).ossImageUrl
+  const direct = await createNoteVfs({ pages: [{ ...data.boards[0], files: [
+    ...(data.boards[0].files || []), { fileName: 'page_router.bin', url: originalRouter }
+  ] }], fetchBlob: async url => bytes.get(url)! })
+  check((await inspectNote(direct)).pageDirs[0].dir === '1/' && await direct.read('1/page_router.bin') === null,
+    '直接传入旧资源清单时 VFS 也不暴露失效 UUID 页路由')
   const vector = await noteToSvgs(source)
   check(vector.length === 2 && vector.every(p => !!p.svg && !p.error), '旧格式文字/笔迹及附属 bin 完整矢量还原')
   check(vector[0].svg!.includes('中文矢量笔记') && vector[1].svg!.includes('第三页'), '矢量文字与原始页序一致')
+  const node = document.createElement('div')
+  node.style.cssText = 'width:640px;height:480px;position:fixed;inset:0;z-index:9999;background:white'
+  document.body.append(node)
+  const viewer = ref<NoteViewerInstance | null>(null), viewerErrors: string[] = []
+  const app = createApp({ render: () => h(NoteViewer, { source, showPages: false, showMeta: false,
+    ref: viewer, onError: (error: unknown) => viewerErrors.push(String(error)) }) })
+  app.use(ElementPlus)
+  try {
+    app.mount(node)
+    const image = () => node.querySelector<HTMLImageElement>('.ezy-board-viewer img')
+    for (let i = 0; i < 100 && !image()?.naturalWidth; i++) await new Promise(resolve => setTimeout(resolve, 30))
+    const firstUrl = image()?.src
+    check(!viewerErrors.length && image()?.naturalWidth === 640 && !!firstUrl &&
+      (await (await fetch(firstUrl)).text()).includes('中文矢量笔记'), '实际挂载高清组件显示第一页，不误报缺少 snapshot.bin')
+    viewer.value!.gotoPage(2)
+    for (let i = 0; i < 100 && (image()?.src === firstUrl || !image()?.naturalWidth); i++) await new Promise(resolve => setTimeout(resolve, 30))
+    check(image()?.naturalWidth === 360 && !!image()?.src &&
+      (await (await fetch(image()!.src)).text()).includes('第三页') && !node.textContent?.includes('缺少 snapshot.bin'), '实际高清组件翻页到另一 UUID 页面，完整显示文字')
+  } finally { app.unmount(); node.remove() }
   await noteToSvgs(source)
   check([...counts.values()].every(n => n === 1), '同一笔记二次渲染复用下载字节')
   const mdbUrl = 'https://fixture.invalid/data.mdb', touchUrl = 'https://fixture.invalid/pen_touch.bin?signature=QA'

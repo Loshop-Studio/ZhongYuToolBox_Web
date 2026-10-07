@@ -20,9 +20,11 @@ Swift + WKWebView 壳，加载 IPA 内置的 Vite 编译资源；业务页面共
 
 1.1.14 新增云笔记高清预览与矢量 PDF / SVG 导出，移动端预览页右上角「⋯」可导出当前页 SVG 或全部页 SVG ZIP；笔迹、文字保持矢量，截图页和原始图片保持位图。导出经系统文件面板保存。
 
-1.1.14 起 iOS 改为 **Beta 内测**，当前为 [1.1.15 Beta 1](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.15-ios-beta1)，内部构建号 `10115.1`。Safari Canvas 不支持 WebP 编码时，调用包内 jSquash / libwebp 在本机 Worker 编码，不向外部转换服务发送文档；图库复用登录 ID，并通过统一鉴权流程获取 STS 与备用用户信息。
+1.1.14 起 iOS 改为 **Beta 内测**，当前为 [1.1.16 Beta 1](https://github.com/nickfox395/ZhongYuToolBox_Web/releases/tag/v1.1.16-ios-beta1)，内部构建号 `10116.1`。Safari Canvas 不支持 WebP 编码时，调用包内 jSquash / libwebp 在本机 Worker 编码，不向外部转换服务发送文档；图库复用登录 ID，并通过统一鉴权流程获取 STS 与备用用户信息。
 
 1.1.15 修复凌晨 OSS 上传目录日期：按北京时间（UTC+8）计算 STS 对应的日期，优先采用服务端响应的 Date 时间，避免设备时区影响。同一份笔记共用一次临时授权和固定目录，跨午夜仍将所有页面上传到同一根地址；授权过期时提示重试。OSS 请求签名中的 Date 仍为协议要求的 GMT，不能改为北京时间字符串。回归覆盖 00:00 / 08:00、跨午夜、跨年和闰日，以及不同设备时区；模拟授权策略和二进制传输，不向真实账号写入测试文件。
+
+1.1.16 修复高清笔记误报「该页缺少 snapshot.bin」：原始整本页面路由不再覆盖按页码重建的虚拟目录；iPhone 与 iPad 模拟器增加高清第一页、翻页及矢量导出回归。
 
 Beta 1 修复 OSS HTTP endpoint 的 ATS 拦截：笔记及图库上传将官方 STS 返回的阿里云地址转为 HTTPS，原生图片请求及重定向同样使用 HTTPS，保持路径及签名查询参数；不添加全局 ATS 关闭选项，不关闭 TLS 证书校验。模拟器回归包含真实 URLSession 对公开 OSS 地址的无凭据 HEAD 请求，以及返回 HTTP endpoint 的模拟上传；测试不写入真实云端账号。
 

@@ -8,10 +8,10 @@ final class NavigationUITests: XCTestCase {
         let finished = app.webViews.firstMatch.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "iOS上传回归")).firstMatch
         let completed = finished.waitForExistence(timeout: 120)
         let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = "iOS local WebP encoding and note/gallery upload regression"; shot.lifetime = .keepAlways; add(shot)
+        shot.name = "iOS HD note preview, paging and local upload regression"; shot.lifetime = .keepAlways; add(shot)
         let diagnostic = XCTAttachment(string: app.debugDescription)
         diagnostic.name = "Upload regression accessibility report"; diagnostic.lifetime = .keepAlways; add(diagnostic)
-        XCTAssertTrue(completed && finished.label == "iOS上传回归通过", "Actual WKWebView HTTPS/WebP/upload failure:\n" + app.debugDescription)
+        XCTAssertTrue(completed && finished.label == "iOS上传回归通过", "Actual WKWebView HD note preview/HTTPS/WebP failure:\n" + app.debugDescription)
     }
     func testFeedbackEntryAndTemplate() {
         let app = XCUIApplication(); app.launchArguments = ["--ios-ui-fixtures"]; app.launch()
